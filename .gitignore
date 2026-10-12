@@ -218,3 +218,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ROS 2 / colcon
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# Project artifacts
+checkpoints/
+*.pt
+*.pth
+data/raw/
+data/processed/
+wandb/
+outputs/
+.DS_Store
+

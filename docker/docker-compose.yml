@@ -1,0 +1,21 @@
+services:
+  dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: pai-final:humble
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+    stdin_open: true
+    tty: true
+    command: ["bash"]
+
+  generate-bag:
+    image: pai-final:humble
+    pull_policy: never
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+    entrypoint: ["/entrypoint.sh"]
+    command: ["python3", "scripts/generate_sample_bag.py"]
