@@ -8,7 +8,7 @@ from lerobot.configs.types import FeatureType, PolicyFeature
 from lerobot.policies.act.configuration_act import ACTConfig
 from lerobot.policies.act.modeling_act import ACTPolicy
 
-from pai_final.contract import validate_contract
+from port_pick_align.contract import validate_contract
 
 
 def build_act_policy(

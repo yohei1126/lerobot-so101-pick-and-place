@@ -12,9 +12,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from pai_final.contract import DEFAULT_CONTRACT_PATH, load_contract, validate_contract
-from pai_final.dataset.synthetic import DEFAULT_REPO_ID, make_dummy_image
-from pai_final.training.policy import build_act_policy
+from port_pick_align.contract import DEFAULT_CONTRACT_PATH, load_contract, validate_contract
+from port_pick_align.dataset.synthetic import DEFAULT_REPO_ID, make_dummy_image
+from port_pick_align.training.policy import build_act_policy
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_DATASET_ROOT = REPO_ROOT / "data" / "synthetic" / "lerobot"

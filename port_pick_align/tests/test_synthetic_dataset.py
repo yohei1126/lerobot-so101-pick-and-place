@@ -6,8 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from pai_final.contract import load_contract
-from pai_final.dataset.synthetic import build_features, generate_synthetic_dataset, make_dummy_image
+from port_pick_align.contract import load_contract
+from port_pick_align.dataset.synthetic import (
+    build_features,
+    generate_synthetic_dataset,
+    make_dummy_image,
+)
 
 pytest.importorskip("lerobot")
 

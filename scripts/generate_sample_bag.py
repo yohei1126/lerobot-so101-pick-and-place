@@ -18,7 +18,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = REPO_ROOT / "configs" / "contract.yaml"
-OUTPUT_DIR = REPO_ROOT / "pai_final" / "tests" / "fixtures" / "sample_bag"
+OUTPUT_DIR = REPO_ROOT / "port_pick_align" / "tests" / "fixtures" / "sample_bag"
 # Keep short so the committed fixture stays under GitHub's soft size limit (~50 MiB).
 DURATION_SEC = 0.5
 
