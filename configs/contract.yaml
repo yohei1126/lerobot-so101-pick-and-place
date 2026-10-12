@@ -1,0 +1,44 @@
+# Single Source of Truth for topics, shapes, and model I/O.
+# All scripts and ROS 2 nodes should load this file.
+
+robot:
+  name: "so_arm101"
+  dof: 6
+  # Provisional names. Align with LeRobot official SO-100/101 defs in Task 5.
+  joint_names:
+    - "shoulder_pan"
+    - "shoulder_lift"
+    - "elbow_flex"
+    - "wrist_flex"
+    - "wrist_roll"
+    - "gripper"
+
+cameras:
+  top:
+    topic: "/camera/top/image_raw"
+    width: 640
+    height: 480
+    channels: 3
+    fps: 30
+  wrist:
+    topic: "/camera/wrist/image_raw"
+    width: 640
+    height: 480
+    channels: 3
+    fps: 30
+
+states:
+  topic: "/joint_states"
+  dim: 6
+  rate_hz: 30
+
+commands:
+  topic: "/joint_commands"
+  dim: 6
+  rate_hz: 30
+
+model:
+  policy: "act"
+  chunk_size: 30
+  action_dim: 6
+  vision_backbone: "resnet18"
