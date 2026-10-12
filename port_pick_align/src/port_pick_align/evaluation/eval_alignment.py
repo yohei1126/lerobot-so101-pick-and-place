@@ -1,8 +1,7 @@
-"""Alignment / grasp evaluation stubs (Task 4).
+"""Alignment / grasp evaluation for pick-and-align trials.
 
-Defines the recording and aggregation interface for position offset (mm),
-yaw error (deg), and grasp success. Real sensor / vision measurement is
-wired in later tasks; this module only provides the data shapes and summary.
+Records position offset (mm), yaw error (deg), and grasp success.
+Simulators and real sensors feed measured values into this module.
 """
 
 from __future__ import annotations
@@ -10,6 +9,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
+
+import numpy as np
+
+# Default thresholds for derived align_success (mm / deg).
+DEFAULT_ALIGN_POS_MM = 25.0
+DEFAULT_ALIGN_YAW_DEG = 15.0
+DEFAULT_GRASP_LIFT_M = 0.02
 
 
 @dataclass(frozen=True)
@@ -34,6 +40,60 @@ def record_sample(
     )
 
 
+def compute_pose_errors(
+    box_xy: Sequence[float] | np.ndarray,
+    box_yaw: float,
+    target_xy: Sequence[float] | np.ndarray,
+    target_yaw: float,
+) -> tuple[float, float]:
+    """Return (position_error_mm, yaw_error_deg) from planar poses.
+
+    ``yaw_error_deg`` is signed and wrapped to ``(-180, 180]``.
+    """
+    bx = np.asarray(box_xy, dtype=np.float64).reshape(-1)
+    tx = np.asarray(target_xy, dtype=np.float64).reshape(-1)
+    if bx.shape[0] < 2 or tx.shape[0] < 2:
+        raise ValueError("box_xy and target_xy must have at least 2 elements")
+    pos_m = float(np.linalg.norm(bx[:2] - tx[:2]))
+    yaw_err = float(box_yaw) - float(target_yaw)
+    # Wrap to (-pi, pi]
+    yaw_err = (yaw_err + np.pi) % (2.0 * np.pi) - np.pi
+    return pos_m * 1000.0, float(np.degrees(yaw_err))
+
+
+def infer_grasp_success(
+    *,
+    box_z: float,
+    table_z: float,
+    ee_xy: Sequence[float] | np.ndarray | None = None,
+    box_xy: Sequence[float] | np.ndarray | None = None,
+    lift_threshold_m: float = DEFAULT_GRASP_LIFT_M,
+    ee_proximity_m: float = 0.08,
+) -> bool:
+    """Heuristic grasp success from box height (and optional EE proximity)."""
+    lifted = float(box_z) >= float(table_z) + float(lift_threshold_m)
+    if not lifted:
+        return False
+    if ee_xy is None or box_xy is None:
+        return True
+    ee = np.asarray(ee_xy, dtype=np.float64).reshape(-1)[:2]
+    box = np.asarray(box_xy, dtype=np.float64).reshape(-1)[:2]
+    return float(np.linalg.norm(ee - box)) <= float(ee_proximity_m)
+
+
+def is_align_success(
+    position_error_mm: float,
+    yaw_error_deg: float,
+    *,
+    pos_thresh_mm: float = DEFAULT_ALIGN_POS_MM,
+    yaw_thresh_deg: float = DEFAULT_ALIGN_YAW_DEG,
+) -> bool:
+    """True when planar pose is within alignment thresholds."""
+    return abs(float(position_error_mm)) <= float(pos_thresh_mm) and abs(
+        float(yaw_error_deg)
+    ) <= float(yaw_thresh_deg)
+
+
 def empty_summary() -> dict[str, Any]:
     """Return an empty aggregate with stable keys for reporting / CI."""
     return {
@@ -44,19 +104,38 @@ def empty_summary() -> dict[str, Any]:
         "std_abs_yaw_error_deg": 0.0,
         "grasp_success_rate": 0.0,
         "n_grasp_success": 0,
+        "align_success_rate": 0.0,
+        "n_align_success": 0,
     }
 
 
-def summarize(samples: Sequence[AlignmentSample]) -> dict[str, Any]:
-    """Aggregate samples into mean/std errors and grasp success rate."""
+def summarize(
+    samples: Sequence[AlignmentSample],
+    *,
+    pos_thresh_mm: float = DEFAULT_ALIGN_POS_MM,
+    yaw_thresh_deg: float = DEFAULT_ALIGN_YAW_DEG,
+) -> dict[str, Any]:
+    """Aggregate samples into mean/std errors and success rates."""
     if not samples:
         return empty_summary()
 
     positions = [s.position_error_mm for s in samples]
     abs_yaws = [abs(s.yaw_error_deg) for s in samples]
     successes = [1.0 if s.grasp_success else 0.0 for s in samples]
+    aligns = [
+        1.0
+        if is_align_success(
+            s.position_error_mm,
+            s.yaw_error_deg,
+            pos_thresh_mm=pos_thresh_mm,
+            yaw_thresh_deg=yaw_thresh_deg,
+        )
+        else 0.0
+        for s in samples
+    ]
     n = len(samples)
     n_ok = int(sum(successes))
+    n_align = int(sum(aligns))
 
     mean_pos = sum(positions) / n
     mean_yaw = sum(abs_yaws) / n
@@ -75,6 +154,8 @@ def summarize(samples: Sequence[AlignmentSample]) -> dict[str, Any]:
         "std_abs_yaw_error_deg": std_yaw,
         "grasp_success_rate": n_ok / n,
         "n_grasp_success": n_ok,
+        "align_success_rate": n_align / n,
+        "n_align_success": n_align,
     }
 
 

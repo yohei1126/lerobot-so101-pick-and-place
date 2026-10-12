@@ -1,6 +1,6 @@
-# Task 5: E2E 結合スモーク
+# E2E 結合スモーク
 
-Task 1–4 の部品を一本につなぐスモーク。実機前の Feetech / udev 準備は [hardware_udev_feetech.md](hardware_udev_feetech.md)。
+各部品を一本につなぐスモーク。実機前の Feetech / udev 準備は [hardware.md](hardware.md)。
 
 ## 前提
 
@@ -54,4 +54,4 @@ pip install -e "port_pick_align/[training,feetech,dev]"
 # Linux: deploy/udev/99-feetech-so101.rules を機材 serial に合わせてから /etc/udev/rules.d/ へ
 ```
 
-詳細: [hardware_udev_feetech.md](hardware_udev_feetech.md)
+詳細: [hardware.md](hardware.md)

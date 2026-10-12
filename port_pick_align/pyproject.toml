@@ -23,6 +23,13 @@ training = [
 feetech = [
   "lerobot[feetech]==0.6.1",
 ]
+simulation = [
+  "mujoco>=3.1",
+  "gymnasium>=0.29",
+  "imageio>=2.34",
+  "imageio-ffmpeg>=0.5",
+  "rerun-sdk>=0.22",
+]
 dev = [
   "pytest>=7.4",
   "ruff>=0.8",
@@ -33,12 +40,16 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+port_pick_align = ["simulation/assets/*.xml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
   "unit: fast unit tests without full training",
   "integration: end-to-end synthetic ACT pipeline smoke",
+  "simulation: MuJoCo / Gymnasium closed-loop tests (optional extra)",
 ]
 
 [tool.ruff]

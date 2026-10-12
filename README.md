@@ -7,13 +7,15 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 
 手順・コマンドの詳細は [`docs/`](docs/README.md) を参照。
 
-| Task | 文書 |
+| 用途 | 文書 |
 | --- | --- |
-| 1 環境・フィクスチャ | [docs/task1_docker_fixture.md](docs/task1_docker_fixture.md) |
-| 2 合成データ ACT | [docs/task2_synthetic_act.md](docs/task2_synthetic_act.md) |
-| 3 bag → LeRobot | [docs/task3_bag_to_lerobot.md](docs/task3_bag_to_lerobot.md) |
-| 4 ROS 2 / Rerun | [docs/task4_ros2_rerun.md](docs/task4_ros2_rerun.md) |
-| 5 E2E / Feetech | [docs/task5_e2e.md](docs/task5_e2e.md) · [docs/hardware_udev_feetech.md](docs/hardware_udev_feetech.md) |
+| 環境・契約 | [docs/setup.md](docs/setup.md) |
+| データセット | [docs/dataset.md](docs/dataset.md) |
+| ACT 学習 | [docs/training.md](docs/training.md) |
+| ROS 2 / Rerun | [docs/ros2_inference.md](docs/ros2_inference.md) |
+| MuJoCo シミュ | [docs/simulation.md](docs/simulation.md) |
+| 整列評価 | [docs/evaluation.md](docs/evaluation.md) |
+| E2E / 実機準備 | [docs/e2e.md](docs/e2e.md) · [docs/hardware.md](docs/hardware.md) |
 | CI | [docs/ci.md](docs/ci.md) |
 
 最短の結合確認:
@@ -28,9 +30,9 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 .
 ├── configs/contract.yaml   # トピック・形状・モデル I/O の契約（SSOT）
 ├── docs/                   # 手順・クイックスタート
-├── scripts/                # bag 生成・変換・E2E スモーク
+├── scripts/                # bag 生成・変換・E2E / シミュ評価
 ├── deploy/udev/            # Linux udev ルール例
-├── port_pick_align/        # Python（LeRobot / RobOps / ACT）
+├── port_pick_align/        # Python（LeRobot / RobOps / ACT / MuJoCo）
 ├── ros2_ws/                # ROS 2 推論・可視化ノード
 ├── docker/                 # ROS 2 Humble 実行環境
 └── .github/workflows/      # lint / unit / integration
@@ -41,7 +43,7 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 | 環境 | 用途 |
 | --- | --- |
 | Docker (`docker/`) | ROS 2、rosbag2、推論モック、Rerun |
-| Host Python venv | 合成データ、ACT、converter / validator、Feetech |
+| Host Python venv | 合成データ、ACT、converter / validator、Feetech、MuJoCo |
 | Cloud GPU | ACT 本格学習（任意） |
 
 ## 契約（contract.yaml）

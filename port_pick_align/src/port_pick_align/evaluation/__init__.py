@@ -1,4 +1,4 @@
-"""Alignment / grasp evaluation stubs (Task 4)."""
+"""Alignment / grasp evaluation."""
 
 from __future__ import annotations
 
@@ -6,7 +6,10 @@ from typing import Any
 
 __all__ = [
     "AlignmentSample",
+    "compute_pose_errors",
     "empty_summary",
+    "infer_grasp_success",
+    "is_align_success",
     "record_sample",
     "samples_to_dicts",
     "summarize",
