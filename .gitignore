@@ -158,6 +158,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.python-version
 
 # Spyder project settings
 .spyderproject
@@ -230,7 +231,10 @@ checkpoints/
 *.pth
 data/raw/
 data/processed/
+data/synthetic/
 wandb/
 outputs/
 .DS_Store
+.ruff_cache/
+.mypy_cache/
 
