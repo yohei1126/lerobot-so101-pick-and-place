@@ -25,6 +25,40 @@ export MUJOCO_GL=glfw   # macOS 既定
 - 小型箱と机上の目標枠
 - パッケージ: `port_pick_align.simulation`（MJCF: `simulation/assets/so101_tabletop.xml`）
 
+## 動作を目で見る
+
+### 1. MuJoCo 3D ビューア（推奨）
+
+macOS では **`mjpython`** が必要（`launch_passive` 制約）。uv 製 venv では `libpython` のパスも通す。
+
+```bash
+source .venv/bin/activate
+# uv Python の場合（一度だけ）
+mkdir -p .venv/lib
+ln -sfn "$(python -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')/libpython3.12.dylib" \
+  .venv/lib/libpython3.12.dylib
+
+.venv/bin/mjpython scripts/view_sim.py --policy scripted
+```
+
+マウス: ドラッグで回転、スクロールでズーム。ウィンドウを閉じると終了。
+
+### 2. Rerun（カメラ・関節・action chunk）
+
+venv の `rerun` が PATH に入っている必要がある。
+
+```bash
+export PATH="$PWD/.venv/bin:$PATH"
+python scripts/run_sim_eval.py --policy scripted --rerun --save-video
+```
+
+### 3. ロールアウト動画（mp4）
+
+```bash
+python scripts/run_sim_eval.py --policy scripted --save-video --no-rerun
+open outputs/eval/sim_rollout.mp4   # macOS
+```
+
 ## 閉ループ評価の実行
 
 ```bash
@@ -39,6 +73,7 @@ python scripts/run_sim_eval.py --policy checkpoint \
   --checkpoint checkpoints/synthetic_act/best_model.pt
 
 # Rerun 可視化付き
+export PATH="$PWD/.venv/bin:$PATH"
 python scripts/run_sim_eval.py --policy scripted --rerun
 ```
 
