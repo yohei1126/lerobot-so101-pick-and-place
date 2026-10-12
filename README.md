@@ -54,7 +54,7 @@ docker compose -f docker/docker-compose.yml run --rm dev
 
 ## Task 2 クイックスタート（合成データ ACT 疎通）
 
-ホスト Python 3.10+ で実行する（Docker には torch / lerobot を入れない）。
+ホスト Python 3.12+ で実行する（Docker には torch / lerobot を入れない。`lerobot` 0.6.x は 3.12 必須）。
 
 ```bash
 python -m venv .venv
