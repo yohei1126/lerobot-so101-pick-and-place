@@ -10,7 +10,7 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 ├── configs/contract.yaml          # トピック・形状・モデル I/O の契約（Single Source of Truth）
 ├── scripts/generate_sample_bag.py # テスト用 rosbag2 フィクスチャ生成
 ├── scripts/generate_synthetic_dataset.py  # 合成 LeRobotDataset（Task 2）
-├── python/                        # スタンドアロン Python（LeRobot / RobOps）
+├── pai_final/                     # スタンドアロン Python（LeRobot / RobOps）
 │   ├── src/pai_final/
 │   │   ├── dataset/               # converter / validator / synthetic
 │   │   ├── training/              # ACT 学習（Task 2）
@@ -38,12 +38,12 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 # イメージビルド（generate-bag は同一イメージを参照）
 docker compose -f docker/docker-compose.yml build dev
 
-# 契約どおりの sample_bag を生成（python/tests/fixtures/sample_bag）
+# 契約どおりの sample_bag を生成（pai_final/tests/fixtures/sample_bag）
 docker compose -f docker/docker-compose.yml run --rm generate-bag
 
 # 内容確認
 docker compose -f docker/docker-compose.yml run --rm dev \
-  bash -lc 'ros2 bag info python/tests/fixtures/sample_bag'
+  bash -lc 'ros2 bag info pai_final/tests/fixtures/sample_bag'
 ```
 
 対話シェル:
@@ -60,7 +60,7 @@ docker compose -f docker/docker-compose.yml run --rm dev
 python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
-pip install -e "python/[training,dev]"
+pip install -e "pai_final/[training,dev]"
 
 # 契約準拠の合成 LeRobotDataset（既定: 8 episodes × 64 frames）
 python scripts/generate_synthetic_dataset.py
@@ -84,14 +84,14 @@ python -m pai_final.training.train_act --infer-only
 ## CI（ローカル相当）
 
 ```bash
-pip install -e "python/[training,dev]"
+pip install -e "pai_final/[training,dev]"
 
-ruff check python scripts
-ruff format --check python scripts
-(cd python && mypy src/pai_final)
+ruff check pai_final scripts
+ruff format --check pai_final scripts
+(cd pai_final && mypy src/pai_final)
 
-(cd python && pytest -m unit -q)
-(cd python && pytest -m integration -q)
+(cd pai_final && pytest -m unit -q)
+(cd pai_final && pytest -m integration -q)
 ```
 
 GitHub Actions（`.github/workflows/ci.yml`）では lint と unit を並列実行し、unit 成功後に integration を実行する。

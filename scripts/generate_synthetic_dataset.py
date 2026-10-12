@@ -3,7 +3,7 @@
 
 Example:
 
-    pip install -e "python/[training]"
+    pip install -e "pai_final/[training]"
     python scripts/generate_synthetic_dataset.py
 """
 
@@ -14,9 +14,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PYTHON_SRC = REPO_ROOT / "python" / "src"
-if str(PYTHON_SRC) not in sys.path:
-    sys.path.insert(0, str(PYTHON_SRC))
+PACKAGE_SRC = REPO_ROOT / "pai_final" / "src"
+if str(PACKAGE_SRC) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_SRC))
 
 from pai_final.contract import DEFAULT_CONTRACT_PATH
 from pai_final.dataset.synthetic import (
