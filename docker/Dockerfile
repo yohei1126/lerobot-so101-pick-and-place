@@ -22,10 +22,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Host-side Python tooling used inside the container (pytest already via apt).
+# Pin numpy<2 so apt ROS packages (cv_bridge / OpenCV) keep a compatible ABI.
 RUN python3 -m pip install --no-cache-dir \
+        "numpy>=1.24,<2" \
         "rerun-sdk>=0.16" \
         pyyaml \
-        numpy \
         opencv-python-headless \
         pytest
 

@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["build_act_policy", "run_inference_smoke", "train_act"]
+__all__ = [
+    "build_act_policy",
+    "images_bgr_to_batch",
+    "mock_action_chunk",
+    "predict_chunk",
+    "run_inference_smoke",
+    "train_act",
+]
 
 
 def __getattr__(name: str) -> Any:
@@ -12,6 +19,10 @@ def __getattr__(name: str) -> Any:
         from port_pick_align.training.policy import build_act_policy
 
         return build_act_policy
+    if name in {"images_bgr_to_batch", "mock_action_chunk", "predict_chunk"}:
+        from port_pick_align.training import infer as infer_module
+
+        return getattr(infer_module, name)
     if name in {"run_inference_smoke", "train_act"}:
         from port_pick_align.training import train_act as train_act_module
 
