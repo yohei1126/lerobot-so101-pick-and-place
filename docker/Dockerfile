@@ -21,15 +21,13 @@ RUN apt-get update \
         ros-humble-message-filters \
     && rm -rf /var/lib/apt/lists/*
 
-# Host-side Python tooling used inside the container (pytest already via apt).
-RUN python3 -m pip install --no-cache-dir \
-        "rerun-sdk>=0.16" \
-        pyyaml \
-        numpy \
-        opencv-python-headless \
-        pytest
-
 WORKDIR /workspace
+
+# Host-side Python tooling with exact pins (pip only; no uv in this image).
+# numpy stays on 1.x for ABI compatibility with apt ROS / OpenCV stacks.
+COPY docker/requirements.txt /tmp/requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt \
+    && rm -f /tmp/requirements.txt
 
 # Source ROS 2 for interactive and one-shot commands.
 COPY docker/entrypoint.sh /entrypoint.sh

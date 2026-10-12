@@ -1,1 +1,1 @@
-"""ROS 2 package for ACT inference and Rerun visualization (Task 4)."""
+"""ROS 2 nodes: ACT inference and Rerun visualization (Task 4)."""

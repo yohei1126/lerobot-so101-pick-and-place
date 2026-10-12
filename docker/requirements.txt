@@ -1,0 +1,7 @@
+# Pinned for reproducible Humble image builds (no uv; plain pip).
+# Keep numpy on 1.x for ABI compatibility with apt ROS / OpenCV stacks.
+numpy==1.26.4
+rerun-sdk==0.38.1
+PyYAML==6.0.2
+opencv-python-headless==4.10.0.84
+pytest==8.3.5
