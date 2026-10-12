@@ -20,6 +20,9 @@ training = [
   "torchvision==0.26.0",
   "Pillow>=10.0",
 ]
+feetech = [
+  "lerobot[feetech]==0.6.1",
+]
 dev = [
   "pytest>=7.4",
   "ruff>=0.8",

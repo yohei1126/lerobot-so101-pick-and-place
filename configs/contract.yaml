@@ -3,8 +3,10 @@
 
 robot:
   name: "so_arm101"
+  # LeRobot robot type for follower arm (SO-101).
+  lerobot_type: "so101_follower"
   dof: 6
-  # Provisional names. Align with LeRobot official SO-100/101 defs in Task 5.
+  # Joint names match LeRobot official SO-100/101 motor names (IDs 1–6).
   joint_names:
     - "shoulder_pan"
     - "shoulder_lift"
@@ -12,7 +14,7 @@ robot:
     - "wrist_flex"
     - "wrist_roll"
     - "gripper"
-  # Provisional SO-101 URDF-style limits (radians). Replace after real calibration.
+  # SO-101-style limits (radians). Refine after real calibration.
   joint_limits:
     shoulder_pan: [-1.9199, 1.9199]   # ±110 deg
     shoulder_lift: [-1.7453, 1.7453]  # ±100 deg

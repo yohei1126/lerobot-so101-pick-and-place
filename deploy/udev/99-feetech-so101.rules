@@ -1,0 +1,25 @@
+# Feetech / Waveshare USB-serial adapters for SO-101 leader & follower arms.
+# Install (Linux):
+#   sudo cp deploy/udev/99-feetech-so101.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# After plugging both arms, expect stable symlinks:
+#   /dev/ttyUSB_so101_leader
+#   /dev/ttyUSB_so101_follower
+#
+# Adjust ATTRS{serial} (or idProduct) after inspecting each adapter with:
+#   udevadm info -a -n /dev/ttyACM0 | head -n 40
+#   udevadm info -a -n /dev/ttyUSB0 | head -n 40
+#
+# Common vendor IDs: 1a86 (CH340), 0403 (FTDI), 10c4 (CP210x).
+# macOS has no udev — pass the /dev/tty.usbmodem* path directly to LeRobot.
+
+# Example: CH340-based bus (match by vendor/product; refine with serial when known)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", MODE="0666", GROUP="dialout", SYMLINK+="ttyUSB_so101_follower"
+
+# Example: second adapter — replace serial= with your leader dongle's iSerial
+# SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", ATTRS{serial}=="REPLACE_LEADER_SERIAL", MODE="0666", GROUP="dialout", SYMLINK+="ttyUSB_so101_leader"
+
+# FTDI example (uncomment / edit as needed)
+# SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="REPLACE_FOLLOWER_SERIAL", MODE="0666", GROUP="dialout", SYMLINK+="ttyUSB_so101_follower"
+# SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="REPLACE_LEADER_SERIAL", MODE="0666", GROUP="dialout", SYMLINK+="ttyUSB_so101_leader"

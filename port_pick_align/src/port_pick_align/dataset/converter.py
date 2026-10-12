@@ -39,6 +39,21 @@ def _nearest_index(timestamps_ns: np.ndarray, query_ns: int) -> int:
     return int(np.argmin(np.abs(timestamps_ns - query_ns)))
 
 
+def _header_stamp_ns(msg: Any, fallback_ns: int) -> int:
+    """Prefer message header stamp when present (synced publishers); else bag receive time."""
+    header = getattr(msg, "header", None)
+    if header is None:
+        return fallback_ns
+    stamp = getattr(header, "stamp", None)
+    if stamp is None:
+        return fallback_ns
+    sec = getattr(stamp, "sec", None)
+    nanosec = getattr(stamp, "nanosec", None)
+    if sec is None or nanosec is None:
+        return fallback_ns
+    return int(sec) * 1_000_000_000 + int(nanosec)
+
+
 def _image_to_rgb_hwc(msg: Any) -> np.ndarray:
     """Decode sensor_msgs/Image-like object to uint8 HWC RGB."""
     height = int(msg.height)
@@ -100,7 +115,8 @@ def read_rosbag(
 
         for connection, timestamp, rawdata in reader.messages(connections=connections):
             msg = reader.deserialize(rawdata, connection.msgtype)
-            out[connection.topic].append((int(timestamp), msg))
+            t_ns = _header_stamp_ns(msg, int(timestamp))
+            out[connection.topic].append((t_ns, msg))
 
     for topic, messages in out.items():
         if not messages:
