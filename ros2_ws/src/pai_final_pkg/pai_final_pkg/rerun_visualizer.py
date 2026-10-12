@@ -26,6 +26,21 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def _rr_scalar(rr: Any, value: float) -> Any:
+    """Rerun 0.22 uses Scalar; 0.23+ uses Scalars."""
+    if hasattr(rr, "Scalars"):
+        return rr.Scalars(value)
+    return rr.Scalar(value)
+
+
+def _rr_set_time_sequence(rr: Any, timeline: str, sequence: int) -> None:
+    """Rerun 0.22 uses set_time_sequence; newer APIs use set_time(..., sequence=)."""
+    if hasattr(rr, "set_time_sequence"):
+        rr.set_time_sequence(timeline, sequence)
+        return
+    rr.set_time(timeline, sequence=sequence)
+
+
 class RerunVisualizer(Node):
     def __init__(self) -> None:
         super().__init__("rerun_visualizer")
@@ -79,7 +94,7 @@ class RerunVisualizer(Node):
         for i, name in enumerate(names):
             if i >= len(msg.position):
                 break
-            self.rr.log(f"state/joints/{name}", self.rr.Scalars(float(msg.position[i])))
+            self.rr.log(f"state/joints/{name}", _rr_scalar(self.rr, float(msg.position[i])))
 
     def _on_chunk(self, msg: Float32MultiArray) -> None:
         data = np.asarray(msg.data, dtype=np.float32)
@@ -93,9 +108,12 @@ class RerunVisualizer(Node):
         for j, name in enumerate(self.joint_names[: self.action_dim]):
             # Log each joint trajectory as a sequence of scalars over chunk index.
             for t in range(self.chunk_size):
-                self.rr.set_time("chunk_step", sequence=t)
-                self.rr.log(f"policy/action_chunk/{name}", self.rr.Scalars(float(chunk[t, j])))
-        self.rr.set_time("chunk_step", sequence=0)
+                _rr_set_time_sequence(self.rr, "chunk_step", t)
+                self.rr.log(
+                    f"policy/action_chunk/{name}",
+                    _rr_scalar(self.rr, float(chunk[t, j])),
+                )
+        _rr_set_time_sequence(self.rr, "chunk_step", 0)
         self.rr.log("policy/action_chunk/tensor", self.rr.Tensor(chunk))
 
 

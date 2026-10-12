@@ -22,6 +22,15 @@ def test_contract_shapes_match_task2() -> None:
     validate_contract(contract)
 
     assert contract["robot"]["dof"] == 6
+    assert contract["robot"]["lerobot_type"] == "so101_follower"
+    assert contract["robot"]["joint_names"] == [
+        "shoulder_pan",
+        "shoulder_lift",
+        "elbow_flex",
+        "wrist_flex",
+        "wrist_roll",
+        "gripper",
+    ]
     assert len(contract["robot"]["joint_names"]) == 6
     for cam_name in ("top", "wrist"):
         cam = contract["cameras"][cam_name]

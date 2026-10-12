@@ -233,6 +233,8 @@ checkpoints/
 data/raw/
 data/processed/
 data/synthetic/
+data/e2e/
+data/from_bag/
 wandb/
 outputs/
 .DS_Store
