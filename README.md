@@ -103,4 +103,4 @@ GitHub Actions（`.github/workflows/ci.yml`）では lint と unit を並列実�
 
 ## ライセンス
 
-MIT（提出整備時に `LICENSE` を追加予定）
+[MIT](LICENSE)
