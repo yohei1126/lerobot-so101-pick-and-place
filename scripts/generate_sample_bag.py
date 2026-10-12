@@ -18,7 +18,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = REPO_ROOT / "configs" / "contract.yaml"
-OUTPUT_DIR = REPO_ROOT / "python" / "tests" / "fixtures" / "sample_bag"
+OUTPUT_DIR = REPO_ROOT / "pai_final" / "tests" / "fixtures" / "sample_bag"
 # Keep short so the committed fixture stays under GitHub's soft size limit (~50 MiB).
 DURATION_SEC = 0.5
 
@@ -42,7 +42,9 @@ def load_contract(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def make_dummy_image(height: int, width: int, channels: int, frame_idx: int, seed: int) -> np.ndarray:
+def make_dummy_image(
+    height: int, width: int, channels: int, frame_idx: int, seed: int
+) -> np.ndarray:
     """Create a simple BGR image with a moving stripe for visual sanity checks."""
     img = np.zeros((height, width, channels), dtype=np.uint8)
     img[:, :, 0] = (seed * 40) % 256  # B
@@ -53,7 +55,9 @@ def make_dummy_image(height: int, width: int, channels: int, frame_idx: int, see
     return img
 
 
-def numpy_to_image_msg(img: np.ndarray, stamp_sec: int, stamp_nanosec: int, frame_id: str):
+def numpy_to_image_msg(
+    img: np.ndarray, stamp_sec: int, stamp_nanosec: int, frame_id: str
+):
     from sensor_msgs.msg import Image
 
     msg = Image()
@@ -69,7 +73,9 @@ def numpy_to_image_msg(img: np.ndarray, stamp_sec: int, stamp_nanosec: int, fram
     return msg
 
 
-def make_joint_state(joint_names: list[str], t: float, stamp_sec: int, stamp_nanosec: int):
+def make_joint_state(
+    joint_names: list[str], t: float, stamp_sec: int, stamp_nanosec: int
+):
     from sensor_msgs.msg import JointState
 
     msg = JointState()
@@ -78,7 +84,10 @@ def make_joint_state(joint_names: list[str], t: float, stamp_sec: int, stamp_nan
     msg.header.frame_id = "base_link"
     msg.name = list(joint_names)
     # Small sinusoidal motion so the episode is not static (validator will use this later).
-    msg.position = [0.1 * math.sin(t * 2.0 * math.pi * 0.5 + i * 0.3) for i in range(len(joint_names))]
+    msg.position = [
+        0.1 * math.sin(t * 2.0 * math.pi * 0.5 + i * 0.3)
+        for i in range(len(joint_names))
+    ]
     msg.velocity = [0.0] * len(joint_names)
     msg.effort = [0.0] * len(joint_names)
     return msg
@@ -101,7 +110,9 @@ def write_bag(contract: dict, output_dir: Path) -> None:
     dt_ns = int(1e9 / fps)
 
     writer = rosbag2_py.SequentialWriter()
-    storage_options = rosbag2_py.StorageOptions(uri=str(output_dir), storage_id="sqlite3")
+    storage_options = rosbag2_py.StorageOptions(
+        uri=str(output_dir), storage_id="sqlite3"
+    )
     converter_options = rosbag2_py.ConverterOptions(
         input_serialization_format="cdr",
         output_serialization_format="cdr",
@@ -128,10 +139,16 @@ def write_bag(contract: dict, output_dir: Path) -> None:
         stamp_nanosec = int(t_ns % 1_000_000_000)
         t_sec = t_ns * 1e-9
 
-        top_img = make_dummy_image(top["height"], top["width"], top["channels"], i, seed=1)
-        wrist_img = make_dummy_image(wrist["height"], wrist["width"], wrist["channels"], i, seed=2)
+        top_img = make_dummy_image(
+            top["height"], top["width"], top["channels"], i, seed=1
+        )
+        wrist_img = make_dummy_image(
+            wrist["height"], wrist["width"], wrist["channels"], i, seed=2
+        )
         top_msg = numpy_to_image_msg(top_img, stamp_sec, stamp_nanosec, "camera_top")
-        wrist_msg = numpy_to_image_msg(wrist_img, stamp_sec, stamp_nanosec, "camera_wrist")
+        wrist_msg = numpy_to_image_msg(
+            wrist_img, stamp_sec, stamp_nanosec, "camera_wrist"
+        )
         js_msg = make_joint_state(joint_names, t_sec, stamp_sec, stamp_nanosec)
 
         # Use matching timestamps for a "healthy" fixture (Task 3 will add offset variants).
