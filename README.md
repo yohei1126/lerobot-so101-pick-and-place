@@ -17,6 +17,8 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 | 整列評価 | [docs/evaluation.md](docs/evaluation.md) |
 | E2E / 実機準備 | [docs/e2e.md](docs/e2e.md) · [docs/hardware.md](docs/hardware.md) |
 | CI | [docs/ci.md](docs/ci.md) |
+| 提出 | [docs/submission.md](docs/submission.md) · [report/](report/) |
+| Plan B（縮退） | [docs/plan_b.md](docs/plan_b.md) |
 
 最短の結合確認:
 
@@ -24,13 +26,21 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 ./scripts/e2e_pipeline_smoke.sh
 ```
 
+## 提出
+
+- チェックリスト: [docs/submission.md](docs/submission.md)
+- レポート原稿: [report/](report/)
+- PDF 生成: `./scripts/build_report_pdf.sh yohei1126`
+- ハード縮退: [docs/plan_b.md](docs/plan_b.md)
+
 ## ディレクトリ構成
 
 ```text
 .
 ├── configs/contract.yaml   # トピック・形状・モデル I/O の契約（SSOT）
-├── docs/                   # 手順・クイックスタート
-├── scripts/                # bag 生成・変換・E2E / シミュ評価
+├── docs/                   # 手順・クイックスタート・提出
+├── report/                 # 解説レポート Markdown 雛形
+├── scripts/                # bag 生成・変換・E2E / シミュ評価 / PDF 生成
 ├── deploy/udev/            # Linux udev ルール例
 ├── port_pick_align/        # Python（LeRobot / RobOps / ACT / MuJoCo）
 ├── ros2_ws/                # ROS 2 推論・可視化ノード

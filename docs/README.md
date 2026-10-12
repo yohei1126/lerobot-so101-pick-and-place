@@ -13,3 +13,5 @@
 | [e2e.md](e2e.md) | E2E 結合スモーク |
 | [hardware.md](hardware.md) | Feetech / udev ドライラン |
 | [ci.md](ci.md) | lint / unit / integration |
+| [submission.md](submission.md) | 提出チェックリスト（PDF / GitHub / YouTube） |
+| [plan_b.md](plan_b.md) | ハード縮退（シミュ / 公開データ） |
