@@ -3,7 +3,7 @@
 
 Example:
 
-    pip install -e "pai_final/[training]"
+    pip install -e "port_pick_align/[training]"
     python scripts/generate_synthetic_dataset.py
 """
 
@@ -14,12 +14,12 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PACKAGE_SRC = REPO_ROOT / "pai_final" / "src"
+PACKAGE_SRC = REPO_ROOT / "port_pick_align" / "src"
 if str(PACKAGE_SRC) not in sys.path:
     sys.path.insert(0, str(PACKAGE_SRC))
 
-from pai_final.contract import DEFAULT_CONTRACT_PATH
-from pai_final.dataset.synthetic import (
+from port_pick_align.contract import DEFAULT_CONTRACT_PATH
+from port_pick_align.dataset.synthetic import (
     DEFAULT_EPISODES,
     DEFAULT_FRAMES,
     generate_synthetic_dataset,

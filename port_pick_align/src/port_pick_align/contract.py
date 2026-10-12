@@ -21,13 +21,15 @@ def load_contract(path: Path | str | None = None) -> dict[str, Any]:
 
 
 def validate_contract(contract: dict[str, Any]) -> None:
-    """Raise ValueError if required Task-2 keys / shapes are missing."""
+    """Raise ValueError if required Task-2/3 keys / shapes are missing."""
     try:
         robot = contract["robot"]
         cameras = contract["cameras"]
         model = contract["model"]
+        quality = contract["quality"]
         top = cameras["top"]
         wrist = cameras["wrist"]
+        joint_limits = robot["joint_limits"]
     except KeyError as exc:
         raise ValueError(f"Missing contract key: {exc}") from exc
 
@@ -35,6 +37,13 @@ def validate_contract(contract: dict[str, Any]) -> None:
         raise ValueError(f"robot.dof must be 6, got {robot['dof']}")
     if len(robot["joint_names"]) != 6:
         raise ValueError("robot.joint_names must have length 6")
+
+    for name in robot["joint_names"]:
+        if name not in joint_limits:
+            raise ValueError(f"robot.joint_limits missing entry for {name!r}")
+        lim = joint_limits[name]
+        if len(lim) != 2 or float(lim[0]) >= float(lim[1]):
+            raise ValueError(f"robot.joint_limits[{name}] must be [min, max] with min < max")
 
     for name, cam in (("top", top), ("wrist", wrist)):
         if int(cam["width"]) != 640 or int(cam["height"]) != 480 or int(cam["channels"]) != 3:
@@ -53,3 +62,13 @@ def validate_contract(contract: dict[str, Any]) -> None:
         raise ValueError(
             f"model.vision_backbone must be 'resnet18', got {model.get('vision_backbone')}"
         )
+
+    for key in ("sync_tolerance_ms", "max_frame_gap_ms", "min_joint_variance"):
+        if key not in quality:
+            raise ValueError(f"quality.{key} is required")
+    if float(quality["sync_tolerance_ms"]) <= 0:
+        raise ValueError("quality.sync_tolerance_ms must be positive")
+    if float(quality["max_frame_gap_ms"]) <= 0:
+        raise ValueError("quality.max_frame_gap_ms must be positive")
+    if float(quality["min_joint_variance"]) < 0:
+        raise ValueError("quality.min_joint_variance must be non-negative")

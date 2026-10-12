@@ -3,13 +3,14 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pai-final"
+name = "port-pick-align"
 version = "0.1.0"
 description = "Physical AI Applied1 final assignment — RobOps / ACT pipeline"
 requires-python = ">=3.12"
 dependencies = [
   "numpy>=1.24",
   "pyyaml>=6.0",
+  "rosbags>=0.10",
 ]
 
 [project.optional-dependencies]
@@ -51,4 +52,4 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 mypy_path = "src"
-packages = ["pai_final"]
+packages = ["port_pick_align"]

@@ -9,9 +9,9 @@ from typing import Any
 
 import numpy as np
 
-from pai_final.contract import load_contract, validate_contract
+from port_pick_align.contract import load_contract, validate_contract
 
-DEFAULT_REPO_ID = "local/pai_final_synthetic"
+DEFAULT_REPO_ID = "local/port_pick_align_synthetic"
 DEFAULT_TASK = "synthetic_alignment"
 DEFAULT_EPISODES = 8
 DEFAULT_FRAMES = 64

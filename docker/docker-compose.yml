@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: pai-final:humble
+    image: port-pick-align:humble
     working_dir: /workspace
     volumes:
       - ..:/workspace
@@ -12,7 +12,7 @@ services:
     command: ["bash"]
 
   generate-bag:
-    image: pai-final:humble
+    image: port-pick-align:humble
     pull_policy: never
     working_dir: /workspace
     volumes:

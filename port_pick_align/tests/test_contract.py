@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from pai_final.contract import DEFAULT_CONTRACT_PATH, load_contract, validate_contract
+from port_pick_align.contract import DEFAULT_CONTRACT_PATH, load_contract, validate_contract
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -33,6 +33,10 @@ def test_contract_shapes_match_task2() -> None:
     assert contract["model"]["chunk_size"] == 30
     assert contract["model"]["action_dim"] == 6
     assert contract["model"]["vision_backbone"] == "resnet18"
+    assert set(contract["robot"]["joint_limits"]) == set(contract["robot"]["joint_names"])
+    assert contract["quality"]["sync_tolerance_ms"] == 33
+    assert contract["quality"]["max_frame_gap_ms"] == 50
+    assert contract["quality"]["min_joint_variance"] == 1.0e-4
 
 
 @pytest.mark.unit

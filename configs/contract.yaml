@@ -12,6 +12,14 @@ robot:
     - "wrist_flex"
     - "wrist_roll"
     - "gripper"
+  # Provisional SO-101 URDF-style limits (radians). Replace after real calibration.
+  joint_limits:
+    shoulder_pan: [-1.9199, 1.9199]   # ±110 deg
+    shoulder_lift: [-1.7453, 1.7453]  # ±100 deg
+    elbow_flex: [-1.6900, 1.6900]     # ±96.83 deg
+    wrist_flex: [-1.6581, 1.6581]     # ±95 deg
+    wrist_roll: [-2.7438, 2.8412]     # -157.21 .. 162.79 deg
+    gripper: [-0.1745, 1.7453]        # -10 .. 100 deg
 
 cameras:
   top:
@@ -42,3 +50,9 @@ model:
   chunk_size: 30
   action_dim: 6
   vision_backbone: "resnet18"
+
+# RobOps data-quality thresholds (Task 3 validator).
+quality:
+  sync_tolerance_ms: 33
+  max_frame_gap_ms: 50
+  min_joint_variance: 1.0e-4

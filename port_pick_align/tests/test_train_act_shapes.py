@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from pai_final.contract import load_contract
+from port_pick_align.contract import load_contract
 
 torch = pytest.importorskip("torch")
 pytest.importorskip("lerobot")
 
-from pai_final.training.policy import build_act_policy  # noqa: E402
+from port_pick_align.training.policy import build_act_policy  # noqa: E402
 
 
 @pytest.mark.unit

@@ -10,8 +10,8 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 ├── configs/contract.yaml          # トピック・形状・モデル I/O の契約（Single Source of Truth）
 ├── scripts/generate_sample_bag.py # テスト用 rosbag2 フィクスチャ生成
 ├── scripts/generate_synthetic_dataset.py  # 合成 LeRobotDataset（Task 2）
-├── pai_final/                     # スタンドアロン Python（LeRobot / RobOps）
-│   ├── src/pai_final/
+├── port_pick_align/                     # スタンドアロン Python（LeRobot / RobOps）
+│   ├── src/port_pick_align/
 │   │   ├── dataset/               # converter / validator / synthetic
 │   │   ├── training/              # ACT 学習（Task 2）
 │   │   └── evaluation/            # 整列評価（Task 4）
@@ -38,12 +38,12 @@ Physical AI 応用編1 最終課題の実装リポジトリ。
 # イメージビルド（generate-bag は同一イメージを参照）
 docker compose -f docker/docker-compose.yml build dev
 
-# 契約どおりの sample_bag を生成（pai_final/tests/fixtures/sample_bag）
+# 契約どおりの sample_bag を生成（port_pick_align/tests/fixtures/sample_bag）
 docker compose -f docker/docker-compose.yml run --rm generate-bag
 
 # 内容確認
 docker compose -f docker/docker-compose.yml run --rm dev \
-  bash -lc 'ros2 bag info pai_final/tests/fixtures/sample_bag'
+  bash -lc 'ros2 bag info port_pick_align/tests/fixtures/sample_bag'
 ```
 
 対話シェル:
@@ -60,13 +60,13 @@ docker compose -f docker/docker-compose.yml run --rm dev
 python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
-pip install -e "pai_final/[training,dev]"
+pip install -e "port_pick_align/[training,dev]"
 
 # 契約準拠の合成 LeRobotDataset（既定: 8 episodes × 64 frames）
 python scripts/generate_synthetic_dataset.py
 
 # ResNet18 ACT を 100 step 学習し best_model.pt を保存 → 推論スモーク
-python -m pai_final.training.train_act
+python -m port_pick_align.training.train_act
 ```
 
 成果物（ローカル生成・gitignore 対象）:
@@ -78,20 +78,51 @@ python -m pai_final.training.train_act
 推論のみ再実行:
 
 ```bash
-python -m pai_final.training.train_act --infer-only
+python -m port_pick_align.training.train_act --infer-only
 ```
+
+## Task 3 クイックスタート（rosbag2 → 検証 → LeRobot）
+
+ホスト Python 3.12+（`rosbags` で bag を読む。ROS ランタイムは不要）。
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e "port_pick_align/[training,dev]"
+
+# unit: sample_bag の変換・品質ゲート（sync / drop / limits / static）
+(cd port_pick_align && pytest -m unit tests/test_converter.py tests/test_validator.py -q)
+```
+
+プログラムから:
+
+```python
+from pathlib import Path
+from port_pick_align.contract import load_contract
+from port_pick_align.dataset.converter import convert_bag_to_lerobot
+
+contract = load_contract()
+convert_bag_to_lerobot(
+    "port_pick_align/tests/fixtures/sample_bag",
+    Path("data/from_bag/lerobot"),
+    contract=contract,
+)
+```
+
+閾値と可動域は `configs/contract.yaml` の `quality` / `robot.joint_limits`。
 
 ## CI（ローカル相当）
 
 ```bash
-pip install -e "pai_final/[training,dev]"
+pip install -e "port_pick_align/[training,dev]"
 
-ruff check pai_final scripts
-ruff format --check pai_final scripts
-(cd pai_final && mypy src/pai_final)
+ruff check port_pick_align scripts
+ruff format --check port_pick_align scripts
+(cd port_pick_align && mypy src/port_pick_align)
 
-(cd pai_final && pytest -m unit -q)
-(cd pai_final && pytest -m integration -q)
+(cd port_pick_align && pytest -m unit -q)
+(cd port_pick_align && pytest -m integration -q)
 ```
 
 GitHub Actions（`.github/workflows/ci.yml`）では lint と unit を並列実行し、unit 成功後に integration を実行する。
