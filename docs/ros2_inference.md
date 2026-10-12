@@ -1,4 +1,4 @@
-# Task 4: ROS 2 推論・Rerun・評価スタブ
+# ROS 2 推論・Rerun
 
 ## Docker: モックセンサ → 推論ノード → Rerun（torch なし）
 
@@ -30,14 +30,13 @@ ros2 run pai_final_pkg act_policy_node --ros-args \
   -p checkpoint_path:=/workspace/checkpoints/synthetic_act/best_model.pt
 ```
 
-## ホスト: 推論ヘルパー / 評価スタブ
+## ホスト: 推論ヘルパー
 
 ```bash
 source .venv/bin/activate
 pip install -e "port_pick_align/[training,dev]"
 
-(cd port_pick_align && pytest -m unit \
-  tests/test_eval_alignment.py tests/test_infer_helpers.py -q)
+(cd port_pick_align && pytest -m unit tests/test_infer_helpers.py -q)
 
 # 既存 ckpt があれば integration で predict_chunk を検証
 (cd port_pick_align && pytest -m integration tests/test_infer_helpers.py -q)
@@ -47,4 +46,5 @@ pip install -e "port_pick_align/[training,dev]"
 
 - `ros2_ws/src/pai_final_pkg/pai_final_pkg/act_policy_node.py`
 - `ros2_ws/src/pai_final_pkg/pai_final_pkg/rerun_visualizer.py`
-- `port_pick_align/src/port_pick_align/evaluation/eval_alignment.py`
+
+整列評価 API は [evaluation.md](evaluation.md) を参照。

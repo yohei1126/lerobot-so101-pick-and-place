@@ -1,0 +1,98 @@
+<!-- Lightweight SO-101-class tabletop scene (6 DoF + gripper).
+     Joint names match configs/contract.yaml. No external meshes. -->
+<mujoco model="so101_tabletop">
+  <compiler angle="radian" coordinate="local" inertiafromgeom="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4"/>
+
+  <default>
+    <joint armature="0.01" damping="1.0" limited="true"/>
+    <geom contype="1" conaffinity="1" friction="1 0.5 0.01" rgba="0.7 0.7 0.7 1"/>
+    <default class="visual">
+      <geom contype="0" conaffinity="0" group="1"/>
+    </default>
+  </default>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.4 0.6 0.8" rgb2="0 0 0" width="256" height="256"/>
+    <texture name="texplane" type="2d" builtin="checker" rgb1="0.2 0.3 0.4" rgb2="0.1 0.15 0.2" width="512" height="512"/>
+    <material name="matplane" texture="texplane" texrepeat="4 4" reflectance="0.1"/>
+    <material name="arm" rgba="0.25 0.45 0.75 1"/>
+    <material name="box_mat" rgba="0.85 0.45 0.15 1"/>
+    <material name="target_mat" rgba="0.2 0.8 0.3 0.35"/>
+    <material name="table_mat" rgba="0.55 0.45 0.35 1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="1.5 1.5 0.05" material="matplane"/>
+    <geom name="table" type="box" pos="0.25 0 0.4" size="0.35 0.3 0.02" material="table_mat"/>
+
+    <!-- Target alignment frame (visual + site for pose queries) -->
+    <body name="target_frame" pos="0.35 0.12 0.42">
+      <geom name="target_pad" type="box" size="0.04 0.03 0.001" material="target_mat" contype="0" conaffinity="0"/>
+      <site name="target_site" pos="0 0 0" size="0.005" rgba="0.1 1 0.2 1"/>
+    </body>
+
+    <!-- Movable box (pick object) -->
+    <body name="box" pos="0.28 -0.08 0.445">
+      <freejoint name="box_free"/>
+      <geom name="box_geom" type="box" size="0.025 0.02 0.02" mass="0.05" material="box_mat"/>
+      <site name="box_site" pos="0 0 0" size="0.005" rgba="1 0.5 0 1"/>
+    </body>
+
+    <!-- Top-down camera -->
+    <camera name="top" pos="0.25 0 1.05" xyaxes="1 0 0 0 1 0" fovy="55"/>
+
+    <!-- SO-101-class arm base at table edge -->
+    <body name="base" pos="0 0 0.42">
+      <geom name="base_geom" type="cylinder" size="0.04 0.03" material="arm"/>
+
+      <body name="link_shoulder_pan" pos="0 0 0.03">
+        <joint name="shoulder_pan" type="hinge" axis="0 0 1" range="-1.9199 1.9199"/>
+        <geom type="cylinder" size="0.025 0.03" material="arm"/>
+
+        <body name="link_shoulder_lift" pos="0 0 0.04">
+          <joint name="shoulder_lift" type="hinge" axis="0 1 0" range="-1.7453 1.7453"/>
+          <geom type="capsule" fromto="0 0 0 0 0 0.12" size="0.02" material="arm"/>
+
+          <body name="link_elbow_flex" pos="0 0 0.12">
+            <joint name="elbow_flex" type="hinge" axis="0 1 0" range="-1.69 1.69"/>
+            <geom type="capsule" fromto="0 0 0 0.14 0 0" size="0.018" material="arm"/>
+
+            <body name="link_wrist_flex" pos="0.14 0 0">
+              <joint name="wrist_flex" type="hinge" axis="0 1 0" range="-1.6581 1.6581"/>
+              <geom type="capsule" fromto="0 0 0 0.08 0 0" size="0.015" material="arm"/>
+
+              <body name="link_wrist_roll" pos="0.08 0 0">
+                <joint name="wrist_roll" type="hinge" axis="1 0 0" range="-2.7438 2.8412"/>
+                <geom type="cylinder" size="0.015 0.02" material="arm"/>
+
+                <body name="link_gripper" pos="0.03 0 0">
+                  <joint name="gripper" type="hinge" axis="0 1 0" range="-0.1745 1.7453"/>
+                  <geom name="palm" type="box" size="0.02 0.025 0.01" material="arm"/>
+                  <geom name="finger_left" type="box" pos="0.03 0.018 0" size="0.025 0.006 0.008" material="arm"/>
+                  <geom name="finger_right" type="box" pos="0.03 -0.018 0" size="0.025 0.006 0.008" material="arm"/>
+                  <site name="ee_site" pos="0.05 0 0" size="0.008" rgba="1 0 0 1"/>
+                  <camera name="wrist" pos="0.02 0 0.04" xyaxes="0 -1 0 0.5 0 0.866" fovy="60"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <position name="act_shoulder_pan" joint="shoulder_pan" kp="80" ctrlrange="-1.9199 1.9199" forcelimited="true" forcerange="-40 40"/>
+    <position name="act_shoulder_lift" joint="shoulder_lift" kp="80" ctrlrange="-1.7453 1.7453" forcelimited="true" forcerange="-40 40"/>
+    <position name="act_elbow_flex" joint="elbow_flex" kp="60" ctrlrange="-1.69 1.69" forcelimited="true" forcerange="-30 30"/>
+    <position name="act_wrist_flex" joint="wrist_flex" kp="40" ctrlrange="-1.6581 1.6581" forcelimited="true" forcerange="-20 20"/>
+    <position name="act_wrist_roll" joint="wrist_roll" kp="30" ctrlrange="-2.7438 2.8412" forcelimited="true" forcerange="-15 15"/>
+    <position name="act_gripper" joint="gripper" kp="20" ctrlrange="-0.1745 1.7453" forcelimited="true" forcerange="-10 10"/>
+  </actuator>
+</mujoco>
