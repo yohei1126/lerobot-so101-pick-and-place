@@ -237,6 +237,7 @@ data/e2e/
 data/from_bag/
 wandb/
 outputs/
+report/*.pdf
 .DS_Store
 .ruff_cache/
 .mypy_cache/
