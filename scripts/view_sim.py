@@ -33,13 +33,17 @@ from port_pick_align.simulation.policies import (
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--policy", choices=("mock", "checkpoint", "scripted"), default="scripted")
+    p.add_argument(
+        "--policy", choices=("mock", "checkpoint", "scripted"), default="scripted"
+    )
     p.add_argument(
         "--checkpoint",
         type=Path,
         default=REPO_ROOT / "checkpoints" / "synthetic_act" / "best_model.pt",
     )
-    p.add_argument("--max-steps", type=int, default=0, help="0 = run until window closed")
+    p.add_argument(
+        "--max-steps", type=int, default=0, help="0 = run until window closed"
+    )
     p.add_argument("--hz", type=float, default=30.0)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--device", default="cpu")
@@ -80,7 +84,11 @@ def main() -> int:
                 viewer.sync()
                 time.sleep(dt)
                 step += 1
-                if terminated or truncated or (args.max_steps and step >= args.max_steps):
+                if (
+                    terminated
+                    or truncated
+                    or (args.max_steps and step >= args.max_steps)
+                ):
                     if args.max_steps and step >= args.max_steps:
                         break
                     obs, _ = env.reset(seed=args.seed + step)

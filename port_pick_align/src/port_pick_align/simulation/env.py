@@ -249,9 +249,7 @@ class PickAlignSimEnv:
                 dq, _, _, _ = np.linalg.lstsq(j, err * step_size, rcond=None)
                 for i, adr in enumerate(self._joint_qpos_addrs[:5]):
                     lo, hi = float(self._limits[i, 0]), float(self._limits[i, 1])
-                    self.data.qpos[adr] = float(
-                        np.clip(self.data.qpos[adr] + float(dq[i]), lo, hi)
-                    )
+                    self.data.qpos[adr] = float(np.clip(self.data.qpos[adr] + float(dq[i]), lo, hi))
             self._mujoco.mj_forward(self.model, self.data)
             return self._joint_positions().copy()
         finally:

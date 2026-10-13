@@ -110,7 +110,9 @@ def render_topdown_frame(
         v = int((1.0 - (float(xy[1]) - y0) / (y1 - y0)) * (height - 1))
         return int(np.clip(u, 0, width - 1)), int(np.clip(v, 0, height - 1))
 
-    def fill_rect(cx: int, cy: int, hw: int, hh: int, color: tuple[int, int, int]) -> None:
+    def fill_rect(
+        cx: int, cy: int, hw: int, hh: int, color: tuple[int, int, int]
+    ) -> None:
         x_lo, x_hi = max(0, cx - hw), min(width, cx + hw)
         y_lo, y_hi = max(0, cy - hh), min(height, cy + hh)
         img[y_lo:y_hi, x_lo:x_hi] = color
