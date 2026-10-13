@@ -1,66 +1,69 @@
 # utokyo-physical-ai-applied1-final-assignment
 
-Physical AI 応用編1 最終課題の実装リポジトリ。  
-海事・港湾モック（小型直方体の把持・整列）と RobOps パイプライン（rosbag2 → 検証 → ACT → ROS 2 推論）を対象とする。
+本リポジトリは、東京大学「Physical AI 応用編1」最終課題の実装基盤である。  
+造船・海事現場における部品やコンテナの配置作業を模した「卓上直方体の把持・精密整列」タスクを対象とし、データ収集から品質検証、ACT モデルの訓練、ROS 2 上での推論および MuJoCo シミュレーション評価に至る RobOps パイプラインを提供する。
 
-## ドキュメント
+## ドキュメント一覧
 
-手順・コマンドの詳細は [`docs/`](docs/README.md) を参照。
+環境構築、実行手順、評価方法の詳細は [`docs/`](docs/README.md) 配下の各文書を参照する。
 
-| 用途 | 文書 |
-| --- | --- |
-| 環境・契約 | [docs/setup.md](docs/setup.md) |
-| データセット | [docs/dataset.md](docs/dataset.md) |
-| ACT 学習 | [docs/training.md](docs/training.md) |
-| ROS 2 / Rerun | [docs/ros2_inference.md](docs/ros2_inference.md) |
-| MuJoCo シミュ | [docs/simulation.md](docs/simulation.md) |
-| 整列評価 | [docs/evaluation.md](docs/evaluation.md) |
-| E2E / 実機準備 | [docs/e2e.md](docs/e2e.md) · [docs/hardware.md](docs/hardware.md) |
-| CI | [docs/ci.md](docs/ci.md) |
-| 提出 | [docs/submission.md](docs/submission.md) · [report/](report/) |
-| Plan B（縮退） | [docs/plan_b.md](docs/plan_b.md) |
+| 対象領域 | 参照文書 | 概要 |
+| --- | --- | --- |
+| 環境・契約 | [docs/setup.md](docs/setup.md) | Docker、ホスト Python 環境の構築と契約ファイルの仕様 |
+| データセット | [docs/dataset.md](docs/dataset.md) | rosbag2 の生成、品質検証、LeRobot 形式への変換 |
+| ACT 学習 | [docs/training.md](docs/training.md) | ACT モデルの訓練手順とチェックポイントの生成 |
+| ROS 2 / Rerun | [docs/ros2_inference.md](docs/ros2_inference.md) | ROS 2 推論ノードの実行と Rerun による軌道可視化 |
+| シミュレーション | [docs/simulation.md](docs/simulation.md) | MuJoCo 環境を用いた閉ループ制御と評価 |
+| 評価指標 | [docs/evaluation.md](docs/evaluation.md) | 位置・姿勢誤差の集計 API 仕様 |
+| 結合テスト・機材 | [docs/e2e.md](docs/e2e.md) · [docs/hardware.md](docs/hardware.md) | エンドツーエンド結合試験および実機準備手順 |
+| 継続的インテグレーション | [docs/ci.md](docs/ci.md) | GitHub Actions およびローカルテストの実行 |
+| 提出仕様 | [docs/submission.md](docs/submission.md) · [report/](report/) | 成果物要件と提出用レポート原稿 |
+| 縮退運用（Plan B） | [docs/plan_b.md](docs/plan_b.md) | 実機障害時におけるシミュレーション代替運用 |
 
-最短の結合確認:
+パイプライン全体の疎通確認は、以下のスクリプトにより一括実行できる。
 
 ```bash
 ./scripts/e2e_pipeline_smoke.sh
 ```
 
-## 提出
+## 成果物の提出
 
-- チェックリスト: [docs/submission.md](docs/submission.md)
+- 提出前チェックリスト: [docs/submission.md](docs/submission.md)
 - レポート原稿: [report/](report/)
-- PDF 生成: `./scripts/build_report_pdf.sh yohei1126`
-- ハード縮退: [docs/plan_b.md](docs/plan_b.md)
+- レポート PDF の生成コマンド: `./scripts/build_report_pdf.sh yohei1126`
+- 機材未着・故障時の縮退方針: [docs/plan_b.md](docs/plan_b.md)
 
 ## ディレクトリ構成
 
 ```text
 .
-├── configs/contract.yaml   # トピック・形状・モデル I/O の契約（SSOT）
-├── docs/                   # 手順・クイックスタート・提出
-├── report/                 # 解説レポート Markdown 雛形
-├── scripts/                # bag 生成・変換・E2E / シミュ評価 / PDF 生成
-├── deploy/udev/            # Linux udev ルール例
-├── port_pick_align/        # Python（LeRobot / RobOps / ACT / MuJoCo）
-├── ros2_ws/                # ROS 2 推論・可視化ノード
-├── docker/                 # ROS 2 Humble 実行環境
-└── .github/workflows/      # lint / unit / integration
+├── configs/contract.yaml   # トピック名・テンソル形状・モデル入出力の契約（SSOT）
+├── docs/                   # 各種手順書・仕様解説
+├── report/                 # 提出用レポート Markdown 原稿
+├── scripts/                # bag 生成・データ変換・E2E 試験・シミュ評価スクリプト
+├── deploy/udev/            # Linux 用 udev 設定ルール例
+├── port_pick_align/        # Python パッケージ（LeRobot / RobOps / ACT / MuJoCo）
+├── ros2_ws/                # ROS 2 ワークスペース（推論ノード・可視化ノード）
+├── docker/                 # ROS 2 Humble 実行環境用 Dockerfile / Compose 設定
+└── .github/workflows/      # CI ワークフロー（静的解析・単体テスト・結合テスト）
 ```
 
-## 実行環境の役割
+## 実行環境の分離
 
-| 環境 | 用途 |
+開発再現性と環境汚染防止のため、実行層ごとに役割を分離している。
+
+| 実行環境 | 担当範囲 |
 | --- | --- |
-| Docker (`docker/`) | ROS 2、rosbag2、推論モック、Rerun |
-| Host Python venv | 合成データ、ACT、converter / validator、Feetech、MuJoCo |
-| Cloud GPU | ACT 本格学習（任意） |
+| Docker (`docker/`) | ROS 2 Humble ランタイム、rosbag2 記録再生、推論モック、Rerun 可視化 |
+| ホスト Python 仮想環境 | 合成データ生成、PyTorch / ACT 学習、データセット変換器・バリデータ、MuJoCo シミュレータ |
+| クラウド GPU（任意） | 大規模エピソードを用いた ACT モデルの本格学習 |
 
-## 契約（contract.yaml）
+## 契約の一元管理（contract.yaml）
 
-カメラ 2 眼（640×480@30）、関節 6DOF、ACT（ResNet18、chunk_size=30）のトピック名と次元を一元管理する。  
-converter / validator / 推論ノードはすべてこのファイルを参照する。
+本システムでは、Top/Wrist の 2 眼カメラ（640×480、30 fps）、6 自由度アーム、ACT モデル（ResNet18、chunk_size=30）のトピック名とデータ次元を [`configs/contract.yaml`](configs/contract.yaml) で一元管理している。  
+データ変換器、品質バリデータ、および推論ノードはすべて本設定ファイルを参照して動作するため、仕様変更時の不整合を防止できる。
 
 ## ライセンス
 
-[MIT](LICENSE)
+本リポジトリのコードは [MIT License](LICENSE) の下で公開されている。
+

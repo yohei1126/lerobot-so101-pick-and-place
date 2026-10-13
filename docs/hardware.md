@@ -1,21 +1,19 @@
-# SO-ARM101 / Feetech STS3215 ドライラン手順
+# SO-ARM101 / Feetech STS3215 ドライラン手順書
 
-実機到着前に、公式ドキュメントの確認・udev（Linux）・Python 依存関係を整える。  
-**ここではアームを動かさない**（接続時コマンドは控えのみ）。
+本手順書は、実機アームの接続前に必要な公式仕様の確認、Linux 環境での udev ルール設定、および Python 依存関係の解決を行うための事前準備手順を定める。配線および電源投入前の段階では物理的な駆動を行わず、ソフトウェア的な接続確認にとどめる。
 
-## 公式ドキュメント
+## 公式仕様と参照ドキュメント
 
-- [Assemble SO-101](https://huggingface.co/docs/lerobot/en/assemble_so101)
-- [SO-101](https://huggingface.co/docs/lerobot/en/so101)（`lerobot-setup-motors`、キャリブレーション）
-- [SO-100](https://huggingface.co/docs/lerobot/en/so100)（ソフトウェアは SO-101 と同系）
+- [Assemble SO-101](https://huggingface.co/docs/lerobot/en/assemble_so101)（組立手順）
+- [SO-101](https://huggingface.co/docs/lerobot/en/so101)（モータ初期設定 `lerobot-setup-motors` およびキャリブレーション手順）
+- [SO-100](https://huggingface.co/docs/lerobot/en/so100)（ソフトウェア構成の共通仕様）
 
-モータ名（ID 1–6）は本リポジトリの `configs/contract.yaml` の `robot.joint_names` と一致する:
+サーボモータの ID（1〜6）と関節名の対応は、本リポジトリの [`configs/contract.yaml`](../configs/contract.yaml) における `robot.joint_names` の定義と一致させる。
 
-`shoulder_pan`, `shoulder_lift`, `elbow_flex`, `wrist_flex`, `wrist_roll`, `gripper`
+- 割り当て順序: `shoulder_pan`, `shoulder_lift`, `elbow_flex`, `wrist_flex`, `wrist_roll`, `gripper`
+- LeRobot におけるロボット識別名: `so101_follower`（リーダー側を使用する場合は `so101_leader`）
 
-LeRobot 側のロボット型は `so101_follower` / `so101_leader`（契約の `robot.lerobot_type`）。
-
-## Host Python 依存関係
+## ホスト Python 依存パッケージの導入
 
 ```bash
 cd /path/to/utokyo-physical-ai-applied1-final-assignment
@@ -25,57 +23,57 @@ pip install -U pip
 pip install -e "port_pick_align/[training,feetech,dev]"
 ```
 
-実機なしの import スモーク:
+機材非接続状態におけるモジュール読み込みテスト:
 
 ```bash
 python -c "import lerobot; print('lerobot OK', lerobot.__version__)"
-# Feetech extra が入っていれば motors バス実装が解決できることだけ確認
+# Feetech モータバス実装の依存関係解決を確認
 python -c "from lerobot.motors.feetech import FeetechMotorsBus; print('feetech OK')"
 ```
 
-`ImportError` の場合は `pip install -e "port_pick_align/[feetech]"` を再実行する。
+読み込み時に `ImportError` が発生した場合は、`pip install -e "port_pick_align/[feetech]"` を再実行して C++ 拡張モジュールやシリアル通信ライブラリの導入状況を確認する。
 
-## USB シリアルポートの確認
+## シリアル通信ポートの識別
 
-### Linux
+### Linux 環境
 
 ```bash
 ls -l /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
-# アダプタ詳細（vendor / product / serial）
+# アダプタの属性（vendor / product / serial）の確認
 udevadm info -a -n /dev/ttyACM0 | head -n 40
 ```
 
-### macOS
+### macOS 環境
 
-udev はない。接続後:
+macOS では udev による静的シンボリックリンク生成が行えないため、接続時に割り当てられたデバイスファイル名を直接確認する。
 
 ```bash
 ls /dev/tty.usbmodem* /dev/tty.usbserial* 2>/dev/null
 ```
 
-LeRobot には見つかったパスをそのまま渡す（例: `/dev/tty.usbmodem585A0076841`）。
+LeRobot の実行引数には、検出されたパス（例: `/dev/tty.usbmodem585A0076841`）を直接指定する。
 
-## udev ルール（Linux のみ）
+## udev ルールの適用（Linux 環境）
 
-テンプレート: [`deploy/udev/99-feetech-so101.rules`](../deploy/udev/99-feetech-so101.rules)
+設定テンプレート: [`deploy/udev/99-feetech-so101.rules`](../deploy/udev/99-feetech-so101.rules)
 
-1. 各アダプタの `idVendor` / `idProduct` / `serial` を `udevadm info` で確認する。
-2. ルール内の `REPLACE_*_SERIAL` や SYMLINK 名を自分の機材に合わせて編集する。
-3. インストール:
+1. `udevadm info` を実行し、使用する USB シリアル変換器の `idVendor`, `idProduct`, `serial` を取得する。
+2. テンプレート内の `REPLACE_*_SERIAL` および SYMLINK 名を実際の機材シリアル番号に合わせて更新する。
+3. ルールファイルをシステムへ配置し、反映する。
 
 ```bash
 sudo cp deploy/udev/99-feetech-so101.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 sudo udevadm trigger
-# ユーザーを dialout に追加（未設定の場合）
+# 実行ユーザを dialout グループへ追加（シリアルポートへのアクセス権限付与）
 sudo usermod -aG dialout "$USER"
-# 再ログイン後:
+# 再ログイン後に固定シンボリックリンクの生成を確認
 ls -l /dev/ttyUSB_so101_*
 ```
 
-## 実機接続時のコマンド控え（今は実行しない）
+## 実機接続時の初期設定コマンド（参考仕様）
 
-モータ ID 設定（公式手順に従い、ポートは自分のデバイスに置換）:
+モータ ID の割り当て（各ポート名は使用環境のデバイスファイル名に置換する）:
 
 ```bash
 lerobot-setup-motors \
@@ -87,21 +85,21 @@ lerobot-setup-motors \
   --teleop.port=/dev/ttyUSB_so101_leader
 ```
 
-キャリブレーション（実機到着後・12V 電源投入後）:
+キャリブレーション処理（実機の組み立ておよび 12V 電源投入後に実施）:
 
 ```bash
-# 公式ドキュメントの calibrate / control_robot 手順に従う
-# 例（バージョンにより CLI 名が変わる場合あり）:
-# python -m lerobot.scripts.control_robot calibrate ...
+# 公式ドキュメントの calibrate / control_robot 手順に準拠して実行する
+# 例: python -m lerobot.scripts.control_robot calibrate ...
 ```
 
-電源: STS3215 は **12V**。USB のみで駆動しない。USB ハブでカメラとシリアル帯域を分散する。
+電源仕様上の注意: Feetech STS3215 サーボモータの定格駆動電圧は 12V である。USB バスパワーのみでは駆動しないため、外部電源ユニットを接続する必要がある。また、カメラ画像転送とシリアル通信の帯域競合を防止するため、USB ホストコントローラの分離または規格に適合した USB ハブを経由して接続する。
 
-## チェックリスト
+## 事前準備チェックリスト
 
-- [ ] 公式 SO-101 / Feetech セットアップを読んだ
-- [ ] `pip install -e "port_pick_align/[training,feetech]"` が通る
-- [ ] `import lerobot` / Feetech motors の import スモークが通る
-- [ ] （Linux）udev ルールを機材の serial に合わせて編集・インストールした
-- [ ] （macOS）`/dev/tty.usbmodem*` の確認方法を把握した
-- [ ] 実機到着後の `lerobot-setup-motors` / calibrate コマンドを控えた
+- [ ] 公式 SO-101 および Feetech のセットアップ手順を確認した
+- [ ] `port_pick_align/[training,feetech]` の依存関係インストールが正常に完了した
+- [ ] `lerobot` および Feetech motors モジュールのインポート試験に通過した
+- [ ] Linux 環境において、機材固有のシリアル番号に基づく udev ルールを設定した
+- [ ] macOS 環境において、`/dev/tty.usbmodem*` デバイスの確認手順を把握した
+- [ ] 実機到着後に実行するモータ設定およびキャリブレーションのコマンド仕様を把握した
+

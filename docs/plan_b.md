@@ -1,56 +1,57 @@
-# Plan B: ハード未着・故障時の縮退運用
+# Plan B: ハードウェア未着・故障時の縮退運用手順
 
-実機本線（Plan A: SO-ARM101 + 日常品モック）が使えない場合でも、修了合格（および考察による加点）を死守する手順。
+実機環境（Plan A: SO-ARM101 および卓上モック）の稼働が困難な場合に、シミュレーションおよび公開データセットを活用して評価要件を満たすための縮退運用手順を定める。
 
-## 判定ゲート
+## 切り替え判定基準
 
-**2026-10-23（金）時点**でハードウェアが正常稼働しない場合は Plan B に切り替える。
+2026-10-23（金）時点でハードウェアが正常稼働しない場合は、以下の判定フローに従って Plan B へ移行する。
 
 ```text
-HW OK? ──Yes──▶ Plan A（実機把持・整列 + 動画）
-       └─No───▶ Plan B（公開データ / シミュ + RobOps 前面）
+実機の稼働可否 ──可──▶ Plan A（実機把持・整列および実行動画）
+               └──否──▶ Plan B（シミュレーション / 公開データおよび RobOps 検証）
 ```
 
-## Plan B の構成
+## Plan B の構成要素
 
-### 1. データとタスク実行
+### 1. タスク実行環境とデータ経路
 
-次のいずれか（または併用）でタスク実行デモを用意する。
+実機動作の代替として、以下のいずれか、または双方を組み合わせてタスク実行結果を提示する。
 
-| 経路 | 内容 | 本リポでの入口 |
+| 代替経路 | 検証内容 | 参照手順 |
 | --- | --- | --- |
-| MuJoCo シミュ | 卓上把持・整列の閉ループ評価 | [simulation.md](simulation.md)（`outputs/eval/sim_rollout.mp4`） |
-| LeRobot 公開データ | SO-100 など公開データセットで学習・推論 | [training.md](training.md) / [dataset.md](dataset.md) |
+| MuJoCo シミュレータ | 卓上把持・整列環境における閉ループ制御と評価メトリクスの算出 | [simulation.md](simulation.md)（出力: `outputs/eval/sim_rollout.mp4`） |
+| LeRobot 公開データセット | SO-100 などの公開データを用いた ACT の学習と推論動作確認 | [training.md](training.md) · [dataset.md](dataset.md) |
 
-例（MuJoCo ロールアウト動画）:
+MuJoCo シミュレーションによる評価動画の出力例:
 
 ```bash
 source .venv/bin/activate
 pip install -e "port_pick_align/[simulation,dev]"
 python scripts/run_sim_eval.py --policy scripted --save-video --no-rerun
-# → outputs/eval/sim_rollout.mp4
+# 出力先: outputs/eval/sim_rollout.mp4
 ```
 
-### 2. RobOps を主軸にアピール
+### 2. RobOps パイプラインの検証性提示
 
-実機がなくても、次は契約どおり動作する想定。レポート・動画で前面に出す。
+実機が存在しない場合でも、ソフトウェア側のパイプラインは契約定義に準拠して動作することを検証し、資料上で説明する。
 
-- rosbag2 → LeRobot 変換（[dataset.md](dataset.md)）
-- validator（時刻同期・フレームドロップ等）
-- GitHub Actions CI（[ci.md](ci.md)）
-- 契約 SSOT: `configs/contract.yaml`
+- rosbag2 から LeRobot 形式へのデータ変換機構（[dataset.md](dataset.md)）
+- タイムスタンプ同期およびフレーム欠落を検出する品質バリデータ
+- GitHub Actions による継続的インテグレーション（[ci.md](ci.md)）
+- `configs/contract.yaml` による入出力仕様の厳密な管理
 
-### 3. レポートでの扱い
+### 3. レポート資料における論述方針
 
-公式方針どおり、ハードトラブルや失敗でも **原因・反省・技術的考察** を書けば評価対象になりうる。
+講義方針に基づき、ハードウェアのトラブルや動作の失敗が発生した場合でも、その原因分析、運用上の反省点、および技術的考察を詳述することで評価対象となる。
 
-- 第5章: シミュ / 公開データでの定量評価に差し替え、Plan B である旨を明記
-- 第6章: ハード未着・故障・代替経路の選定理由と学びを詳述
-- 第8章: 動画はシミュ画面 + RobOps（Rerun / CI）構成でも可
+- 第5章: 定量評価をシミュレーションまたは公開データの結果へ差し替え、Plan B による縮退検証である旨を明記する。
+- 第6章: 機材未着または故障の状況、代替手法の選定理由、および得られた知見を技術的観点から整理する。
+- 第8章: 成果発表動画において、シミュレーション画面と RobOps（Rerun による軌道表示や CI ログ）を組み合わせた構成を採用する。
 
-原稿雛形: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.md)
+レポート原稿の雛形: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.md)
 
-## 関連
+## 関連文書
 
-- 提出全体: [submission.md](submission.md)
-- 評価 API: [evaluation.md](evaluation.md)
+- 成果物提出の全体要件: [submission.md](submission.md)
+- 整列精度の評価 API 仕様: [evaluation.md](evaluation.md)
+
