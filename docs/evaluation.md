@@ -1,6 +1,10 @@
-# 整列評価（eval_alignment）
+# 整列精度評価 API 仕様（eval_alignment）
 
-把持・整列タスクの位置誤差（mm）、yaw 誤差（deg）、成功率を記録・集計する。
+本資料では、直方体の把持・精密整列タスクにおける平面位置誤差（mm）、ヨー角誤差（deg）、ならびにタスク成功率を記録・集計するための評価モジュールの仕様を解説する。
+
+## テストの実行
+
+ホスト仮想環境において、評価モジュールの単体テストを実行する。
 
 ```bash
 source .venv/bin/activate
@@ -9,7 +13,9 @@ pip install -e "port_pick_align/[dev]"
 (cd port_pick_align && pytest -m unit tests/test_eval_alignment.py -q)
 ```
 
-## API
+## Python API の利用方法
+
+本モジュールは、各試行の計測誤差を記録する `record_sample` と、複数エピソードの統計量を集計する `summarize` を提供する。
 
 ```python
 from port_pick_align.evaluation.eval_alignment import (
@@ -19,17 +25,23 @@ from port_pick_align.evaluation.eval_alignment import (
     samples_to_dicts,
 )
 
+# 1試行の計測結果を記録
 sample = record_sample(
     position_error_mm=12.0,
     yaw_error_deg=-3.5,
     grasp_success=True,
 )
+
+# 複数試行のサマリーを集計
 summary = summarize([sample])
-# summary["mean_position_error_mm"], ["grasp_success_rate"], ["align_success_rate"], ...
+# 取得可能なメトリクス:
+# - summary["mean_position_error_mm"]: 平均平面位置誤差
+# - summary["mean_abs_yaw_error_deg"]: 平均絶対ヨー角誤差
+# - summary["grasp_success_rate"]: 把持成功率
+# - summary["align_success_rate"]: 許容閾値（位置 ≤ 25 mm、ヨー角 ≤ 15 deg）に基づく整列成功率
 ```
 
-シミュレータからの測定は [simulation.md](simulation.md) の閉ループ評価が `eval_alignment` を呼び出す。
+シミュレータからの自動計測では、[simulation.md](simulation.md) で解説する閉ループ評価スクリプト（`run_sim_eval.py`）から本モジュールが呼び出され、`outputs/eval/metrics.json` に結果が出力される。
 
-主な成果物:
+実装ファイル: [`port_pick_align/src/port_pick_align/evaluation/eval_alignment.py`](../port_pick_align/src/port_pick_align/evaluation/eval_alignment.py)
 
-- `port_pick_align/src/port_pick_align/evaluation/eval_alignment.py`
