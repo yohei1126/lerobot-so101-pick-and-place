@@ -62,19 +62,23 @@ open outputs/eval/sim_rollout.mp4   # macOS
 ## 閉ループ評価の実行
 
 ```bash
-# デモ向けヒューリスティック（動画・指標が出やすい）
+# デモ向けヒューリスティック（固定スポーンで把持・整列成功）
+# 既定の --video-mode topdown は OpenGL 不要の俯瞰模式図動画
 python scripts/run_sim_eval.py --policy scripted --save-video --no-rerun
+
+# MuJoCo カメラ映像の横並び動画（OpenGL / glfw が使える環境）
+python scripts/run_sim_eval.py --policy scripted --video-mode mujoco --save-video
 
 # CI / 依存最小（現在関節を tile）
 python scripts/run_sim_eval.py --policy mock --episodes 1 --max-steps 20 --no-save-video
 
-# 学習済み ACT チェックポイント
+# 学習済み ACT チェックポイント（合成重みは形状疎通。タスク成功率は実データ前の限界）
 python scripts/run_sim_eval.py --policy checkpoint \
-  --checkpoint checkpoints/synthetic_act/best_model.pt
+  --checkpoint checkpoints/synthetic_act/best_model.pt --video-mode topdown
 
 # Rerun 可視化付き
 export PATH="$PWD/.venv/bin:$PATH"
-python scripts/run_sim_eval.py --policy scripted --rerun
+python scripts/run_sim_eval.py --policy scripted --rerun --video-mode mujoco
 ```
 
 成果物（gitignore 対象）:

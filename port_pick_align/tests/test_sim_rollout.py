@@ -1,4 +1,4 @@
-"""Closed-loop mock rollout smoke (optional simulation extra)."""
+"""Closed-loop mock / scripted rollout smoke (optional simulation extra)."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def test_mock_closed_loop_metrics() -> None:
     from port_pick_align.simulation.policies import MockPolicy
 
     contract = load_contract()
-    env = PickAlignSimEnv(contract=contract, max_episode_steps=10)
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=10, render_cameras=False)
     policy = MockPolicy(
         chunk_size=int(contract["model"]["chunk_size"]),
         action_dim=int(contract["model"]["action_dim"]),
@@ -29,7 +29,7 @@ def test_mock_closed_loop_metrics() -> None:
     try:
         obs, info = env.reset(seed=2)
         for _ in range(8):
-            chunk = policy.predict(obs)
+            chunk = policy.predict(obs, info=info)
             assert chunk.shape == (30, 6)
             obs, _, terminated, truncated, info = env.step(chunk[0])
             if terminated or truncated:
@@ -46,5 +46,50 @@ def test_mock_closed_loop_metrics() -> None:
         assert summary["n_samples"] == 1
         assert "align_success_rate" in summary
         assert "mean_position_error_mm" in summary
+    finally:
+        env.close()
+
+
+@pytest.mark.simulation
+@pytest.mark.unit
+def test_scripted_pick_align_success() -> None:
+    """Fixed-spawn scripted policy must grasp and align within eval thresholds."""
+    from port_pick_align.contract import load_contract
+    from port_pick_align.evaluation.eval_alignment import (
+        compute_pose_errors,
+        is_align_success,
+        record_sample,
+        summarize,
+    )
+    from port_pick_align.simulation.env import PickAlignSimEnv
+    from port_pick_align.simulation.policies import ScriptedPickAlignPolicy
+
+    contract = load_contract()
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=300, render_cameras=False)
+    policy = ScriptedPickAlignPolicy(
+        chunk_size=int(contract["model"]["chunk_size"]),
+        action_dim=int(contract["model"]["action_dim"]),
+    )
+    policy.set_ik(env.solve_ik)
+    policy.reset()
+    try:
+        obs, info = env.reset(seed=0, options={"randomize_box": False, "box_yaw": 0.0})
+        grasped = False
+        for _ in range(300):
+            chunk = policy.predict(obs, info=info)
+            assert chunk.shape == (30, 6)
+            obs, _, terminated, truncated, info = env.step(chunk[0])
+            grasped = grasped or bool(info.get("grasping", False))
+            if terminated or truncated:
+                break
+        pos_mm, yaw_deg = compute_pose_errors(
+            info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
+        )
+        sample = record_sample(pos_mm, yaw_deg, grasp_success=grasped or pos_mm < 50.0)
+        summary = summarize([sample])
+        assert grasped or sample.grasp_success
+        assert is_align_success(pos_mm, yaw_deg)
+        assert summary["align_success_rate"] == 1.0
+        assert summary["grasp_success_rate"] == 1.0
     finally:
         env.close()

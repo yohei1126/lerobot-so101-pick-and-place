@@ -25,6 +25,10 @@ JOINT_NAMES = (
 DEFAULT_HOME = np.array([0.0, -0.6, 0.9, 0.6, 0.0, 1.2], dtype=np.float32)
 TABLE_Z = 0.42
 BOX_HALF_Z = 0.02
+# Gripper hinge does not pinch fingers; sticky attach approximates grasp when closed.
+GRIPPER_CLOSED_THRESH = 0.45
+ATTACH_XY_M = 0.12
+ATTACH_Z_M = 0.15
 
 
 class PickAlignSimEnv:
@@ -47,6 +51,7 @@ class PickAlignSimEnv:
         render_width: int | None = None,
         render_height: int | None = None,
         max_episode_steps: int = 300,
+        render_cameras: bool = True,
     ) -> None:
         import mujoco
 
@@ -57,6 +62,7 @@ class PickAlignSimEnv:
         self.render_height = int(render_height or cams["top"]["height"])
         self.control_hz = float(control_hz)
         self.max_episode_steps = int(max_episode_steps)
+        self.render_cameras = bool(render_cameras)
 
         path = Path(mjcf_path) if mjcf_path is not None else DEFAULT_MJCF
         self.model = mujoco.MjModel.from_xml_path(str(path))
@@ -69,13 +75,21 @@ class PickAlignSimEnv:
         self._ee_site_id = self.model.site("ee_site").id
         self._target_site_id = self.model.site("target_site").id
         self._box_jnt_id = self.model.joint("box_free").id
-        self._box_qpos_adr = self.model.jnt_qposadr[self._box_jnt_id]
+        self._box_qpos_adr = int(self.model.jnt_qposadr[self._box_jnt_id])
+        self._box_dof_adr = int(self.model.jnt_dofadr[self._box_jnt_id])
+        self._arm_dof_indices = [
+            int(self.model.jnt_dofadr[self.model.joint(name).id]) for name in JOINT_NAMES[:5]
+        ]
 
         self._n_substeps = max(1, int(round(1.0 / (self.control_hz * self.model.opt.timestep))))
         self._top_renderer: Any | None = None
         self._wrist_renderer: Any | None = None
         self._step_count = 0
         self._rng = np.random.default_rng()
+        self._grasping = False
+        self._grasp_offset: np.ndarray | None = None
+        self._box_placed = False
+        self._placed_xy: np.ndarray | None = None
 
         limits = self.contract["robot"]["joint_limits"]
         self._limits = np.array(
@@ -150,6 +164,10 @@ class PickAlignSimEnv:
             self._rng = np.random.default_rng(seed)
         self._mujoco.mj_resetData(self.model, self.data)
         self._step_count = 0
+        self._grasping = False
+        self._grasp_offset = None
+        self._box_placed = False
+        self._placed_xy = None
 
         home = DEFAULT_HOME.copy()
         if options and "home" in options:
@@ -164,11 +182,14 @@ class PickAlignSimEnv:
         if options is None or options.get("randomize_box", True):
             box_xy = box_xy + self._rng.uniform(-0.04, 0.04, size=2)
         box_z = TABLE_Z + 0.02 + BOX_HALF_Z
-        box_yaw = float(self._rng.uniform(-0.3, 0.3))
+        if options is not None and "box_yaw" in options:
+            box_yaw = float(options["box_yaw"])
+        elif options is not None and not options.get("randomize_box", True):
+            box_yaw = 0.0
+        else:
+            box_yaw = float(self._rng.uniform(-0.3, 0.3))
         if options and "box_xy" in options:
             box_xy = np.asarray(options["box_xy"], dtype=np.float64).reshape(2)
-        if options and "box_yaw" in options:
-            box_yaw = float(options["box_yaw"])
 
         # freejoint qpos: x y z qw qx qy qz
         adr = self._box_qpos_adr
@@ -192,6 +213,9 @@ class PickAlignSimEnv:
         for _ in range(self._n_substeps):
             self._mujoco.mj_step(self.model, self.data)
 
+        self._update_sticky_grasp(float(clipped[5]))
+        if self._box_placed and self._placed_xy is not None:
+            self._place_box_on_table(self._placed_xy)
         self._step_count += 1
         obs = self._get_obs()
         info = self._info()
@@ -199,6 +223,104 @@ class PickAlignSimEnv:
         truncated = self._step_count >= self.max_episode_steps
         reward = self._reward(info)
         return obs, reward, terminated, truncated, info
+
+    def solve_ik(
+        self,
+        target_xyz: np.ndarray | list[float],
+        *,
+        n_iter: int = 25,
+        step_size: float = 0.55,
+        tol: float = 0.015,
+    ) -> np.ndarray:
+        """Jacobian IK for EE site (arm joints only). Restores qpos after solve."""
+        target = np.asarray(target_xyz, dtype=np.float64).reshape(3)
+        qpos_bak = self.data.qpos.copy()
+        qvel_bak = self.data.qvel.copy()
+        try:
+            for _ in range(n_iter):
+                self._mujoco.mj_forward(self.model, self.data)
+                cur = np.asarray(self.data.site_xpos[self._ee_site_id], dtype=np.float64)
+                err = target - cur
+                if float(np.linalg.norm(err)) < tol:
+                    break
+                jacp = np.zeros((3, self.model.nv))
+                self._mujoco.mj_jacSite(self.model, self.data, jacp, None, self._ee_site_id)
+                j = jacp[:, self._arm_dof_indices]
+                dq, _, _, _ = np.linalg.lstsq(j, err * step_size, rcond=None)
+                for i, adr in enumerate(self._joint_qpos_addrs[:5]):
+                    lo, hi = float(self._limits[i, 0]), float(self._limits[i, 1])
+                    self.data.qpos[adr] = float(
+                        np.clip(self.data.qpos[adr] + float(dq[i]), lo, hi)
+                    )
+            self._mujoco.mj_forward(self.model, self.data)
+            return self._joint_positions().copy()
+        finally:
+            self.data.qpos[:] = qpos_bak
+            self.data.qvel[:] = qvel_bak
+            self._mujoco.mj_forward(self.model, self.data)
+
+    def _place_box_on_table(
+        self,
+        xy: np.ndarray | None = None,
+        *,
+        yaw: float = 0.0,
+    ) -> None:
+        """Snap box to table top at ``xy`` / ``yaw`` with zero velocity."""
+        adr = self._box_qpos_adr
+        if xy is None:
+            xy = np.asarray(self.data.qpos[adr : adr + 2], dtype=np.float64)
+        else:
+            xy = np.asarray(xy, dtype=np.float64).reshape(2)
+        half = float(np.cos(yaw / 2.0))
+        qz = float(np.sin(yaw / 2.0))
+        self.data.qpos[adr] = float(xy[0])
+        self.data.qpos[adr + 1] = float(xy[1])
+        self.data.qpos[adr + 2] = TABLE_Z + 0.02 + BOX_HALF_Z
+        self.data.qpos[adr + 3 : adr + 7] = [half, 0.0, 0.0, qz]
+        self.data.qvel[self._box_dof_adr : self._box_dof_adr + 6] = 0.0
+        self._mujoco.mj_forward(self.model, self.data)
+
+    def _update_sticky_grasp(self, gripper_cmd: float) -> None:
+        """Attach box to EE while gripper is closed and nearby (demo grasp)."""
+        if gripper_cmd > GRIPPER_CLOSED_THRESH:
+            if self._grasping:
+                # Soft place on/near target; freeze thereafter so retreat cannot kick the box.
+                target_xy = np.asarray(
+                    self.data.site_xpos[self._target_site_id][:2], dtype=np.float64
+                )
+                box_xy = np.asarray(self.data.xpos[self._box_body_id][:2], dtype=np.float64)
+                place_xy = (
+                    target_xy.copy()
+                    if float(np.linalg.norm(box_xy - target_xy)) < 0.10
+                    else box_xy.copy()
+                )
+                self._place_box_on_table(place_xy)
+                self._box_placed = True
+                self._placed_xy = place_xy
+            self._grasping = False
+            self._grasp_offset = None
+            return
+
+        ee = np.asarray(self.data.site_xpos[self._ee_site_id], dtype=np.float64)
+        box = np.asarray(self.data.xpos[self._box_body_id], dtype=np.float64)
+        near = (
+            float(np.linalg.norm(ee[:2] - box[:2])) <= ATTACH_XY_M
+            and abs(float(ee[2] - box[2])) <= ATTACH_Z_M
+        )
+        if not self._grasping and not near:
+            return
+
+        if not self._grasping:
+            self._grasping = True
+            # Hold box slightly below EE tip for a compact grasp offset.
+            self._grasp_offset = np.array([0.0, 0.0, -0.02], dtype=np.float64)
+
+        assert self._grasp_offset is not None
+        new_pos = ee + self._grasp_offset
+        adr = self._box_qpos_adr
+        self.data.qpos[adr : adr + 3] = new_pos
+        self.data.qvel[self._box_dof_adr : self._box_dof_adr + 6] = 0.0
+        self._mujoco.mj_forward(self.model, self.data)
 
     def _joint_positions(self) -> np.ndarray:
         return np.array(
@@ -216,9 +338,16 @@ class PickAlignSimEnv:
         return np.ascontiguousarray(rgb[:, :, ::-1])
 
     def _get_obs(self) -> dict[str, np.ndarray]:
+        if self.render_cameras:
+            top = self._render_camera("top")
+            wrist = self._render_camera("wrist")
+        else:
+            h, w = self.render_height, self.render_width
+            top = np.zeros((h, w, 3), dtype=np.uint8)
+            wrist = np.zeros((h, w, 3), dtype=np.uint8)
         return {
-            "top": self._render_camera("top"),
-            "wrist": self._render_camera("wrist"),
+            "top": top,
+            "wrist": wrist,
             "state": self._joint_positions(),
         }
 
@@ -251,6 +380,7 @@ class PickAlignSimEnv:
             "ee_xy": self.ee_xy(),
             "table_z": TABLE_Z,
             "step": self._step_count,
+            "grasping": self._grasping,
         }
 
     def _reward(self, info: dict[str, Any]) -> float:
