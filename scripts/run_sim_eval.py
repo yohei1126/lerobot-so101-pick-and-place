@@ -93,6 +93,47 @@ def _build_policy(
     raise ValueError(f"unknown policy mode: {mode}")
 
 
+def render_topdown_frame(
+    info: dict[str, Any],
+    *,
+    height: int = 480,
+    width: int = 640,
+) -> np.ndarray:
+    """RGB top-down schematic (no OpenGL) for rollout videos in headless envs."""
+    img = np.full((height, width, 3), 40, dtype=np.uint8)
+    # Table region in world: x in [-0.1, 0.6], y in [-0.3, 0.3]
+    x0, x1 = -0.05, 0.60
+    y0, y1 = -0.30, 0.30
+
+    def to_px(xy: np.ndarray) -> tuple[int, int]:
+        u = int((float(xy[0]) - x0) / (x1 - x0) * (width - 1))
+        v = int((1.0 - (float(xy[1]) - y0) / (y1 - y0)) * (height - 1))
+        return int(np.clip(u, 0, width - 1)), int(np.clip(v, 0, height - 1))
+
+    def fill_rect(
+        cx: int, cy: int, hw: int, hh: int, color: tuple[int, int, int]
+    ) -> None:
+        x_lo, x_hi = max(0, cx - hw), min(width, cx + hw)
+        y_lo, y_hi = max(0, cy - hh), min(height, cy + hh)
+        img[y_lo:y_hi, x_lo:x_hi] = color
+
+    # Table
+    fill_rect(width // 2, height // 2, width // 2 - 20, height // 2 - 20, (90, 75, 55))
+    # Target (green)
+    tx, ty = to_px(np.asarray(info["target_xy"]))
+    fill_rect(tx, ty, 18, 14, (40, 200, 80))
+    # Box (orange)
+    bx, by = to_px(np.asarray(info["box_xy"]))
+    fill_rect(bx, by, 12, 10, (220, 120, 40))
+    # EE (red)
+    ex, ey = to_px(np.asarray(info["ee_xy"]))
+    fill_rect(ex, ey, 6, 6, (220, 40, 40))
+    # Grasp indicator
+    if info.get("grasping"):
+        fill_rect(20, 20, 12, 12, (80, 160, 255))
+    return img
+
+
 def run_episode(
     env: PickAlignSimEnv,
     policy: Any,
@@ -101,21 +142,40 @@ def run_episode(
     joint_names: list[str],
     rr: Any | None,
     frames: list[np.ndarray] | None,
+    seed: int = 0,
+    randomize_box: bool = False,
+    video_mode: str = "topdown",
 ) -> Any:
     if hasattr(policy, "reset"):
         policy.reset()
-    obs, info = env.reset()
+    if isinstance(policy, ScriptedPickAlignPolicy):
+        policy.set_ik(env.solve_ik)
+
+    obs, info = env.reset(
+        seed=seed,
+        options={"randomize_box": randomize_box, "box_yaw": 0.0},
+    )
+    grasped_during = bool(info.get("grasping", False))
     for step in range(max_steps):
-        chunk = policy.predict(obs)
+        chunk = policy.predict(obs, info=info)
         action = chunk[0]
         if rr is not None:
             _log_rerun(rr, step=step, obs=obs, chunk=chunk, joint_names=joint_names)
         if frames is not None:
-            # Side-by-side top | wrist (RGB for video)
-            top = obs["top"][:, :, ::-1]
-            wrist = obs["wrist"][:, :, ::-1]
-            frames.append(np.concatenate([top, wrist], axis=1))
+            if video_mode == "mujoco":
+                top = obs["top"][:, :, ::-1]
+                wrist = obs["wrist"][:, :, ::-1]
+                frames.append(np.concatenate([top, wrist], axis=1))
+            else:
+                frames.append(
+                    render_topdown_frame(
+                        info,
+                        height=int(env.render_height),
+                        width=int(env.render_width),
+                    )
+                )
         obs, _reward, terminated, truncated, info = env.step(action)
+        grasped_during = grasped_during or bool(info.get("grasping", False))
         if terminated or truncated:
             break
 
@@ -128,9 +188,9 @@ def run_episode(
         ee_xy=info["ee_xy"],
         box_xy=info["box_xy"],
     )
-    # At episode end, also count as grasp if box stayed near target after release.
+    # Success if lifted during episode, or final pose is near the target frame.
     near_target = pos_mm < 50.0
-    grasp = bool(grasp or near_target)
+    grasp = bool(grasp or grasped_during or near_target)
     return record_sample(pos_mm, yaw_deg, grasp)
 
 
@@ -167,7 +227,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--device", default="cpu")
     p.add_argument("--rerun", action=argparse.BooleanOptionalAction, default=False)
     p.add_argument("--save-video", action=argparse.BooleanOptionalAction, default=True)
+    p.add_argument(
+        "--video-mode",
+        choices=("topdown", "mujoco"),
+        default="topdown",
+        help="topdown=OpenGL-free schematic (default); mujoco=camera renders",
+    )
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument(
+        "--randomize-box",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Randomize box XY on reset (default: fixed spawn for reproducible success).",
+    )
     return p.parse_args(argv)
 
 
@@ -181,7 +253,12 @@ def main(argv: list[str] | None = None) -> int:
     policy = _build_policy(
         args.policy, contract, checkpoint=args.checkpoint, device=args.device
     )
-    env = PickAlignSimEnv(contract=contract, max_episode_steps=args.max_steps)
+    render_cameras = args.video_mode == "mujoco" or args.rerun
+    env = PickAlignSimEnv(
+        contract=contract,
+        max_episode_steps=args.max_steps,
+        render_cameras=render_cameras,
+    )
 
     rr = None
     if args.rerun:
@@ -201,6 +278,9 @@ def main(argv: list[str] | None = None) -> int:
                 joint_names=joint_names,
                 rr=rr,
                 frames=frames if ep == 0 else None,
+                seed=args.seed + ep,
+                randomize_box=args.randomize_box,
+                video_mode=args.video_mode,
             )
             samples.append(sample)
             print(

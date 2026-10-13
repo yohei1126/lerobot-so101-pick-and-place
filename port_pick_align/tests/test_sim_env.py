@@ -15,7 +15,7 @@ def test_reset_and_step_shapes() -> None:
     from port_pick_align.simulation.env import PickAlignSimEnv
 
     contract = load_contract()
-    env = PickAlignSimEnv(contract=contract, max_episode_steps=5)
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=5, render_cameras=False)
     try:
         obs, info = env.reset(seed=0, options={"randomize_box": False})
         h = int(contract["cameras"]["top"]["height"])
@@ -44,7 +44,7 @@ def test_action_clipped_to_limits() -> None:
     from port_pick_align.simulation.env import PickAlignSimEnv
 
     contract = load_contract()
-    env = PickAlignSimEnv(contract=contract, max_episode_steps=3)
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=3, render_cameras=False)
     try:
         obs, _ = env.reset(seed=1)
         huge = np.full(6, 100.0, dtype=np.float32)
