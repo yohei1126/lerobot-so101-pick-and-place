@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -49,3 +50,15 @@ def test_synthetic_act_pipeline(tmp_path: Path) -> None:
     policy = load_policy_from_checkpoint(checkpoint, contract, device="cpu")
     chunk = run_inference_smoke(policy, contract, device="cpu")
     assert tuple(chunk.shape) == (30, 6)
+
+    metrics_path = output_dir / "training_metrics.json"
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    assert metrics["result"] == "PASS"
+    assert metrics["device"] == "cpu"
+    assert metrics["selection_metric"] == "val_l1"
+    assert metrics["n_val"] >= 1
+    assert metrics["n_train"] >= 1
+    assert metrics["scheduler"] == "cosine"
+    assert metrics["below_recommended_steps"] is True
+    assert metrics["history"][-1]["val_l1"] is not None
+    assert isinstance(metrics["best_val_l1"], float)
