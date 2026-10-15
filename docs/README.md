@@ -5,7 +5,7 @@
 | ドキュメント | 対象領域と主な内容 |
 | --- | --- |
 | [setup.md](setup.md) | Docker コンテナおよびホスト Python 仮想環境の構築手順、契約設定ファイルの概要 |
-| [dataset.md](dataset.md) | テスト用 rosbag2 の生成、合成データ作成、LeRobotDataset 形式への変換および品質検証 |
+| [dataset.md](dataset.md) | テスト用 rosbag2 の生成、合成データ作成、MuJoCo 教示データ収集、LeRobotDataset 形式への変換および品質検証 |
 | [training.md](training.md) | ACT モデルの訓練、重みチェックポイントの保存、および推論疎通確認 |
 | [ros2_inference.md](ros2_inference.md) | ROS 2 Humble ノード構成、モック推論パイプライン、Rerun 可視化連携 |
 | [simulation.md](simulation.md) | MuJoCo シミュレータによる閉ループ制御評価、対話型ビューアおよび動画出力 |

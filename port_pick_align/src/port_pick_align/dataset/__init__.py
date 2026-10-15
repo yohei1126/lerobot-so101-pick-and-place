@@ -12,6 +12,7 @@ __all__ = [
     "ValidationReport",
     "align_episode",
     "convert_bag_to_lerobot",
+    "collect_sim_dataset",
     "generate_synthetic_dataset",
     "make_dummy_image",
     "read_rosbag",
@@ -39,4 +40,8 @@ def __getattr__(name: str) -> Any:
         from port_pick_align.dataset import synthetic
 
         return getattr(synthetic, name)
+    if name == "collect_sim_dataset":
+        from port_pick_align.dataset.sim_collect import collect_sim_dataset
+
+        return collect_sim_dataset
     raise AttributeError(f"module {__name__!r} has no attribute {name}")

@@ -96,8 +96,13 @@ python scripts/run_sim_eval.py --policy scripted --rerun --video-mode mujoco
 
 `mujoco` パッケージが未インストールの環境では `pytest.importorskip` により自動的にテストがスキップされるため、最小構成の CI パイプラインを阻害しない。
 
+## オラクル教示データの収集
+
+同一環境と `ScriptedPickAlignPolicy` から LeRobotDataset を自動収集する手順は [dataset.md](dataset.md) に記載する。エントリポイントは `scripts/collect_sim_dataset.py` である。
+
 ## 関連文書
 
 - 評価 API 仕様: [evaluation.md](evaluation.md)
 - ACT モデルの訓練: [training.md](training.md)
+- 教示データ収集: [dataset.md](dataset.md)
 
