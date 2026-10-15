@@ -16,6 +16,11 @@ DEVICE="${DEVICE:-cpu}"
 EPISODES="${EPISODES:-20}"
 OUT="${OUT:-$ROOT/outputs/eval_sim_act}"
 
+if [[ -d "$ROOT/.venv" ]] && [[ -z "${VIRTUAL_ENV:-}" ]]; then
+  # shellcheck disable=SC1091
+  source "$ROOT/.venv/bin/activate"
+fi
+
 if [[ ! -f "$CKPT" ]]; then
   echo "ERROR: checkpoint not found: $CKPT" >&2
   echo "Train checkpoints/sim_act/best_model.pt locally before this benchmark." >&2
