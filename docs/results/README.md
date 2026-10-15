@@ -14,6 +14,10 @@ MPS が無い環境では `DEVICE=cpu` とできる。その実行が 20 エピ�
 
 達成条件は、整列成功率 85% 以上、把持成功率 90% 以上、平均平面位置誤差 25 mm 未満、平均絶対ヨー角誤差 15 deg 未満である。`metrics.json` の `thresholds_met` はこの条件の成否を示す。
 
+## 実測: scripted オラクル
+
+`scripted_random_20.json` は、CPU かつ `MUJOCO_GL=osmesa` の環境で scripted ポリシーを 20 エピソード実行した記録である。各エピソードは 260 ステップ、初期平面位置とヨー角はランダム、Temporal Ensembling は無効、シードは 0 から 19 である。20 試行すべて整列に成功し、平均平面位置誤差は 0.0 mm、平均絶対ヨー角誤差は 0.0 deg、把持成功率は 1.0 である。`thresholds_met` は true である。これはオラクルの結果であり、学習済み ACT の結果ではない。
+
 ## 比較条件
 
 オラクル（scripted、初期配置ランダム、Temporal Ensembling なし）:

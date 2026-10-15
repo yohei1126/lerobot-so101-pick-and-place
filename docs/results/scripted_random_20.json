@@ -1,0 +1,132 @@
+{
+  "status": "measured",
+  "policy": "scripted",
+  "episodes": 20,
+  "max_steps": 260,
+  "seed": 0,
+  "randomize_box": true,
+  "temporal_ensemble": false,
+  "temporal_ensemble_coeff": null,
+  "device": "cpu",
+  "checkpoint": null,
+  "thresholds": {
+    "align_success_rate_min": 0.85,
+    "grasp_success_rate_min": 0.9,
+    "mean_position_error_mm_max": 25.0,
+    "mean_abs_yaw_error_deg_max": 15.0
+  },
+  "thresholds_met": true,
+  "summary": {
+    "n_samples": 20,
+    "mean_position_error_mm": 0.0,
+    "std_position_error_mm": 0.0,
+    "mean_abs_yaw_error_deg": 0.0,
+    "std_abs_yaw_error_deg": 0.0,
+    "grasp_success_rate": 1.0,
+    "n_grasp_success": 20,
+    "align_success_rate": 1.0,
+    "n_align_success": 20
+  },
+  "samples": [
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    },
+    {
+      "position_error_mm": 0.0,
+      "yaw_error_deg": 0.0,
+      "grasp_success": true
+    }
+  ]
+}
