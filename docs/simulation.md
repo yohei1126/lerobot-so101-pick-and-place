@@ -78,6 +78,10 @@ python scripts/run_sim_eval.py --policy mock --episodes 1 --max-steps 20 --no-sa
 python scripts/run_sim_eval.py --policy checkpoint \
   --checkpoint checkpoints/synthetic_act/best_model.pt --video-mode topdown
 
+# Phase 1.5 本評価。チェックポイントが無いときは失敗し、指標は作らない。
+# Mac では DEVICE=mps。未計測のプレースホルダは docs/results/eval_sim_act.pending.json。
+DEVICE=mps ./scripts/run_phase15_benchmark.sh
+
 # Rerun 可視化を有効化した閉ループ評価
 export PATH="$PWD/.venv/bin:$PATH"
 python scripts/run_sim_eval.py --policy scripted --rerun --video-mode mujoco
