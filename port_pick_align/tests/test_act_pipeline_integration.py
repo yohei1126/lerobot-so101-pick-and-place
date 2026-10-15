@@ -44,6 +44,7 @@ def test_synthetic_act_pipeline(tmp_path: Path) -> None:
         seed=0,
         device="cpu",
         repo_id="local/integration_synth",
+        max_val_batches=2,
     )
     assert checkpoint.is_file()
 
@@ -58,6 +59,9 @@ def test_synthetic_act_pipeline(tmp_path: Path) -> None:
     assert metrics["selection_metric"] == "val_l1"
     assert metrics["n_val"] >= 1
     assert metrics["n_train"] >= 1
+    assert metrics["n_train_episodes"] == 1
+    assert metrics["n_val_episodes"] == 1
+    assert metrics["max_val_batches"] == 2
     assert metrics["scheduler"] == "cosine"
     assert metrics["below_recommended_steps"] is True
     assert metrics["history"][-1]["val_l1"] is not None

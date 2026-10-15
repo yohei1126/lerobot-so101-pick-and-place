@@ -124,36 +124,112 @@ def collate_act_batch(samples: list[dict[str, Any]], device: str) -> dict[str, t
     return batch
 
 
+def _episode_frame_ranges(dataset: Any) -> list[tuple[int, int]] | None:
+    """Return ``[from, to)`` frame ranges per episode, or ``None`` if unavailable."""
+    meta = getattr(dataset, "meta", None)
+    episodes = getattr(meta, "episodes", None) if meta is not None else None
+    if episodes is None:
+        return None
+    try:
+        n_eps = len(episodes)
+    except TypeError:
+        return None
+    if n_eps < 1:
+        return None
+    ranges: list[tuple[int, int]] = []
+    for i in range(n_eps):
+        ep = episodes[i]
+        try:
+            start = int(ep["dataset_from_index"])
+            end = int(ep["dataset_to_index"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        if end <= start:
+            return None
+        ranges.append((start, end))
+    return ranges
+
+
+def _indices_for_episodes(
+    ranges: list[tuple[int, int]],
+    episode_ids: list[int],
+    *,
+    sort: bool,
+) -> list[int]:
+    indices: list[int] = []
+    for ep_id in episode_ids:
+        start, end = ranges[ep_id]
+        indices.extend(range(start, end))
+    if sort:
+        indices.sort()
+    return indices
+
+
 def split_train_val(
     dataset: Any,
     val_ratio: float,
     seed: int,
-) -> tuple[Any, Subset | None]:
-    """Split indices into train and validation subsets.
+) -> tuple[Any, Subset | None, int | None, int | None]:
+    """Split into train and validation subsets.
 
-    Returns the original dataset and ``None`` when validation would leave no
-    training sample, or when ``val_ratio`` is not positive.
+    Prefer episode-level split via ``meta.episodes`` (no frame leakage across
+    train/val). Fall back to frame-level ``random_split`` when episode metadata
+    is missing. Returns ``(train, val, n_train_episodes, n_val_episodes)``;
+    episode counts are ``None`` on the frame-level fallback path.
     """
     if val_ratio < 0 or val_ratio >= 1:
         raise ValueError(f"val_ratio must be in [0, 1), got {val_ratio}")
     n = len(dataset)
     if val_ratio == 0 or n < 2:
-        return dataset, None
+        return dataset, None, None, None
+
+    ranges = _episode_frame_ranges(dataset)
+    if ranges is not None and len(ranges) >= 2:
+        n_eps = len(ranges)
+        n_val_eps = max(1, int(round(n_eps * val_ratio)))
+        n_val_eps = min(n_val_eps, n_eps - 1)
+        n_train_eps = n_eps - n_val_eps
+        rng = random.Random(seed)
+        order = list(range(n_eps))
+        rng.shuffle(order)
+        val_ids = sorted(order[:n_val_eps])
+        train_ids = sorted(order[n_val_eps:])
+        train_indices = _indices_for_episodes(ranges, train_ids, sort=True)
+        val_indices = _indices_for_episodes(ranges, val_ids, sort=True)
+        if len(train_indices) < 1 or len(val_indices) < 1:
+            return dataset, None, None, None
+        return (
+            Subset(dataset, train_indices),
+            Subset(dataset, val_indices),
+            n_train_eps,
+            n_val_eps,
+        )
+
     n_val = max(1, int(round(n * val_ratio)))
     n_val = min(n_val, n - 1)
     n_train = n - n_val
     generator = torch.Generator().manual_seed(seed)
     train_subset, val_subset = random_split(dataset, [n_train, n_val], generator=generator)
-    return train_subset, val_subset
+    return train_subset, val_subset, None, None
 
 
-def evaluate_val_l1(policy: Any, loader: DataLoader) -> float:
-    """Mean of per-batch action L1 on the validation loader (batch-size weighted)."""
+def evaluate_val_l1(
+    policy: Any,
+    loader: DataLoader,
+    *,
+    max_batches: int | None = None,
+) -> float:
+    """Mean of per-batch action L1 on the validation loader (batch-size weighted).
+
+    ``max_batches`` caps how many batches are evaluated; ``None`` means full pass.
+    """
     policy.eval()
     total = 0.0
     count = 0
     try:
-        for batch in loader:
+        for batch_idx, batch in enumerate(loader):
+            if max_batches is not None and batch_idx >= max_batches:
+                break
             batch_size = int(batch["action"].shape[0])
             with torch.inference_mode():
                 _loss, loss_dict = policy(batch)
@@ -203,7 +279,8 @@ def train_act(
     device: str | None = None,
     repo_id: str = DEFAULT_REPO_ID,
     val_ratio: float = 0.1,
-    val_interval: int = 50,
+    val_interval: int = 100,
+    max_val_batches: int = 32,
     scheduler: str = "cosine",
 ) -> Path:
     """Train ACT and save best_model.pt.
@@ -217,6 +294,8 @@ def train_act(
         raise ValueError(f"batch_size must be >= 1, got {batch_size}")
     if val_interval < 1:
         raise ValueError(f"val_interval must be >= 1, got {val_interval}")
+    if max_val_batches < 0:
+        raise ValueError(f"max_val_batches must be >= 0, got {max_val_batches}")
     if scheduler not in {"cosine", "none"}:
         raise ValueError(f"scheduler must be 'cosine' or 'none', got {scheduler!r}")
 
@@ -230,8 +309,11 @@ def train_act(
     if len(dataset) == 0:
         raise ValueError(f"Empty dataset at {dataset_root}")
 
-    train_data, val_data = split_train_val(dataset, val_ratio, seed)
+    train_data, val_data, n_train_episodes, n_val_episodes = split_train_val(
+        dataset, val_ratio, seed
+    )
     selection_metric = "val_l1" if val_data is not None else "train_loss"
+    val_batch_cap: int | None = None if max_val_batches == 0 else max_val_batches
 
     policy = build_act_policy(contract, device=device_name)
     policy.train()
@@ -304,7 +386,7 @@ def train_act(
         val_l1: float | None = None
         ran_val = val_loader is not None and (step % val_interval == 0 or step == steps)
         if ran_val and val_loader is not None:
-            val_l1 = evaluate_val_l1(policy, val_loader)
+            val_l1 = evaluate_val_l1(policy, val_loader, max_batches=val_batch_cap)
 
         record: dict[str, float | int | None] = {
             "step": step,
@@ -360,9 +442,12 @@ def train_act(
         "batch_size": batch_size,
         "val_ratio": val_ratio,
         "val_interval": val_interval,
+        "max_val_batches": max_val_batches,
         "scheduler": scheduler,
         "n_train": len(train_data),
         "n_val": 0 if val_data is None else len(val_data),
+        "n_train_episodes": n_train_episodes,
+        "n_val_episodes": n_val_episodes,
         "recommended_min_steps": RECOMMENDED_MIN_STEPS,
         "below_recommended_steps": step < RECOMMENDED_MIN_STEPS,
         "checkpoint": str(checkpoint_path),
@@ -454,7 +539,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--lr", "--learning-rate", dest="learning_rate", type=float, default=1e-4)
     parser.add_argument("--val-ratio", type=float, default=0.1)
-    parser.add_argument("--val-interval", type=int, default=50)
+    parser.add_argument("--val-interval", type=int, default=100)
+    parser.add_argument(
+        "--max-val-batches",
+        type=int,
+        default=32,
+        help="Max validation batches per eval. 0 = full validation set.",
+    )
     parser.add_argument("--scheduler", choices=("cosine", "none"), default="cosine")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
@@ -509,6 +600,7 @@ def main(argv: list[str] | None = None) -> None:
             repo_id=args.repo_id,
             val_ratio=args.val_ratio,
             val_interval=args.val_interval,
+            max_val_batches=args.max_val_batches,
             scheduler=args.scheduler,
         )
         print(f"Saved checkpoint: {checkpoint_path}")
