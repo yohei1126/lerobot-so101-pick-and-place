@@ -26,7 +26,7 @@ python -m port_pick_align.training.train_act
 - `checkpoints/synthetic_act/best_model.pt`: 疎通確認用の学習済みモデル重み
 - `checkpoints/synthetic_act/training_metrics.json`: 各ステップの訓練損失、検証 L1、学習率
 
-学習ループはデータを訓練と検証に分割し、検証 L1 が最小の重みを `best_model.pt` に保存する。学習率はコサイン減衰（`--scheduler none` で無効化）である。主な引数は `--dataset-root`、`--output-dir`、`--steps`、`--batch-size`、`--lr`、`--device`、`--val-ratio`、`--val-interval` である。
+学習ループはデータを訓練と検証に分割し、検証 L1 が最小の重みを `best_model.pt` に保存する。分割はエピソード単位（`meta.episodes` の `dataset_from_index` / `dataset_to_index`）で行い、同一エピソードのフレームが train と val に混ざらないようにする。エピソード情報が無いデータセットではフレーム単位の分割にフォールバックする。検証はデフォルトで最大 32 バッチまで評価する（`--max-val-batches 0` で全走査）。検証間隔のデフォルトは `--val-interval 100` である。学習率はコサイン減衰（`--scheduler none` で無効化）である。主な引数は `--dataset-root`、`--output-dir`、`--steps`、`--batch-size`、`--lr`、`--device`、`--val-ratio`、`--val-interval`、`--max-val-batches` である。
 
 ## シミュレーション教示データでの本学習
 
