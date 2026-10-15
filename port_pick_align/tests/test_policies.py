@@ -70,3 +70,16 @@ def test_checkpoint_policy_ensemble_flag_and_reset() -> None:
     after_reset = enabled.blend_chunk(_chunk(first=2.0, second=8.0))
     assert after_reset[0, 0] == pytest.approx(2.0)
     assert len(enabled._chunk_history) == 1
+
+
+@pytest.mark.unit
+def test_box_reset_options_leave_yaw_free_when_randomized() -> None:
+    from port_pick_align.simulation.env import box_reset_options
+
+    randomized = box_reset_options(randomize_box=True)
+    assert randomized == {"randomize_box": True}
+    assert "box_yaw" not in randomized
+    assert box_reset_options(randomize_box=False) == {
+        "randomize_box": False,
+        "box_yaw": 0.0,
+    }

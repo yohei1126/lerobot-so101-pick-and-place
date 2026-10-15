@@ -10,6 +10,7 @@
 | [ros2_inference.md](ros2_inference.md) | ROS 2 Humble ノード構成、モック推論パイプライン、Rerun 可視化連携 |
 | [simulation.md](simulation.md) | MuJoCo シミュレータによる閉ループ制御評価、対話型ビューアおよび動画出力 |
 | [evaluation.md](evaluation.md) | 平面位置誤差・ヨー角誤差・成功率の集計モジュール（`eval_alignment`）API 仕様 |
+| [results/README.md](results/README.md) | 閉ループ評価の実測ログと未計測プレースホルダ |
 | [e2e.md](e2e.md) | データ収集から推論までを結合して実行するエンドツーエンドパイプライン試験 |
 | [hardware.md](hardware.md) | SO-ARM101 および Feetech サーボモータの Linux udev 設定、接続準備ドライラン |
 | [ci.md](ci.md) | GitHub Actions CI ワークフローの構成とローカルでの静的解析・テスト実行手順 |

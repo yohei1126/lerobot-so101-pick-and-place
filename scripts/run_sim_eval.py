@@ -23,7 +23,7 @@ from port_pick_align.evaluation.eval_alignment import (
     samples_to_dicts,
     summarize,
 )
-from port_pick_align.simulation.env import PickAlignSimEnv
+from port_pick_align.simulation.env import PickAlignSimEnv, box_reset_options
 from port_pick_align.simulation.policies import (
     CheckpointPolicy,
     MockPolicy,
@@ -76,6 +76,8 @@ def _build_policy(
     *,
     checkpoint: Path | None,
     device: str,
+    temporal_ensemble: bool = False,
+    temporal_ensemble_coeff: float = 0.01,
 ) -> Any:
     chunk_size = int(contract["model"]["chunk_size"])
     action_dim = int(contract["model"]["action_dim"])
@@ -89,7 +91,13 @@ def _build_policy(
         from port_pick_align.training.train_act import load_policy_from_checkpoint
 
         policy = load_policy_from_checkpoint(checkpoint, contract, device=device)
-        return CheckpointPolicy(policy, chunk_size=chunk_size, device=device)
+        return CheckpointPolicy(
+            policy,
+            chunk_size=chunk_size,
+            device=device,
+            temporal_ensemble=temporal_ensemble,
+            temporal_ensemble_coeff=temporal_ensemble_coeff,
+        )
     raise ValueError(f"unknown policy mode: {mode}")
 
 
@@ -152,8 +160,7 @@ def run_episode(
         policy.set_ik(env.solve_ik)
 
     obs, info = env.reset(
-        seed=seed,
-        options={"randomize_box": randomize_box, "box_yaw": 0.0},
+        seed=seed, options=box_reset_options(randomize_box=randomize_box)
     )
     grasped_during = bool(info.get("grasping", False))
     for step in range(max_steps):
@@ -225,6 +232,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--max-steps", type=int, default=260)
     p.add_argument("--output-dir", type=Path, default=REPO_ROOT / "outputs" / "eval")
     p.add_argument("--device", default="cpu")
+    p.add_argument(
+        "--temporal-ensemble",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Blend overlapping ACT chunks (checkpoint policy only).",
+    )
+    p.add_argument("--temporal-ensemble-coeff", type=float, default=0.01)
     p.add_argument("--rerun", action=argparse.BooleanOptionalAction, default=False)
     p.add_argument("--save-video", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument(
@@ -238,7 +252,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--randomize-box",
         action=argparse.BooleanOptionalAction,
         default=False,
-        help="Randomize box XY on reset (default: fixed spawn for reproducible success).",
+        help="Randomize box XY and yaw (default: fixed spawn, yaw 0).",
     )
     return p.parse_args(argv)
 
@@ -250,8 +264,16 @@ def main(argv: list[str] | None = None) -> int:
     out_dir = args.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    use_ensemble = bool(args.temporal_ensemble and args.policy == "checkpoint")
+    if args.temporal_ensemble and args.policy != "checkpoint":
+        print("temporal ensemble applies only to --policy checkpoint; ignoring it")
     policy = _build_policy(
-        args.policy, contract, checkpoint=args.checkpoint, device=args.device
+        args.policy,
+        contract,
+        checkpoint=args.checkpoint,
+        device=args.device,
+        temporal_ensemble=use_ensemble,
+        temporal_ensemble_coeff=args.temporal_ensemble_coeff,
     )
     render_cameras = args.video_mode == "mujoco" or args.rerun
     env = PickAlignSimEnv(
@@ -291,17 +313,43 @@ def main(argv: list[str] | None = None) -> int:
         env.close()
 
     summary = summarize(samples)
-    metrics_path = out_dir / "metrics.json"
-    metrics_path.write_text(
-        json.dumps(
-            {"summary": summary, "samples": samples_to_dicts(samples)},
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
+    thresholds = {
+        "align_success_rate_min": 0.85,
+        "grasp_success_rate_min": 0.90,
+        "mean_position_error_mm_max": 25.0,
+        "mean_abs_yaw_error_deg_max": 15.0,
+    }
+    met = (
+        float(summary["align_success_rate"]) >= thresholds["align_success_rate_min"]
+        and float(summary["grasp_success_rate"]) >= thresholds["grasp_success_rate_min"]
+        and float(summary["mean_position_error_mm"])
+        < thresholds["mean_position_error_mm_max"]
+        and float(summary["mean_abs_yaw_error_deg"])
+        < thresholds["mean_abs_yaw_error_deg_max"]
     )
+    metrics_path = out_dir / "metrics.json"
+    payload = {
+        "status": "measured",
+        "policy": args.policy,
+        "episodes": args.episodes,
+        "max_steps": args.max_steps,
+        "seed": args.seed,
+        "randomize_box": args.randomize_box,
+        "temporal_ensemble": use_ensemble,
+        "temporal_ensemble_coeff": args.temporal_ensemble_coeff
+        if use_ensemble
+        else None,
+        "device": args.device,
+        "checkpoint": str(args.checkpoint) if args.policy == "checkpoint" else None,
+        "thresholds": thresholds,
+        "thresholds_met": met,
+        "summary": summary,
+        "samples": samples_to_dicts(samples),
+    }
+    metrics_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {metrics_path}")
     print(json.dumps(summary, indent=2))
+    print(f"thresholds_met={met}")
 
     if frames:
         video_path = out_dir / "sim_rollout.mp4"

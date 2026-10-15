@@ -1,0 +1,26 @@
+{
+  "status": "pending",
+  "reason": "The full ACT checkpoint from MPS training is not in this environment. Null summary fields are not measurements. Do not copy them into the report as results.",
+  "protocol": {
+    "episodes": 20,
+    "max_steps": 260,
+    "randomize_box": true,
+    "temporal_ensemble": true,
+    "temporal_ensemble_coeff": 0.01,
+    "policy": "checkpoint",
+    "checkpoint": "checkpoints/sim_act/best_model.pt"
+  },
+  "command": "DEVICE=mps ./scripts/run_phase15_benchmark.sh",
+  "expected_outputs": [
+    "outputs/eval_sim_act/metrics.json",
+    "outputs/eval_sim_act/sim_rollout.mp4"
+  ],
+  "thresholds": {
+    "align_success_rate_min": 0.85,
+    "grasp_success_rate_min": 0.9,
+    "mean_position_error_mm_max": 25.0,
+    "mean_abs_yaw_error_deg_max": 15.0
+  },
+  "summary": null,
+  "thresholds_met": null
+}

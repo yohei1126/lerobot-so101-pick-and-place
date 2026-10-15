@@ -31,6 +31,17 @@ ATTACH_XY_M = 0.12
 ATTACH_Z_M = 0.15
 
 
+def box_reset_options(*, randomize_box: bool) -> dict[str, Any]:
+    """Reset options for a fixed spawn or an unknown initial box pose.
+
+    Randomization covers planar position and yaw. Passing ``box_yaw`` would pin
+    the yaw, so the randomized path omits that key.
+    """
+    if randomize_box:
+        return {"randomize_box": True}
+    return {"randomize_box": False, "box_yaw": 0.0}
+
+
 class PickAlignSimEnv:
     """Closed-loop pick-and-align environment (Gymnasium-compatible API).
 
