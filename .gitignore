@@ -233,6 +233,7 @@ checkpoints/
 data/raw/
 data/processed/
 data/synthetic/
+data/sim_expert/
 data/e2e/
 data/from_bag/
 wandb/

@@ -85,6 +85,11 @@ class ScriptedPickAlignPolicy:
         self._cached_q: np.ndarray | None = None
         self._cached_phase: int = -1
 
+    @classmethod
+    def horizon_steps(cls) -> int:
+        """Control steps covering every scripted phase once."""
+        return sum(phase[1] for phase in cls._PHASES)
+
     def set_ik(self, ik_fn: IkFn) -> None:
         self._ik_fn = ik_fn
 
