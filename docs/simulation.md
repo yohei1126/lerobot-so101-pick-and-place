@@ -96,6 +96,10 @@ python scripts/run_sim_eval.py --policy scripted --rerun --video-mode mujoco
 
 `mujoco` パッケージが未インストールの環境では `pytest.importorskip` により自動的にテストがスキップされるため、最小構成の CI パイプラインを阻害しない。
 
+## Temporal Ensembling
+
+ACT は各制御周期で未来のアクションチャンクをまとめて予測する。閉ループで常に最新チャンクの先頭要素だけを採用すると、予測の入れ替わりが関節指令の段差になる。`CheckpointPolicy(temporal_ensemble=True)` は、同一時刻に対する過去チャンクの予測をキューに保持し、Zhao et al. (2023) および LeRobot の `ACTTemporalEnsembler` に合わせて指数重みで平均する。重みは `w_i = exp(-m * i)` で、`i = 0` が最も古い予測である。`m > 0` では古い予測の比重が大きく、`m = 0` は均一平均、`m < 0` は新しい予測の比重が大きい。既定の `m` は 0.01 である。フラグを無効にするとチャンクはそのまま返る。
+
 ## オラクル教示データの収集
 
 同一環境と `ScriptedPickAlignPolicy` から LeRobotDataset を自動収集する手順は [dataset.md](dataset.md) に記載する。エントリポイントは `scripts/collect_sim_dataset.py` である。

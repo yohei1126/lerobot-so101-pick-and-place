@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import math
+from collections import deque
+from collections.abc import Callable, Sequence
 from typing import Any, Protocol
 
 import numpy as np
@@ -40,11 +42,71 @@ class MockPolicy:
         return mock_action_chunk(obs["state"], self.chunk_size, self.action_dim)
 
 
+def blend_temporal_ensemble(chunks: Sequence[np.ndarray], coeff: float) -> np.ndarray:
+    """Blend overlapping predictions for the current control step.
+
+    ``chunks`` is ordered oldest to newest. Each array is ``(chunk_size, action_dim)``.
+    Weights are ``w_i = exp(-coeff * i)`` where ``i = 0`` is the oldest prediction,
+    then normalized to sum to 1. This matches Zhao et al. (2023) and LeRobot
+    ``ACTTemporalEnsembler``: a positive coefficient weighs older actions more,
+    zero is a uniform mean, and a negative coefficient weighs newer actions more.
+    """
+    if len(chunks) == 0:
+        raise ValueError("chunks must be non-empty")
+    n = len(chunks)
+    acc: np.ndarray | None = None
+    weight_sum = 0.0
+    for age, chunk in enumerate(chunks):
+        arr = np.asarray(chunk, dtype=np.float64)
+        if arr.ndim != 2:
+            raise ValueError(f"chunk must be 2D, got shape {arr.shape}")
+        offset = n - 1 - age
+        if offset < 0 or offset >= arr.shape[0]:
+            continue
+        weight = math.exp(-float(coeff) * age)
+        term = arr[offset] * weight
+        acc = term if acc is None else acc + term
+        weight_sum += weight
+    if acc is None or weight_sum == 0.0:
+        raise ValueError("no overlapping action to ensemble")
+    return (acc / weight_sum).astype(np.float32)
+
+
 class CheckpointPolicy:
-    def __init__(self, policy: Any, *, chunk_size: int = 30, device: str = "cpu") -> None:
+    def __init__(
+        self,
+        policy: Any,
+        *,
+        chunk_size: int = 30,
+        device: str = "cpu",
+        temporal_ensemble: bool = False,
+        temporal_ensemble_coeff: float = 0.01,
+    ) -> None:
         self.policy = policy
         self.chunk_size = chunk_size
         self.device = device
+        self.temporal_ensemble = bool(temporal_ensemble)
+        self.temporal_ensemble_coeff = float(temporal_ensemble_coeff)
+        self._chunk_history: deque[np.ndarray] = deque(maxlen=max(1, int(chunk_size)))
+
+    def reset(self) -> None:
+        self._chunk_history.clear()
+
+    def blend_chunk(self, chunk: np.ndarray) -> np.ndarray:
+        """Return a chunk whose first row is the command to execute.
+
+        With temporal ensembling disabled, the raw chunk is returned unchanged.
+        """
+        raw = np.asarray(chunk, dtype=np.float32)
+        if raw.ndim != 2:
+            raise ValueError(f"chunk must be 2D, got shape {raw.shape}")
+        if not self.temporal_ensemble:
+            return raw
+        self._chunk_history.append(np.array(raw, dtype=np.float32, copy=True))
+        blended = blend_temporal_ensemble(self._chunk_history, self.temporal_ensemble_coeff)
+        out = np.array(raw, dtype=np.float32, copy=True)
+        out[0] = blended
+        return out
 
     def predict(
         self,
@@ -53,7 +115,7 @@ class CheckpointPolicy:
     ) -> np.ndarray:
         _ = info
         batch = images_bgr_to_batch(obs["top"], obs["wrist"], obs["state"], device=self.device)
-        return predict_chunk(self.policy, batch)
+        return self.blend_chunk(predict_chunk(self.policy, batch))
 
 
 class ScriptedPickAlignPolicy:
