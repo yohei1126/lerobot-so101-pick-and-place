@@ -1,6 +1,6 @@
 # SO-ARM101 / Feetech STS3215 ドライラン手順書
 
-本手順書は、実機アームの接続前に必要な公式仕様の確認、Linux 環境での udev ルール設定、および Python 依存関係の解決を行うための事前準備手順を定める。配線および電源投入前の段階では物理的な駆動を行わず、ソフトウェア的な接続確認にとどめる。
+本手順書は、実機アームの接続前に必要な公式仕様の確認、Linux 環境での udev ルール設定、および Python 依存関係の解決を行うための事前準備手順を定める。あわせて、簡易シミュレーションと同じ座標系で作業エリアを組む配置を定める。配線および電源投入前の段階では物理的な駆動を行わず、ソフトウェア的な接続確認にとどめる。
 
 ## 公式仕様と参照ドキュメント
 
@@ -93,6 +93,55 @@ lerobot-setup-motors \
 ```
 
 電源仕様上の注意: Feetech STS3215 サーボモータの定格駆動電圧は 12V である。USB バスパワーのみでは駆動しないため、外部電源ユニットを接続する必要がある。また、カメラ画像転送とシリアル通信の帯域競合を防止するため、USB ホストコントローラの分離または規格に適合した USB ハブを経由して接続する。
+
+## 作業エリアの配置（シミュレーション準拠）
+
+原点はアーム基部の中心、+x は前方、+y は左、+z は上である。下表の平面位置は基部中心からの距離である。数値は簡易 MuJoCo シーンから読んだものであり、実機 SO-101 のリンク長とは寸法差がある。到達範囲は目安である。
+
+出典:
+
+- [`port_pick_align/src/port_pick_align/simulation/assets/so101_tabletop.xml`](../port_pick_align/src/port_pick_align/simulation/assets/so101_tabletop.xml)
+- [`port_pick_align/src/port_pick_align/simulation/env.py`](../port_pick_align/src/port_pick_align/simulation/env.py)
+- [`port_pick_align/src/port_pick_align/evaluation/eval_alignment.py`](../port_pick_align/src/port_pick_align/evaluation/eval_alignment.py)
+
+![作業エリア配置ガイド（上面図・側面図）](images/so101_layout_guide.png)
+
+印刷用 PDF: [so101_layout_guide.pdf](images/so101_layout_guide.pdf)。図の再生成は `python scripts/draw_layout_guide.py` であり、出力先は `docs/images/` である。
+
+| 項目 | 値 | 出典 |
+| --- | --- | --- |
+| テーブル天板 | z = 0.42 m（床を z = 0 とする） | `env.py` の `TABLE_Z`。XML の table geom は中心 z = 0.40 m、半厚 0.02 m |
+| 箱 | 5×4×4 cm、30 g | XML `box_geom` の half-size `0.025 0.02 0.02`、`mass="0.03"` |
+| 箱の初期中心 | (28, −8) cm。xy を各 ±4 cm、yaw を ±0.3 rad（約 ±17°）で一様乱数 | `env.py` の reset。基準 `(0.28, -0.08)` に `uniform(-0.04, 0.04)`、yaw は `uniform(-0.3, 0.3)` |
+| ゴール `target_frame` | 中心 (35, +12) cm、パッド 8×6 cm、yaw 0 | XML `target_frame` pos `0.35 0.12 0.42`、`target_pad` half-size `0.04 0.03`（回転なし） |
+| 整列成功 | 平面位置誤差 25 mm 以内、かつヨー誤差 15° 以内 | `eval_alignment.py` の `DEFAULT_ALIGN_POS_MM = 25`、`DEFAULT_ALIGN_YAW_DEG = 15`（いずれも `<=`） |
+| 上カメラ | 平面 (25, 0) cm、天板から 63 cm（ワールド z = 1.05 m）、真下向き、垂直 FOV 55°。天板上の視野は約 87×66 cm（推定） | XML `camera name="top"` の pos `0.25 0 1.05`、`xyaxes="1 0 0 0 1 0"`、`fovy="55"` |
+| 手首カメラ | グリッパリンク原点から前方 2 cm・上方 4 cm、下向き約 30°、垂直 FOV 60° | XML `camera name="wrist"` の pos `0.02 0 0.04`、`xyaxes="0 -1 0 0.5 0 0.866"`、`fovy="60"` |
+| 到達範囲 | 約 42 cm（`shoulder_pan` ±110°。簡易モデルの幾何最大） | 上腕 12 cm + 前腕 14 cm + 手首 8 cm + グリッパ 3 cm + 手先サイト 5 cm。pan range は ±1.9199 rad |
+
+上カメラの視野約 87×66 cm は、天板からの高さ 63 cm、垂直 FOV 55°、契約画像 640×480 のアスペクトから求めた推定である。x 方向（水平 FOV 約 69°）が約 87 cm、y 方向（垂直 FOV 55°）が約 66 cm である。XML が持つのはカメラ位置と `fovy` であり、視野の辺長はそこから計算する。
+
+### テープ目印（提案）
+
+以下は実機セットアップ用の提案である。同じ初期分布とゴールをテーブル上で再現するための目印である。
+
+- オレンジ枠 8×8 cm: 箱の中心が取りうる初期範囲。枠の中心は (28, −8) cm。
+- 緑の十字と枠 8×6 cm: ゴール。中心は (35, +12) cm。長辺を x 軸に平行（yaw 0）にする。
+- 紫の ×: 上カメラの真下。(25, 0) cm。
+- 物体は一辺約 5 cm のスポンジまたはブロックを推奨する。sim の箱は 5×4×4 cm、30 g である。
+
+### カメラ
+
+ACT の入力は上カメラ（`/camera/top/image_raw`）と手首カメラ（`/camera/wrist/image_raw`）の両方である。解像度は各 640×480、30 fps（[`configs/contract.yaml`](../configs/contract.yaml)）。手元の C920 は 1 台であるため、もう 1 台を追加する。C920 を上カメラに使い、手首カメラはグリッパへ別に取り付ける。手首画像が無い状態は学習時の分布の外である。
+
+### 作業エリア準備チェックリスト
+
+- [ ] アーム基部中心を原点、前方を +x、左を +y としてテーブル上の座標を決めた
+- [ ] テーブル天板高さを sim の 0.42 m に合わせ、合わせられない場合は差分を記録した
+- [ ] 提案のテープ目印（オレンジ枠、緑の十字と枠、紫の ×）を貼った
+- [ ] 約 5×4×4 cm、30 g 程度のスポンジまたはブロックを用意した
+- [ ] 上カメラを (25, 0) cm の真上、天板から 63 cm、真下向きに固定した
+- [ ] 上カメラと手首カメラの 2 系統を接続した（C920 が 1 台だけの場合は 2 台目を追加する）
 
 ## 事前準備チェックリスト
 
