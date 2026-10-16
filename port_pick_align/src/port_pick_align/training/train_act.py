@@ -260,6 +260,45 @@ def action_gripper_value(action: Any, gripper_dim: int = DEFAULT_GRIPPER_DIM) ->
     return float(tensor[gripper_dim])
 
 
+def _episode_and_gripper_series(
+    dataset: Any,
+    indices: list[int],
+    *,
+    gripper_dim: int = DEFAULT_GRIPPER_DIM,
+) -> tuple[dict[int, int], dict[int, float]]:
+    """Map dataset index → episode id and immediate gripper command.
+
+    Prefers ``dataset.hf_dataset`` action / episode columns so we do not decode
+    camera frames for every training index (LeRobot ``__getitem__`` is expensive).
+    Falls back to per-index ``__getitem__`` for lightweight test doubles.
+    """
+    index_set = set(int(i) for i in indices)
+    episode_of: dict[int, int] = {}
+    grip_of: dict[int, float] = {}
+
+    hf = getattr(dataset, "hf_dataset", None)
+    if hf is not None and "action" in getattr(hf, "column_names", []):
+        slim = hf.select_columns(["action", "episode_index"])
+        actions = slim["action"]
+        episodes = slim["episode_index"]
+        for index in indices:
+            idx = int(index)
+            episode_of[idx] = int(episodes[idx])
+            action = actions[idx]
+            if hasattr(action, "__getitem__"):
+                grip_of[idx] = float(action[gripper_dim])
+            else:
+                grip_of[idx] = float(list(action)[gripper_dim])
+        return episode_of, grip_of
+
+    for index in indices:
+        sample = dataset[int(index)]
+        episode_of[int(index)] = int(sample["episode_index"])
+        grip_of[int(index)] = action_gripper_value(sample["action"], gripper_dim)
+    assert index_set == set(episode_of)
+    return episode_of, grip_of
+
+
 def find_gripper_transition_indices(
     dataset: Any,
     indices: list[int],
@@ -268,18 +307,17 @@ def find_gripper_transition_indices(
     closed_thresh: float = DEFAULT_GRIPPER_CLOSED_THRESH,
 ) -> list[int]:
     """Dataset indices where the gripper crosses from open to closed within an episode."""
+    episode_of, grip_of = _episode_and_gripper_series(dataset, indices, gripper_dim=gripper_dim)
     by_episode: dict[int, list[int]] = {}
     for index in indices:
-        sample = dataset[index]
-        episode = int(sample["episode_index"])
-        by_episode.setdefault(episode, []).append(int(index))
+        by_episode.setdefault(episode_of[int(index)], []).append(int(index))
 
     transitions: list[int] = []
     for episode_indices in by_episode.values():
         ordered = sorted(episode_indices)
         previous_grip: float | None = None
         for index in ordered:
-            grip = action_gripper_value(dataset[index]["action"], gripper_dim)
+            grip = grip_of[index]
             if (
                 previous_grip is not None
                 and previous_grip > closed_thresh
@@ -308,7 +346,7 @@ def oversample_indices_near_transitions(
         return list(base_indices)
 
     base_set = set(base_indices)
-    episode_of = {int(i): int(dataset[i]["episode_index"]) for i in base_indices}
+    episode_of, _grip_of = _episode_and_gripper_series(dataset, base_indices)
     boost: list[int] = []
     for transition in transition_indices:
         if transition not in base_set:
