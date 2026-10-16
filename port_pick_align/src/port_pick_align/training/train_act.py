@@ -8,8 +8,10 @@ that the loop, validation split, and checkpoint write succeed.
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import json
 import random
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +23,9 @@ from port_pick_align.contract import DEFAULT_CONTRACT_PATH, load_contract, valid
 from port_pick_align.dataset.sim_collect import DEFAULT_REPO_ID as SIM_REPO_ID
 from port_pick_align.dataset.synthetic import DEFAULT_REPO_ID, make_dummy_image
 from port_pick_align.training.policy import ARCH_PRESETS, build_act_policy, resolve_arch
+
+# Surface native crashes (OpenCV/PyAV/MuJoCo) instead of a silent abort.
+faulthandler.enable(file=sys.stderr, all_threads=True)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_DATASET_ROOT = REPO_ROOT / "data" / "synthetic" / "lerobot"
@@ -260,6 +265,45 @@ def action_gripper_value(action: Any, gripper_dim: int = DEFAULT_GRIPPER_DIM) ->
     return float(tensor[gripper_dim])
 
 
+def _episode_and_gripper_series(
+    dataset: Any,
+    indices: list[int],
+    *,
+    gripper_dim: int = DEFAULT_GRIPPER_DIM,
+) -> tuple[dict[int, int], dict[int, float]]:
+    """Map dataset index → episode id and immediate gripper command.
+
+    Prefers ``dataset.hf_dataset`` action / episode columns so we do not decode
+    camera frames for every training index (LeRobot ``__getitem__`` is expensive).
+    Falls back to per-index ``__getitem__`` for lightweight test doubles.
+    """
+    index_set = set(int(i) for i in indices)
+    episode_of: dict[int, int] = {}
+    grip_of: dict[int, float] = {}
+
+    hf = getattr(dataset, "hf_dataset", None)
+    if hf is not None and "action" in getattr(hf, "column_names", []):
+        slim = hf.select_columns(["action", "episode_index"])
+        actions = slim["action"]
+        episodes = slim["episode_index"]
+        for index in indices:
+            idx = int(index)
+            episode_of[idx] = int(episodes[idx])
+            action = actions[idx]
+            if hasattr(action, "__getitem__"):
+                grip_of[idx] = float(action[gripper_dim])
+            else:
+                grip_of[idx] = float(list(action)[gripper_dim])
+        return episode_of, grip_of
+
+    for index in indices:
+        sample = dataset[int(index)]
+        episode_of[int(index)] = int(sample["episode_index"])
+        grip_of[int(index)] = action_gripper_value(sample["action"], gripper_dim)
+    assert index_set == set(episode_of)
+    return episode_of, grip_of
+
+
 def find_gripper_transition_indices(
     dataset: Any,
     indices: list[int],
@@ -268,18 +312,17 @@ def find_gripper_transition_indices(
     closed_thresh: float = DEFAULT_GRIPPER_CLOSED_THRESH,
 ) -> list[int]:
     """Dataset indices where the gripper crosses from open to closed within an episode."""
+    episode_of, grip_of = _episode_and_gripper_series(dataset, indices, gripper_dim=gripper_dim)
     by_episode: dict[int, list[int]] = {}
     for index in indices:
-        sample = dataset[index]
-        episode = int(sample["episode_index"])
-        by_episode.setdefault(episode, []).append(int(index))
+        by_episode.setdefault(episode_of[int(index)], []).append(int(index))
 
     transitions: list[int] = []
     for episode_indices in by_episode.values():
         ordered = sorted(episode_indices)
         previous_grip: float | None = None
         for index in ordered:
-            grip = action_gripper_value(dataset[index]["action"], gripper_dim)
+            grip = grip_of[index]
             if (
                 previous_grip is not None
                 and previous_grip > closed_thresh
@@ -308,7 +351,7 @@ def oversample_indices_near_transitions(
         return list(base_indices)
 
     base_set = set(base_indices)
-    episode_of = {int(i): int(dataset[i]["episode_index"]) for i in base_indices}
+    episode_of, _grip_of = _episode_and_gripper_series(dataset, base_indices)
     boost: list[int] = []
     for transition in transition_indices:
         if transition not in base_set:
@@ -375,6 +418,21 @@ def compute_act_train_loss(
     return loss, loss_dict
 
 
+def _empty_closed_loop_metrics(
+    episodes: int,
+    *,
+    error: str | None = None,
+) -> dict[str, float | str | None]:
+    payload: dict[str, float | str | None] = {
+        "grasp_success_rate": 0.0,
+        "align_success_rate": 0.0,
+        "mean_position_error_mm": 0.0,
+        "n_episodes": float(max(0, episodes)),
+        "error": error,
+    }
+    return payload
+
+
 def evaluate_closed_loop_grasp(
     policy: Any,
     contract: dict[str, Any],
@@ -384,8 +442,15 @@ def evaluate_closed_loop_grasp(
     max_steps: int = SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
     seed: int = 0,
     n_action_steps: int = 30,
-) -> dict[str, float]:
-    """Cheap closed-loop rollouts: grasp / align rates for checkpoint selection."""
+) -> dict[str, float | str | None]:
+    """Cheap closed-loop rollouts: grasp / align rates for checkpoint selection.
+
+    Failures (device mismatch, MuJoCo GL, import errors) are caught and returned
+    as zero rates with an ``error`` string so the training process stays alive.
+    """
+    import gc
+    import traceback
+
     from port_pick_align.evaluation.eval_alignment import (
         compute_pose_errors,
         infer_grasp_success,
@@ -402,22 +467,35 @@ def evaluate_closed_loop_grasp(
     chunk_size = int(contract["model"]["chunk_size"])
     horizon = max(1, min(int(n_action_steps), chunk_size))
     was_training = bool(policy.training)
-    policy.eval()
-    env = PickAlignSimEnv(
-        contract=contract,
-        max_episode_steps=max_steps,
-        render_cameras=True,
+    device_name = resolve_device(device)
+    env: PickAlignSimEnv | None = None
+    print(
+        f"closed_loop_val begin episodes={episodes} max_steps={max_steps} "
+        f"device={device_name} n_action_steps={horizon}",
+        flush=True,
     )
-    wrapped = CheckpointPolicy(
-        policy,
-        chunk_size=chunk_size,
-        device=device,
-        temporal_ensemble=False,
-    )
-    n_grasp = 0
-    n_align = 0
-    position_errors: list[float] = []
     try:
+        # Weights must match observation tensors (build_act_policy may have left CPU).
+        policy.to(device_name)
+        policy.eval()
+        if device_name == "mps" and hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
+            torch.mps.empty_cache()
+        gc.collect()
+
+        env = PickAlignSimEnv(
+            contract=contract,
+            max_episode_steps=max_steps,
+            render_cameras=True,
+        )
+        wrapped = CheckpointPolicy(
+            policy,
+            chunk_size=chunk_size,
+            device=device_name,
+            temporal_ensemble=False,
+        )
+        n_grasp = 0
+        n_align = 0
+        position_errors: list[float] = []
         for ep in range(episodes):
             wrapped.reset()
             obs, info = env.reset(seed=seed + ep, options=box_reset_options(randomize_box=True))
@@ -450,17 +528,32 @@ def evaluate_closed_loop_grasp(
                 n_grasp += 1
             if is_align_success(pos_mm, yaw_deg):
                 n_align += 1
+        metrics: dict[str, float | str | None] = {
+            "grasp_success_rate": float(n_grasp) / float(episodes),
+            "align_success_rate": float(n_align) / float(episodes),
+            "mean_position_error_mm": (float(np.mean(position_errors)) if position_errors else 0.0),
+            "n_episodes": float(episodes),
+            "error": None,
+        }
+        print(
+            f"closed_loop_val end grasp={metrics['grasp_success_rate']} "
+            f"align={metrics['align_success_rate']} "
+            f"pos_mm={metrics['mean_position_error_mm']}",
+            flush=True,
+        )
+        return metrics
+    except Exception as exc:  # noqa: BLE001 - keep training alive on sim/GL faults
+        traceback.print_exc()
+        print(f"closed_loop_val FAILED: {exc!r}", flush=True)
+        return _empty_closed_loop_metrics(episodes, error=repr(exc))
     finally:
-        env.close()
+        if env is not None:
+            env.close()
         if was_training:
             policy.train()
-
-    return {
-        "grasp_success_rate": float(n_grasp) / float(episodes),
-        "align_success_rate": float(n_align) / float(episodes),
-        "mean_position_error_mm": float(np.mean(position_errors)) if position_errors else 0.0,
-        "n_episodes": float(episodes),
-    }
+        if device_name == "mps" and hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
+            torch.mps.empty_cache()
+        gc.collect()
 
 
 def _arch_from_policy(policy: Any) -> dict[str, Any]:
@@ -708,9 +801,14 @@ def train_act(
                 seed=seed + step,
                 n_action_steps=closed_loop_n_action_steps,
             )
-            closed_loop_grasp = float(cl_metrics["grasp_success_rate"])
-            closed_loop_align = float(cl_metrics["align_success_rate"])
-            closed_loop_pos_mm = float(cl_metrics["mean_position_error_mm"])
+            closed_loop_grasp = float(cl_metrics["grasp_success_rate"] or 0.0)
+            closed_loop_align = float(cl_metrics["align_success_rate"] or 0.0)
+            closed_loop_pos_mm = float(cl_metrics["mean_position_error_mm"] or 0.0)
+            if cl_metrics.get("error"):
+                print(
+                    f"closed_loop_val error at step={step}: {cl_metrics['error']}",
+                    flush=True,
+                )
 
         record: dict[str, float | int | None] = {
             "step": step,
