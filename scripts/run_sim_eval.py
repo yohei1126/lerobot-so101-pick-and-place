@@ -300,9 +300,7 @@ def main(argv: list[str] | None = None) -> int:
     # Checkpoint ACT needs real camera pixels. topdown video only changes the
     # saved schematic; it must not disable MuJoCo camera rendering (black images).
     render_cameras = (
-        args.policy == "checkpoint"
-        or args.video_mode == "mujoco"
-        or args.rerun
+        args.policy == "checkpoint" or args.video_mode == "mujoco" or args.rerun
     )
     env = PickAlignSimEnv(
         contract=contract,
