@@ -165,6 +165,8 @@ def rollout_scripted_episode(
     )
     policy.reset()
     policy.set_ik(env.solve_ik)
+    policy.set_transport_plan(env.plan_transport_joints)
+    policy.set_transport_retarget(env.retarget_transport_joints)
     obs, info = env.reset(seed=seed, options={"randomize_box": randomize_box})
 
     frames: list[CollectedFrame] = []

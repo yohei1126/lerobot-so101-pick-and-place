@@ -42,9 +42,14 @@ DEFAULT_GRIPPER_DIM = 5
 SIM_DEFAULT_GRIPPER_LOSS_WEIGHT = 5.0
 SIM_DEFAULT_TRANSITION_OVERSAMPLE_FACTOR = 5
 SIM_DEFAULT_TRANSITION_OVERSAMPLE_WINDOW = 15
-SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES = 2
+# 2 episodes made a lucky 0.5 (1/2) win checkpoint selection. 10 is the low end
+# of the 10–20 range and stays overridable via --closed-loop-val-episodes.
+SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES = 10
 # Full scripted horizon so release and align are visible (eval uses 260).
 SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS = 260
+# Selection rollouts execute this many chunk steps between replans. Temporal
+# ensembling is logged beside it and does not choose best_model.pt.
+CLOSED_LOOP_SELECTION_N_ACTION_STEPS = 30
 
 
 def _mps_available() -> bool:
@@ -454,10 +459,16 @@ def evaluate_closed_loop_grasp(
     episodes: int = SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES,
     max_steps: int = SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
     seed: int = 0,
-    n_action_steps: int = 30,
+    n_action_steps: int = CLOSED_LOOP_SELECTION_N_ACTION_STEPS,
+    temporal_ensemble: bool = False,
+    temporal_ensemble_coeff: float = 0.01,
+    mode_label: str | None = None,
 ) -> dict[str, float | str | None]:
     """Cheap closed-loop rollouts: grasp / align rates for checkpoint selection.
 
+    Selection calls this with ``temporal_ensemble=False`` and ``n_action_steps``
+    30 (one chunk between replans). A second call with temporal ensembling and
+    ``n_action_steps=1`` is a separate metric and must not pick the checkpoint.
     Failures (device mismatch, MuJoCo GL, import errors) are caught and returned
     as zero rates with an ``error`` string so the training process stays alive.
     """
@@ -478,13 +489,18 @@ def evaluate_closed_loop_grasp(
         raise ValueError(f"max_steps must be >= 1, got {max_steps}")
 
     chunk_size = int(contract["model"]["chunk_size"])
-    horizon = max(1, min(int(n_action_steps), chunk_size))
+    use_ensemble = bool(temporal_ensemble)
+    if use_ensemble:
+        horizon = 1
+    else:
+        horizon = max(1, min(int(n_action_steps), chunk_size))
+    label = mode_label or ("te" if use_ensemble else f"chunk{horizon}")
     was_training = bool(policy.training)
     device_name = resolve_device(device)
     env: PickAlignSimEnv | None = None
     print(
-        f"closed_loop_val begin episodes={episodes} max_steps={max_steps} "
-        f"device={device_name} n_action_steps={horizon}",
+        f"closed_loop_val begin mode={label} episodes={episodes} max_steps={max_steps} "
+        f"device={device_name} n_action_steps={horizon} temporal_ensemble={use_ensemble}",
         flush=True,
     )
     try:
@@ -504,7 +520,8 @@ def evaluate_closed_loop_grasp(
             policy,
             chunk_size=chunk_size,
             device=device_name,
-            temporal_ensemble=False,
+            temporal_ensemble=use_ensemble,
+            temporal_ensemble_coeff=float(temporal_ensemble_coeff),
         )
         n_grasp = 0
         n_align = 0
@@ -560,7 +577,7 @@ def evaluate_closed_loop_grasp(
             "error": None,
         }
         print(
-            f"closed_loop_val end grasp={metrics['grasp_success_rate']} "
+            f"closed_loop_val end mode={label} grasp={metrics['grasp_success_rate']} "
             f"align={metrics['align_success_rate']} "
             f"pos_mm={metrics['mean_position_error_mm']} "
             f"holding={metrics['holding_at_end_rate']} "
@@ -659,7 +676,8 @@ def train_act(
     closed_loop_val_interval: int = 0,
     closed_loop_val_episodes: int = SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES,
     closed_loop_val_max_steps: int = SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
-    closed_loop_n_action_steps: int = 30,
+    closed_loop_n_action_steps: int = CLOSED_LOOP_SELECTION_N_ACTION_STEPS,
+    closed_loop_te_episodes: int = 0,
     selection_metric: str | None = None,
 ) -> Path:
     """Train ACT and save best_model.pt.
@@ -667,9 +685,13 @@ def train_act(
     Default selection is lowest validation L1 when a val split exists, else
     lowest training loss. Pass ``selection_metric='closed_loop_align'`` to keep
     the checkpoint with the highest closed-loop align rate, breaking ties by
-    lower position error. ``closed_loop_grasp`` keeps the highest grasp rate.
-    Either closed-loop rule requires ``closed_loop_val_interval > 0``.
-    The final weights are always written to ``last.pt``.
+    lower position error. That rate is measured with ``n_action_steps`` (default
+    30) and temporal ensembling off. ``closed_loop_grasp`` keeps the highest
+    grasp rate on the same rollout. Either closed-loop rule requires
+    ``closed_loop_val_interval > 0``. When ``closed_loop_te_episodes > 0``, the
+    same pulse also logs a temporal-ensemble rollout; those numbers are not
+    compared when saving ``best_model.pt``. The final weights are always
+    written to ``last.pt``.
     """
     if steps < 1:
         raise ValueError(f"steps must be >= 1, got {steps}")
@@ -693,6 +715,12 @@ def train_act(
         )
     if closed_loop_val_interval < 0:
         raise ValueError(f"closed_loop_val_interval must be >= 0, got {closed_loop_val_interval}")
+    if closed_loop_te_episodes < 0:
+        raise ValueError(f"closed_loop_te_episodes must be >= 0, got {closed_loop_te_episodes}")
+    if closed_loop_n_action_steps < 1:
+        raise ValueError(
+            f"closed_loop_n_action_steps must be >= 1, got {closed_loop_n_action_steps}"
+        )
 
     validate_contract(contract)
     device_name = resolve_device(device)
@@ -810,7 +838,19 @@ def train_act(
     best_closed_loop_grasp: float | None = None
     best_closed_loop_align: float | None = None
     best_closed_loop_pos_mm: float | None = None
+    selected_te_align: float | None = None
+    selected_te_pos_mm: float | None = None
     history: list[dict[str, float | int | None]] = []
+    if closed_loop_val_interval > 0:
+        print(
+            "checkpoint selection "
+            f"metric={resolved_selection} "
+            f"exec=n_action_steps_{int(closed_loop_n_action_steps)} "
+            "temporal_ensemble=off "
+            f"episodes={int(closed_loop_val_episodes)} "
+            f"te_episodes={int(closed_loop_te_episodes)} (logged only)",
+            flush=True,
+        )
     step = 0
     data_iter = iter(train_loader)
 
@@ -850,6 +890,10 @@ def train_act(
         closed_loop_pos_mm: float | None = None
         closed_loop_holding: float | None = None
         closed_loop_released: float | None = None
+        te_align: float | None = None
+        te_grasp: float | None = None
+        te_pos_mm: float | None = None
+        te_released: float | None = None
         cl_error: str | None = None
         ran_closed_loop = closed_loop_val_interval > 0 and (
             step % closed_loop_val_interval == 0 or step == steps
@@ -863,6 +907,8 @@ def train_act(
                 max_steps=closed_loop_val_max_steps,
                 seed=seed + step,
                 n_action_steps=closed_loop_n_action_steps,
+                temporal_ensemble=False,
+                mode_label=f"chunk{int(closed_loop_n_action_steps)}",
             )
             closed_loop_grasp = float(cl_metrics["grasp_success_rate"] or 0.0)
             closed_loop_align = float(cl_metrics["align_success_rate"] or 0.0)
@@ -876,6 +922,29 @@ def train_act(
                     f"closed_loop_val error at step={step}: {cl_error}",
                     flush=True,
                 )
+            if closed_loop_te_episodes > 0:
+                te_metrics = evaluate_closed_loop_grasp(
+                    policy,
+                    contract,
+                    device=device_name,
+                    episodes=closed_loop_te_episodes,
+                    max_steps=closed_loop_val_max_steps,
+                    seed=seed + step,
+                    n_action_steps=1,
+                    temporal_ensemble=True,
+                    mode_label="te",
+                )
+                te_error = te_metrics.get("error")
+                if te_error:
+                    print(
+                        f"closed_loop_val te error at step={step}: {te_error}",
+                        flush=True,
+                    )
+                else:
+                    te_grasp = float(te_metrics["grasp_success_rate"] or 0.0)
+                    te_align = float(te_metrics["align_success_rate"] or 0.0)
+                    te_pos_mm = float(te_metrics["mean_position_error_mm"] or 0.0)
+                    te_released = float(te_metrics["released_on_pad_rate"] or 0.0)
 
         record: dict[str, float | int | None] = {
             "step": step,
@@ -888,6 +957,10 @@ def train_act(
             "closed_loop_mean_position_error_mm": closed_loop_pos_mm,
             "closed_loop_holding_at_end_rate": closed_loop_holding,
             "closed_loop_released_on_pad_rate": closed_loop_released,
+            "closed_loop_te_grasp_rate": te_grasp,
+            "closed_loop_te_align_rate": te_align,
+            "closed_loop_te_mean_position_error_mm": te_pos_mm,
+            "closed_loop_te_released_on_pad_rate": te_released,
         }
         history.append(record)
 
@@ -906,6 +979,8 @@ def train_act(
         ):
             best_score = closed_loop_grasp
             best_closed_loop_grasp = closed_loop_grasp
+            selected_te_align = te_align
+            selected_te_pos_mm = te_pos_mm
             improved = True
         elif (
             resolved_selection == "closed_loop_align"
@@ -922,6 +997,8 @@ def train_act(
             best_score = closed_loop_align
             best_closed_loop_align = closed_loop_align
             best_closed_loop_pos_mm = closed_loop_pos_mm
+            selected_te_align = te_align
+            selected_te_pos_mm = te_pos_mm
             improved = True
         if improved:
             _save_checkpoint(
@@ -952,11 +1029,13 @@ def train_act(
             cl_text = f"{closed_loop_grasp:.2f}" if closed_loop_grasp is not None else "n/a"
             align_text = f"{closed_loop_align:.2f}" if closed_loop_align is not None else "n/a"
             pos_text = f"{closed_loop_pos_mm:.1f}" if closed_loop_pos_mm is not None else "n/a"
+            te_align_text = f"{te_align:.2f}" if te_align is not None else "n/a"
+            te_pos_text = f"{te_pos_mm:.1f}" if te_pos_mm is not None else "n/a"
             print(
                 f"step={step:04d}/{steps:04d} train_loss={loss_value:.6f} "
                 f"val_l1={val_text} cl_grasp={cl_text} cl_align={align_text} "
-                f"cl_pos_mm={pos_text} lr={current_lr:.3e} "
-                f"best_{resolved_selection}={best_score:.6f}"
+                f"cl_pos_mm={pos_text} te_align={te_align_text} te_pos_mm={te_pos_text} "
+                f"lr={current_lr:.3e} best_{resolved_selection}={best_score:.6f}"
             )
 
     last_path = output_dir / LAST_CHECKPOINT_NAME
@@ -1005,6 +1084,10 @@ def train_act(
         "best_closed_loop_align_rate": best_closed_loop_align,
         "best_closed_loop_position_error_mm": best_closed_loop_pos_mm,
         "selection_metric": resolved_selection,
+        "closed_loop_selection_exec": f"n_action_steps_{int(closed_loop_n_action_steps)}",
+        "closed_loop_te_used_for_selection": False,
+        "selected_closed_loop_te_align_rate": selected_te_align,
+        "selected_closed_loop_te_position_error_mm": selected_te_pos_mm,
         "learning_rate": learning_rate,
         "batch_size": batch_size,
         "val_ratio": val_ratio,
@@ -1021,6 +1104,7 @@ def train_act(
         "closed_loop_val_episodes": closed_loop_val_episodes,
         "closed_loop_val_max_steps": closed_loop_val_max_steps,
         "closed_loop_n_action_steps": closed_loop_n_action_steps,
+        "closed_loop_te_episodes": closed_loop_te_episodes,
         "n_train": len(train_data),
         "n_val": 0 if val_data is None else len(val_data),
         "n_train_episodes": n_train_episodes,
@@ -1203,7 +1287,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--closed-loop-val-episodes",
         type=int,
         default=SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES,
-        help="Episodes per closed-loop validation pulse.",
+        help=(
+            "Episodes per closed-loop validation pulse used for checkpoint "
+            f"selection (default {SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES}; use 10–20)."
+        ),
     )
     parser.add_argument(
         "--closed-loop-val-max-steps",
@@ -1214,8 +1301,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--closed-loop-n-action-steps",
         type=int,
-        default=30,
-        help="Chunk horizon executed between replans during closed-loop validation.",
+        default=CLOSED_LOOP_SELECTION_N_ACTION_STEPS,
+        help=(
+            "Chunk horizon executed between replans during the closed-loop "
+            "rollout that selects the checkpoint. Default 30. Temporal "
+            "ensembling is not used for this choice."
+        ),
+    )
+    parser.add_argument(
+        "--closed-loop-te-episodes",
+        type=int,
+        default=None,
+        help=(
+            "Episodes for a temporal-ensemble rollout logged next to chunk "
+            "selection (0 = off). Default: same as --closed-loop-val-episodes "
+            "for --preset sim when closed-loop validation is on, else 0."
+        ),
     )
     parser.add_argument(
         "--selection-metric",
@@ -1253,6 +1354,8 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
             args.transition_oversample_factor = 1
         if args.closed_loop_val_interval is None:
             args.closed_loop_val_interval = 0
+        if args.closed_loop_te_episodes is None:
+            args.closed_loop_te_episodes = 0
         return
     if args.dataset_root == DEFAULT_DATASET_ROOT:
         args.dataset_root = SIM_DATASET_ROOT
@@ -1272,6 +1375,11 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
         args.closed_loop_val_interval = int(args.val_interval)
     if args.selection_metric is None and int(args.closed_loop_val_interval) > 0:
         args.selection_metric = "closed_loop_align"
+    if args.closed_loop_te_episodes is None:
+        if int(args.closed_loop_val_interval) > 0:
+            args.closed_loop_te_episodes = int(args.closed_loop_val_episodes)
+        else:
+            args.closed_loop_te_episodes = 0
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -1306,6 +1414,7 @@ def main(argv: list[str] | None = None) -> None:
             closed_loop_val_episodes=int(args.closed_loop_val_episodes),
             closed_loop_val_max_steps=int(args.closed_loop_val_max_steps),
             closed_loop_n_action_steps=int(args.closed_loop_n_action_steps),
+            closed_loop_te_episodes=int(args.closed_loop_te_episodes),
             selection_metric=args.selection_metric,
         )
         print(f"Saved checkpoint: {checkpoint_path}")

@@ -26,15 +26,30 @@ DEFAULT_HOME = np.array([0.0, -0.6, 0.9, 0.6, 0.0, 1.2], dtype=np.float32)
 TABLE_Z = 0.42
 BOX_HALF_Z = 0.02
 # Gripper hinge does not pinch fingers; sticky attach approximates grasp when closed.
-# Hysteresis: attach at or below CLOSE, release only at or above OPEN. Commands in
-# between keep the current grasp so a small regression dip during carry does not
-# drop the box. Expert demos command 0.0 (closed) and 1.2 (open).
+# Attach uses the measured joint so the grasp frame is the closed pose. Release
+# uses the command and stays at OPEN: expert demos command 0.0 and 1.2, and a
+# lower open threshold would also drop the box on a smeared carry command.
+# Commands between CLOSE and OPEN keep the current grasp.
 GRIPPER_CLOSE_THRESH = 0.45
 GRIPPER_OPEN_THRESH = 0.90
+# Attach only once the hinge is nearly shut. Attaching on the close command
+# latches the box while the finger is still open, then the rest of the close
+# twists it. 0.05 rad is the closed pose the yaw plan models.
+GRIPPER_ATTACH_POS = 0.05
 # Midpoint kept for dataset scans that split the binary expert commands.
 GRIPPER_CLOSED_THRESH = GRIPPER_CLOSE_THRESH
 ATTACH_XY_M = 0.12
 ATTACH_Z_M = 0.15
+
+
+def _wrap_pi(angle: float) -> float:
+    """Wrap radians to ``(-pi, pi]``."""
+    return float((float(angle) + np.pi) % (2.0 * np.pi) - np.pi)
+
+
+def _yaw_from_matrix(rotation: np.ndarray) -> float:
+    matrix = np.asarray(rotation, dtype=np.float64).reshape(3, 3)
+    return float(np.arctan2(matrix[1, 0], matrix[0, 0]))
 
 
 def box_reset_options(*, randomize_box: bool) -> dict[str, Any]:
@@ -253,6 +268,152 @@ class PickAlignSimEnv:
         reward = self._reward(info)
         return obs, reward, terminated, truncated, info
 
+    def _ee_rotation_for_joints(self, joints: np.ndarray) -> np.ndarray:
+        """End-effector rotation at ``joints``. Restores the simulator afterward."""
+        qpos_bak = self.data.qpos.copy()
+        qvel_bak = self.data.qvel.copy()
+        try:
+            commanded = np.asarray(joints, dtype=np.float64).reshape(6)
+            for index, adr in enumerate(self._joint_qpos_addrs):
+                self.data.qpos[adr] = float(commanded[index])
+            self._mujoco.mj_forward(self.model, self.data)
+            return self._ee_rotation().copy()
+        finally:
+            self.data.qpos[:] = qpos_bak
+            self.data.qvel[:] = qvel_bak
+            self._mujoco.mj_forward(self.model, self.data)
+
+    def plan_transport_joints(
+        self,
+        grasp_xyz: np.ndarray,
+        carry_xyz: np.ndarray,
+        place_xyz: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return grasp, carry, and place joint targets with yaw-aligned wrists.
+
+        The box orientation is locked to the gripper at attachment, so the wrist
+        in the grasp target chooses that offset. Carry and place then share one
+        wrist angle. The scripted policy commands these vectors directly: a fresh
+        IK later in the episode would start from a different posture and miss the
+        orientation this search measured. Joint limits leave about 16 deg on the
+        worst spawn in the training randomization.
+        """
+        q_grasp = np.asarray(self.solve_ik(grasp_xyz), dtype=np.float64)
+        q_carry = np.asarray(self.solve_ik(carry_xyz), dtype=np.float64)
+        q_place = np.asarray(self.solve_ik(place_xyz), dtype=np.float64)
+        box_rot = np.asarray(self.data.xmat[self._box_body_id], dtype=np.float64).reshape(3, 3)
+        lo = float(self._limits[4, 0])
+        hi = float(self._limits[4, 1])
+        grid = np.linspace(lo, hi, 25)
+
+        def rotation(base: np.ndarray, roll: float) -> np.ndarray:
+            trial = np.array(base, dtype=np.float64, copy=True)
+            trial[4] = float(roll)
+            # The site sits on the gripper hinge. Measure the closed grip, which
+            # is the angle latched at attachment and held through transport.
+            trial[5] = 0.0
+            return self._ee_rotation_for_joints(trial)
+
+        grasp_rots = [rotation(q_grasp, float(roll)) for roll in grid]
+        carry_rots = [rotation(q_carry, float(roll)) for roll in grid]
+        place_rots = [rotation(q_place, float(roll)) for roll in grid]
+
+        def score(pre_roll: float, transport_roll: float) -> float:
+            relative = rotation(q_grasp, pre_roll).T @ box_rot
+            carry_yaw = _yaw_from_matrix(rotation(q_carry, transport_roll) @ relative)
+            place_yaw = _yaw_from_matrix(rotation(q_place, transport_roll) @ relative)
+            return max(abs(_wrap_pi(carry_yaw)), abs(_wrap_pi(place_yaw)))
+
+        best_score = float("inf")
+        best_pre = float(grid[len(grid) // 2])
+        best_roll = best_pre
+        for i, pre in enumerate(grid):
+            relative = grasp_rots[i].T @ box_rot
+            for j, roll in enumerate(grid):
+                carry_yaw = _yaw_from_matrix(carry_rots[j] @ relative)
+                place_yaw = _yaw_from_matrix(place_rots[j] @ relative)
+                candidate = max(abs(_wrap_pi(carry_yaw)), abs(_wrap_pi(place_yaw)))
+                if candidate < best_score:
+                    best_score = float(candidate)
+                    best_pre = float(pre)
+                    best_roll = float(roll)
+        step = float(grid[1] - grid[0])
+        for _ in range(4):
+            step *= 0.5
+            for d_pre, d_roll in ((step, 0.0), (-step, 0.0), (0.0, step), (0.0, -step)):
+                pre = float(np.clip(best_pre + d_pre, lo, hi))
+                roll = float(np.clip(best_roll + d_roll, lo, hi))
+                candidate = score(pre, roll)
+                if candidate < best_score:
+                    best_score = candidate
+                    best_pre = pre
+                    best_roll = roll
+
+        def with_wrist(base: np.ndarray, roll: float) -> np.ndarray:
+            joints = np.asarray(base, dtype=np.float32).reshape(6).copy()
+            joints[4] = np.float32(roll)
+            return joints
+
+        return (
+            with_wrist(q_grasp, best_pre),
+            with_wrist(q_carry, best_roll),
+            with_wrist(q_place, best_roll),
+        )
+
+    def retarget_transport_joints(
+        self,
+        carry_xyz: np.ndarray,
+        place_xyz: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Re-aim carry and place wrists using the grasp that actually latched.
+
+        The box can rotate slightly before the fingers finish closing, so the
+        wrist chosen at spawn is no longer the one that faces the pad. Called
+        once grasping is true. Carry and place still share one wrist.
+        """
+        if not self._grasping or self._grasp_rot is None:
+            raise RuntimeError("retarget_transport_joints requires an active grasp")
+        q_carry = np.asarray(self.solve_ik(carry_xyz), dtype=np.float64)
+        q_place = np.asarray(self.solve_ik(place_xyz), dtype=np.float64)
+        grasp_rot = np.asarray(self._grasp_rot, dtype=np.float64).reshape(3, 3)
+        lo = float(self._limits[4, 0])
+        hi = float(self._limits[4, 1])
+        grid = np.linspace(lo, hi, 25)
+
+        def rotation(base: np.ndarray, roll: float) -> np.ndarray:
+            trial = np.array(base, dtype=np.float64, copy=True)
+            trial[4] = float(roll)
+            trial[5] = 0.0
+            return self._ee_rotation_for_joints(trial)
+
+        def yaw_error(base: np.ndarray, roll: float) -> float:
+            yaw = _yaw_from_matrix(rotation(base, roll) @ grasp_rot)
+            return abs(_wrap_pi(yaw))
+
+        best_score = float("inf")
+        best_roll = float(grid[len(grid) // 2])
+        for roll in grid:
+            candidate = max(yaw_error(q_carry, float(roll)), yaw_error(q_place, float(roll)))
+            if candidate < best_score:
+                best_score = candidate
+                best_roll = float(roll)
+        step = float(grid[1] - grid[0])
+        for _ in range(4):
+            step *= 0.5
+            for delta in (step, -step):
+                roll = float(np.clip(best_roll + delta, lo, hi))
+                candidate = max(yaw_error(q_carry, roll), yaw_error(q_place, roll))
+                if candidate < best_score:
+                    best_score = candidate
+                    best_roll = roll
+
+        def with_wrist(base: np.ndarray) -> np.ndarray:
+            joints = np.asarray(base, dtype=np.float32).reshape(6).copy()
+            joints[4] = np.float32(best_roll)
+            return joints
+
+        return with_wrist(q_carry), with_wrist(q_place)
+
     def solve_ik(
         self,
         target_xyz: np.ndarray | list[float],
@@ -355,7 +516,7 @@ class PickAlignSimEnv:
         self._grasp_rot = None
 
     def _update_sticky_grasp(self, gripper_cmd: float) -> None:
-        """Attach while closed and nearby; keep holding until the gripper is clearly open."""
+        """Attach once the joint has closed; keep holding until the command is open."""
         if self._grasping:
             if gripper_cmd >= GRIPPER_OPEN_THRESH:
                 self._release_grasp()
@@ -363,7 +524,8 @@ class PickAlignSimEnv:
             self._stick_box_to_ee()
             return
 
-        if gripper_cmd > GRIPPER_CLOSE_THRESH or not self._box_near_ee():
+        gripper_pos = float(self._joint_positions()[5])
+        if gripper_pos > GRIPPER_ATTACH_POS or not self._box_near_ee():
             return
         self._begin_grasp()
         self._stick_box_to_ee()

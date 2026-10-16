@@ -174,9 +174,21 @@ def test_sim_preset_enables_grasp_transition_defaults() -> None:
     assert args.transition_oversample_window == 15
     assert args.transition_oversample_factor == 5
     assert args.closed_loop_val_interval == 100
+    assert args.closed_loop_val_episodes == 10
+    assert args.closed_loop_te_episodes == 10
+    assert args.closed_loop_n_action_steps == 30
     assert args.closed_loop_val_max_steps == 260
     assert args.selection_metric == "closed_loop_align"
     assert args.arch == "full"
+
+
+@pytest.mark.unit
+def test_sim_preset_can_disable_temporal_ensemble_metric() -> None:
+    args = parse_args(["--preset", "sim", "--closed-loop-te-episodes", "0"])
+    apply_preset_defaults(args)
+    assert args.closed_loop_val_episodes == 10
+    assert args.closed_loop_te_episodes == 0
+    assert args.closed_loop_n_action_steps == 30
 
 
 @pytest.mark.unit
@@ -187,6 +199,7 @@ def test_non_sim_preset_keeps_grasp_helpers_off() -> None:
     assert args.transition_oversample_window == 0
     assert args.transition_oversample_factor == 1
     assert args.closed_loop_val_interval == 0
+    assert args.closed_loop_te_episodes == 0
 
 
 @pytest.mark.unit
@@ -270,6 +283,15 @@ def test_closed_loop_align_tie_breaks_on_position_error() -> None:
 def test_closed_loop_val_horizon_matches_scripted_demo() -> None:
     assert SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS == ScriptedPickAlignPolicy.horizon_steps()
     assert SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS == 260
+
+
+@pytest.mark.unit
+def test_pad_release_hold_dominates_closed_place() -> None:
+    """Settled pad actions must be open, or L1 regresses below the release threshold."""
+    closed, opened = ScriptedPickAlignPolicy.pad_gripper_steps()
+    assert closed > 0
+    assert opened >= 4 * closed
+    assert ScriptedPickAlignPolicy.horizon_steps() == 260
 
 
 @pytest.mark.unit

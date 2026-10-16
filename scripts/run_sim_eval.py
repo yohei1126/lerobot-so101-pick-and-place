@@ -158,6 +158,8 @@ def run_episode(
         policy.reset()
     if isinstance(policy, ScriptedPickAlignPolicy):
         policy.set_ik(env.solve_ik)
+        policy.set_transport_plan(env.plan_transport_joints)
+        policy.set_transport_retarget(env.retarget_transport_joints)
 
     obs, info = env.reset(
         seed=seed, options=box_reset_options(randomize_box=randomize_box)
