@@ -47,6 +47,7 @@ def test_synthetic_act_pipeline(tmp_path: Path) -> None:
         max_val_batches=2,
     )
     assert checkpoint.is_file()
+    assert (output_dir / "last.pt").is_file()
 
     policy = load_policy_from_checkpoint(checkpoint, contract, device="cpu")
     chunk = run_inference_smoke(policy, contract, device="cpu")

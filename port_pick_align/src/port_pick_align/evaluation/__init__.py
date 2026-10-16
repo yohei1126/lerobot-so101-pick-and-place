@@ -13,6 +13,7 @@ __all__ = [
     "record_sample",
     "samples_to_dicts",
     "summarize",
+    "trial_outcome",
 ]
 
 

@@ -37,7 +37,9 @@ summary = summarize([sample])
 # 取得可能なメトリクス:
 # - summary["mean_position_error_mm"]: 平均平面位置誤差
 # - summary["mean_abs_yaw_error_deg"]: 平均絶対ヨー角誤差
-# - summary["grasp_success_rate"]: 把持成功率
+# - summary["grasp_success_rate"]: 把持成功率（エピソード中の付着を含む広いフラグ）
+# - summary["holding_at_end_rate"]: 終了時にまだ把持している割合
+# - summary["released_on_pad_rate"]: パッド上で解放できている割合（位置 ≤ 25 mm かつ非把持）
 # - summary["align_success_rate"]: 許容閾値（位置 ≤ 25 mm、ヨー角 ≤ 15 deg）に基づく整列成功率
 ```
 
