@@ -38,6 +38,11 @@ def resolve_arch(name: str) -> dict[str, Any]:
     return dict(ARCH_PRESETS[key])
 
 
+def _as_int(value: Any) -> int:
+    """Convert a preset or override value with ``int()`` and return a real ``int``."""
+    return int(value)
+
+
 def build_act_policy(
     contract: dict[str, Any],
     *,
@@ -58,18 +63,24 @@ def build_act_policy(
     """
     validate_contract(contract)
     preset = resolve_arch(arch)
+    # Coerce dimensions before they share a dict with the weights sentinel (object).
+    dim_model_value = _as_int(dim_model if dim_model is not None else preset["dim_model"])
+    n_heads_value = _as_int(n_heads if n_heads is not None else preset["n_heads"])
+    dim_feedforward_value = _as_int(
+        dim_feedforward if dim_feedforward is not None else preset["dim_feedforward"]
+    )
+    n_encoder_layers_value = _as_int(
+        n_encoder_layers if n_encoder_layers is not None else preset["n_encoder_layers"]
+    )
+    n_decoder_layers_value = _as_int(
+        n_decoder_layers if n_decoder_layers is not None else preset["n_decoder_layers"]
+    )
     resolved = {
-        "dim_model": dim_model if dim_model is not None else preset["dim_model"],
-        "n_heads": n_heads if n_heads is not None else preset["n_heads"],
-        "dim_feedforward": (
-            dim_feedforward if dim_feedforward is not None else preset["dim_feedforward"]
-        ),
-        "n_encoder_layers": (
-            n_encoder_layers if n_encoder_layers is not None else preset["n_encoder_layers"]
-        ),
-        "n_decoder_layers": (
-            n_decoder_layers if n_decoder_layers is not None else preset["n_decoder_layers"]
-        ),
+        "dim_model": dim_model_value,
+        "n_heads": n_heads_value,
+        "dim_feedforward": dim_feedforward_value,
+        "n_encoder_layers": n_encoder_layers_value,
+        "n_decoder_layers": n_decoder_layers_value,
         "pretrained_backbone_weights": (
             preset["pretrained_backbone_weights"]
             if pretrained_backbone_weights is ...
@@ -97,11 +108,11 @@ def build_act_policy(
         vision_backbone=backbone,
         pretrained_backbone_weights=resolved["pretrained_backbone_weights"],
         pre_norm=True,
-        dim_model=int(resolved["dim_model"]),
-        n_heads=int(resolved["n_heads"]),
-        dim_feedforward=int(resolved["dim_feedforward"]),
-        n_encoder_layers=int(resolved["n_encoder_layers"]),
-        n_decoder_layers=int(resolved["n_decoder_layers"]),
+        dim_model=dim_model_value,
+        n_heads=n_heads_value,
+        dim_feedforward=dim_feedforward_value,
+        n_encoder_layers=n_encoder_layers_value,
+        n_decoder_layers=n_decoder_layers_value,
         use_vae=use_vae,
         temporal_ensemble_coeff=None,
         dropout=0.1,
