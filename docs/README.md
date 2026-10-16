@@ -12,7 +12,7 @@
 | [evaluation.md](evaluation.md) | 平面位置誤差・ヨー角誤差・成功率の集計モジュール（`eval_alignment`）API 仕様 |
 | [results/README.md](results/README.md) | 閉ループ評価の実測ログと未計測プレースホルダ |
 | [e2e.md](e2e.md) | データ収集から推論までを結合して実行するエンドツーエンドパイプライン試験 |
-| [hardware.md](hardware.md) | SO-ARM101 および Feetech サーボモータの Linux udev 設定、接続準備ドライラン |
+| [hardware.md](hardware.md) | SO-ARM101 および Feetech サーボモータの Linux udev 設定、接続準備ドライラン、シミュレーション準拠の作業エリア配置 |
 | [ci.md](ci.md) | GitHub Actions CI ワークフローの構成とローカルでの静的解析・テスト実行手順 |
 | [submission.md](submission.md) | OmniCampus 提出物仕様（PDF レポート、GitHub、YouTube 動画）および点検リスト |
 | [plan_b.md](plan_b.md) | 実機障害時におけるシミュレーションおよび公開データを活用した縮退運用手順 |
