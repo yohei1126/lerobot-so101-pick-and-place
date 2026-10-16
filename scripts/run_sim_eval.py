@@ -153,6 +153,7 @@ def run_episode(
     seed: int = 0,
     randomize_box: bool = False,
     video_mode: str = "topdown",
+    n_action_steps: int = 1,
 ) -> Any:
     if hasattr(policy, "reset"):
         policy.reset()
@@ -163,9 +164,16 @@ def run_episode(
         seed=seed, options=box_reset_options(randomize_box=randomize_box)
     )
     grasped_during = bool(info.get("grasping", False))
+    chunk: np.ndarray | None = None
+    chunk_i = 0
+    horizon = max(1, int(n_action_steps))
     for step in range(max_steps):
-        chunk = policy.predict(obs, info=info)
-        action = chunk[0]
+        if chunk is None or chunk_i >= min(horizon, int(chunk.shape[0])):
+            chunk = policy.predict(obs, info=info)
+            chunk_i = 0
+        assert chunk is not None
+        action = chunk[chunk_i]
+        chunk_i += 1
         if rr is not None:
             _log_rerun(rr, step=step, obs=obs, chunk=chunk, joint_names=joint_names)
         if frames is not None:
@@ -239,6 +247,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Blend overlapping ACT chunks (checkpoint policy only).",
     )
     p.add_argument("--temporal-ensemble-coeff", type=float, default=0.01)
+    p.add_argument(
+        "--n-action-steps",
+        type=int,
+        default=1,
+        help="How many actions to execute from each predicted chunk before re-querying "
+        "(1 = every-step replan; 30 = full ACT chunk). Temporal ensembling forces 1.",
+    )
     p.add_argument("--rerun", action=argparse.BooleanOptionalAction, default=False)
     p.add_argument("--save-video", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument(
@@ -267,6 +282,13 @@ def main(argv: list[str] | None = None) -> int:
     use_ensemble = bool(args.temporal_ensemble and args.policy == "checkpoint")
     if args.temporal_ensemble and args.policy != "checkpoint":
         print("temporal ensemble applies only to --policy checkpoint; ignoring it")
+    n_action_steps = max(1, int(args.n_action_steps))
+    if use_ensemble and n_action_steps != 1:
+        print(
+            "temporal ensembling re-queries every step; forcing --n-action-steps 1 "
+            f"(was {n_action_steps})"
+        )
+        n_action_steps = 1
     policy = _build_policy(
         args.policy,
         contract,
@@ -275,7 +297,13 @@ def main(argv: list[str] | None = None) -> int:
         temporal_ensemble=use_ensemble,
         temporal_ensemble_coeff=args.temporal_ensemble_coeff,
     )
-    render_cameras = args.video_mode == "mujoco" or args.rerun
+    # Checkpoint ACT needs real camera pixels. topdown video only changes the
+    # saved schematic; it must not disable MuJoCo camera rendering (black images).
+    render_cameras = (
+        args.policy == "checkpoint"
+        or args.video_mode == "mujoco"
+        or args.rerun
+    )
     env = PickAlignSimEnv(
         contract=contract,
         max_episode_steps=args.max_steps,
@@ -303,6 +331,7 @@ def main(argv: list[str] | None = None) -> int:
                 seed=args.seed + ep,
                 randomize_box=args.randomize_box,
                 video_mode=args.video_mode,
+                n_action_steps=n_action_steps,
             )
             samples.append(sample)
             print(

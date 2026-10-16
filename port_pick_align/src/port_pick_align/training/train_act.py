@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader, Subset, random_split
 from port_pick_align.contract import DEFAULT_CONTRACT_PATH, load_contract, validate_contract
 from port_pick_align.dataset.sim_collect import DEFAULT_REPO_ID as SIM_REPO_ID
 from port_pick_align.dataset.synthetic import DEFAULT_REPO_ID, make_dummy_image
-from port_pick_align.training.policy import build_act_policy
+from port_pick_align.training.policy import ARCH_PRESETS, build_act_policy, resolve_arch
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_DATASET_ROOT = REPO_ROOT / "data" / "synthetic" / "lerobot"
@@ -242,6 +242,13 @@ def evaluate_val_l1(
     return total / count
 
 
+def _arch_from_policy(policy: Any) -> dict[str, Any]:
+    stored = getattr(policy, "_port_pick_align_arch", None)
+    if isinstance(stored, dict):
+        return dict(stored)
+    return resolve_arch("smoke")
+
+
 def _save_checkpoint(
     path: Path,
     *,
@@ -257,6 +264,7 @@ def _save_checkpoint(
         {
             "model_state_dict": policy.state_dict(),
             "contract": contract,
+            "arch": _arch_from_policy(policy),
             "step": step,
             "train_loss": train_loss,
             "val_l1": val_l1,
@@ -282,6 +290,7 @@ def train_act(
     val_interval: int = 100,
     max_val_batches: int = 32,
     scheduler: str = "cosine",
+    arch: str = "smoke",
 ) -> Path:
     """Train ACT and save best_model.pt.
 
@@ -315,7 +324,7 @@ def train_act(
     selection_metric = "val_l1" if val_data is not None else "train_loss"
     val_batch_cap: int | None = None if max_val_batches == 0 else max_val_batches
 
-    policy = build_act_policy(contract, device=device_name)
+    policy = build_act_policy(contract, device=device_name, arch=arch)
     policy.train()
     policy.to(device_name)
     optimizer = torch.optim.AdamW(policy.parameters(), lr=learning_rate)
@@ -454,6 +463,7 @@ def train_act(
         "dataset_root": str(dataset_root),
         "device": device_name,
         "repo_id": repo_id,
+        "arch": _arch_from_policy(policy),
         "history": history,
     }
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
@@ -470,7 +480,22 @@ def load_policy_from_checkpoint(
 ):
     device_name = resolve_device(device)
     payload = torch.load(checkpoint_path, map_location=device_name, weights_only=False)
-    policy = build_act_policy(contract, device=device_name)
+    arch_info = payload.get("arch")
+    if isinstance(arch_info, dict) and arch_info:
+        # Structure must match training; ImageNet init is overwritten by state_dict.
+        policy = build_act_policy(
+            contract,
+            device=device_name,
+            arch=str(arch_info.get("arch", "smoke")),
+            dim_model=arch_info.get("dim_model"),
+            n_heads=arch_info.get("n_heads"),
+            dim_feedforward=arch_info.get("dim_feedforward"),
+            n_encoder_layers=arch_info.get("n_encoder_layers"),
+            n_decoder_layers=arch_info.get("n_decoder_layers"),
+            pretrained_backbone_weights=None,
+        )
+    else:
+        policy = build_act_policy(contract, device=device_name, arch="smoke")
     policy.load_state_dict(payload["model_state_dict"])
     policy.to(device_name)
     policy.eval()
@@ -535,6 +560,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="sim selects data/sim_expert/lerobot and checkpoints/sim_act unless overridden.",
     )
+    parser.add_argument(
+        "--arch",
+        choices=tuple(sorted(ARCH_PRESETS)),
+        default=None,
+        help="smoke=small CI net; full=sim Phase 1.5 capacity. Default: full for --preset sim, else smoke.",
+    )
     parser.add_argument("--steps", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--lr", "--learning-rate", dest="learning_rate", type=float, default=1e-4)
@@ -570,6 +601,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def apply_preset_defaults(args: argparse.Namespace) -> None:
     """Fill sim-expert paths when the user kept the synthetic defaults."""
     if args.preset != "sim":
+        if args.arch is None:
+            args.arch = "smoke"
         return
     if args.dataset_root == DEFAULT_DATASET_ROOT:
         args.dataset_root = SIM_DATASET_ROOT
@@ -577,6 +610,8 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
         args.output_dir = SIM_OUTPUT_DIR
     if args.repo_id == DEFAULT_REPO_ID:
         args.repo_id = SIM_REPO_ID
+    if args.arch is None:
+        args.arch = "full"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -602,6 +637,7 @@ def main(argv: list[str] | None = None) -> None:
             val_interval=args.val_interval,
             max_val_batches=args.max_val_batches,
             scheduler=args.scheduler,
+            arch=str(args.arch),
         )
         print(f"Saved checkpoint: {checkpoint_path}")
 
