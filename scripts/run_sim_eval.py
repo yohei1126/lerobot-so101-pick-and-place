@@ -366,6 +366,7 @@ def main(argv: list[str] | None = None) -> int:
         "temporal_ensemble_coeff": args.temporal_ensemble_coeff
         if use_ensemble
         else None,
+        "n_action_steps": n_action_steps,
         "device": args.device,
         "checkpoint": str(args.checkpoint) if args.policy == "checkpoint" else None,
         "thresholds": thresholds,

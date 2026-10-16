@@ -15,8 +15,12 @@ import torch  # noqa: E402
 from torch.utils.data import DataLoader, TensorDataset  # noqa: E402
 
 from port_pick_align.training.train_act import (  # noqa: E402
+    action_gripper_value,
     apply_preset_defaults,
+    compute_act_train_loss,
     evaluate_val_l1,
+    find_gripper_transition_indices,
+    oversample_indices_near_transitions,
     parse_args,
     resolve_device,
     split_train_val,
@@ -151,6 +155,106 @@ def test_parse_args_validation_defaults() -> None:
     args = parse_args([])
     assert args.val_interval == 100
     assert args.max_val_batches == 32
+    assert args.gripper_loss_weight is None
+    assert args.transition_oversample_factor is None
+    assert args.closed_loop_val_interval is None
+    assert args.selection_metric is None
+
+
+@pytest.mark.unit
+def test_sim_preset_enables_grasp_transition_defaults() -> None:
+    args = parse_args(["--preset", "sim"])
+    apply_preset_defaults(args)
+    assert args.gripper_loss_weight == pytest.approx(5.0)
+    assert args.transition_oversample_window == 15
+    assert args.transition_oversample_factor == 5
+    assert args.closed_loop_val_interval == 100
+    assert args.arch == "full"
+
+
+@pytest.mark.unit
+def test_non_sim_preset_keeps_grasp_helpers_off() -> None:
+    args = parse_args([])
+    apply_preset_defaults(args)
+    assert args.gripper_loss_weight == pytest.approx(1.0)
+    assert args.transition_oversample_window == 0
+    assert args.transition_oversample_factor == 1
+    assert args.closed_loop_val_interval == 0
+
+
+@pytest.mark.unit
+def test_action_gripper_value_reads_chunk_step0() -> None:
+    chunk = torch.zeros(30, 6)
+    chunk[0, 5] = 1.2
+    chunk[10, 5] = 0.0
+    assert action_gripper_value(chunk) == pytest.approx(1.2)
+    assert action_gripper_value(chunk[0]) == pytest.approx(1.2)
+
+
+@pytest.mark.unit
+def test_find_and_oversample_gripper_transitions() -> None:
+    class _GripDataset(torch.utils.data.Dataset):
+        def __init__(self) -> None:
+            # Episode 0: open then close at index 3. Episode 1: always open.
+            self._grips = [1.2, 1.2, 1.2, 0.0, 0.0, 1.2, 1.2, 1.2]
+
+        def __len__(self) -> int:
+            return len(self._grips)
+
+        def __getitem__(self, index: int) -> dict[str, Any]:
+            action = torch.zeros(30, 6)
+            action[:, 5] = float(self._grips[index])
+            return {
+                "episode_index": 0 if index < 5 else 1,
+                "action": action,
+            }
+
+    dataset = _GripDataset()
+    indices = list(range(len(dataset)))
+    transitions = find_gripper_transition_indices(dataset, indices)
+    assert transitions == [3]
+    expanded = oversample_indices_near_transitions(
+        indices, transitions, dataset, window=1, factor=3
+    )
+    # base 8 + 2 extra copies of {2,3,4}
+    assert len(expanded) == 8 + 2 * 3
+    assert expanded.count(3) == 3
+    unchanged = oversample_indices_near_transitions(
+        indices, transitions, dataset, window=1, factor=1
+    )
+    assert unchanged == indices
+
+
+@pytest.mark.unit
+def test_compute_act_train_loss_weights_gripper() -> None:
+    class _FakeConfig:
+        image_features = None
+        use_vae = False
+        kl_weight = 1.0
+
+    class _FakeModel(torch.nn.Module):
+        def forward(self, batch: dict[str, Any]) -> tuple[torch.Tensor, tuple[None, None]]:
+            # Predict zeros; GT has error 1.0 on every dim.
+            target = batch["action"]
+            return torch.zeros_like(target), (None, None)
+
+    class _FakePolicy:
+        def __init__(self) -> None:
+            self.config = _FakeConfig()
+            self.model = _FakeModel()
+
+    batch = {
+        "action": torch.ones(2, 4, 6),
+        "action_is_pad": torch.zeros(2, 4, dtype=torch.bool),
+    }
+    policy = _FakePolicy()
+    loss_1, dict_1 = compute_act_train_loss(policy, batch, gripper_loss_weight=1.0)
+    loss_5, dict_5 = compute_act_train_loss(policy, batch, gripper_loss_weight=5.0)
+    assert dict_1["l1_loss"] == pytest.approx(1.0)
+    assert dict_5["l1_loss"] == pytest.approx(1.0)
+    assert float(loss_5.detach()) > float(loss_1.detach())
+    # Mean over 6 dims with gripper×5 → (5+1+1+1+1+1)/6 = 10/6
+    assert float(loss_5.detach()) == pytest.approx(10.0 / 6.0)
 
 
 @pytest.mark.unit
