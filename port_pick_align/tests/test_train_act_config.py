@@ -14,6 +14,8 @@ pytest.importorskip("lerobot")
 import torch  # noqa: E402
 from torch.utils.data import DataLoader, TensorDataset  # noqa: E402
 
+from port_pick_align.contract import load_contract  # noqa: E402
+from port_pick_align.training.policy import build_act_policy  # noqa: E402
 from port_pick_align.training.train_act import (  # noqa: E402
     action_gripper_value,
     apply_preset_defaults,
@@ -223,6 +225,13 @@ def test_find_and_oversample_gripper_transitions() -> None:
         indices, transitions, dataset, window=1, factor=1
     )
     assert unchanged == indices
+
+
+@pytest.mark.unit
+def test_build_act_policy_moves_weights_to_requested_device() -> None:
+    contract = load_contract()
+    policy = build_act_policy(contract, device="cpu", arch="smoke")
+    assert next(policy.parameters()).device.type == "cpu"
 
 
 @pytest.mark.unit

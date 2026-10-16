@@ -119,5 +119,7 @@ def build_act_policy(
         device=device,
     )
     policy = ACTPolicy(config)
+    # ACTConfig.device alone does not move parameters; callers expect weights on ``device``.
+    policy.to(device)
     policy._port_pick_align_arch = resolved  # type: ignore[attr-defined]
     return policy
