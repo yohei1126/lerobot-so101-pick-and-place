@@ -29,6 +29,15 @@ SIM_DATASET_ROOT = REPO_ROOT / "data" / "sim_expert" / "lerobot"
 SIM_OUTPUT_DIR = REPO_ROOT / "checkpoints" / "sim_act"
 CHECKPOINT_NAME = "best_model.pt"
 RECOMMENDED_MIN_STEPS = 1000
+# Match PickAlignSimEnv sticky-grasp threshold (open ≈ 1.2, closed ≈ 0.0).
+DEFAULT_GRIPPER_CLOSED_THRESH = 0.45
+DEFAULT_GRIPPER_DIM = 5
+# Sim-preset defaults for grasp-transition emphasis (smoke / explicit None → off/1.0).
+SIM_DEFAULT_GRIPPER_LOSS_WEIGHT = 5.0
+SIM_DEFAULT_TRANSITION_OVERSAMPLE_FACTOR = 5
+SIM_DEFAULT_TRANSITION_OVERSAMPLE_WINDOW = 15
+SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES = 2
+SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS = 130
 
 
 def _mps_available() -> bool:
@@ -222,6 +231,7 @@ def evaluate_val_l1(
     """Mean of per-batch action L1 on the validation loader (batch-size weighted).
 
     ``max_batches`` caps how many batches are evaluated; ``None`` means full pass.
+    Uses the unweighted L1 from the policy (comparable across runs).
     """
     policy.eval()
     total = 0.0
@@ -242,6 +252,217 @@ def evaluate_val_l1(
     return total / count
 
 
+def action_gripper_value(action: Any, gripper_dim: int = DEFAULT_GRIPPER_DIM) -> float:
+    """Return the immediate (chunk step 0) gripper command from a sample action."""
+    tensor = torch.as_tensor(action).float()
+    if tensor.ndim == 2:
+        return float(tensor[0, gripper_dim])
+    return float(tensor[gripper_dim])
+
+
+def find_gripper_transition_indices(
+    dataset: Any,
+    indices: list[int],
+    *,
+    gripper_dim: int = DEFAULT_GRIPPER_DIM,
+    closed_thresh: float = DEFAULT_GRIPPER_CLOSED_THRESH,
+) -> list[int]:
+    """Dataset indices where the gripper crosses from open to closed within an episode."""
+    by_episode: dict[int, list[int]] = {}
+    for index in indices:
+        sample = dataset[index]
+        episode = int(sample["episode_index"])
+        by_episode.setdefault(episode, []).append(int(index))
+
+    transitions: list[int] = []
+    for episode_indices in by_episode.values():
+        ordered = sorted(episode_indices)
+        previous_grip: float | None = None
+        for index in ordered:
+            grip = action_gripper_value(dataset[index]["action"], gripper_dim)
+            if (
+                previous_grip is not None
+                and previous_grip > closed_thresh
+                and grip <= closed_thresh
+            ):
+                transitions.append(index)
+            previous_grip = grip
+    return transitions
+
+
+def oversample_indices_near_transitions(
+    base_indices: list[int],
+    transition_indices: list[int],
+    dataset: Any,
+    *,
+    window: int,
+    factor: int,
+) -> list[int]:
+    """Repeat frames within ``window`` of each open→close transition ``factor`` times.
+
+    ``factor=1`` leaves ``base_indices`` unchanged. Extra copies are appended so
+    ``DataLoader(shuffle=True)`` still sees the full base set once per epoch.
+    Expansion stays inside the same episode as the transition.
+    """
+    if factor <= 1 or window < 0 or not transition_indices:
+        return list(base_indices)
+
+    base_set = set(base_indices)
+    episode_of = {int(i): int(dataset[i]["episode_index"]) for i in base_indices}
+    boost: list[int] = []
+    for transition in transition_indices:
+        if transition not in base_set:
+            continue
+        episode = episode_of[transition]
+        for offset in range(-window, window + 1):
+            candidate = transition + offset
+            if candidate in base_set and episode_of.get(candidate) == episode:
+                boost.append(candidate)
+
+    expanded = list(base_indices)
+    for _ in range(factor - 1):
+        expanded.extend(boost)
+    return expanded
+
+
+def compute_act_train_loss(
+    policy: Any,
+    batch: dict[str, torch.Tensor],
+    *,
+    gripper_loss_weight: float = 1.0,
+    gripper_dim: int = DEFAULT_GRIPPER_DIM,
+) -> tuple[torch.Tensor, dict[str, float]]:
+    """ACT training loss with an optional higher weight on the gripper dimension.
+
+    Mirrors ``ACTPolicy.forward`` (L1 + VAE KL) but multiplies the gripper
+    absolute error by ``gripper_loss_weight`` before the batch mean. Validation
+    continues to use the unweighted policy L1 for a stable comparable metric.
+    """
+    import torch.nn.functional as F
+    from lerobot.utils.constants import ACTION, OBS_IMAGES
+
+    if gripper_loss_weight <= 0:
+        raise ValueError(f"gripper_loss_weight must be > 0, got {gripper_loss_weight}")
+
+    model_batch: dict[str, Any] = dict(batch)
+    if policy.config.image_features:
+        model_batch[OBS_IMAGES] = [model_batch[key] for key in policy.config.image_features]
+
+    actions_hat, (mu_hat, log_sigma_x2_hat) = policy.model(model_batch)
+    abs_err = F.l1_loss(batch[ACTION], actions_hat, reduction="none")
+    valid_mask = (~batch["action_is_pad"]).unsqueeze(-1)
+    action_dim = int(abs_err.shape[-1])
+    weights = torch.ones(action_dim, device=abs_err.device, dtype=abs_err.dtype)
+    if 0 <= gripper_dim < action_dim:
+        weights[gripper_dim] = float(gripper_loss_weight)
+    weighted_err = abs_err * weights.view(1, 1, -1)
+    denom = (valid_mask.sum() * action_dim).clamp_min(1)
+    l1_loss = (weighted_err * valid_mask).sum() / denom
+    unweighted_l1 = (abs_err * valid_mask).sum() / denom
+
+    loss_dict: dict[str, float] = {
+        "l1_loss": float(unweighted_l1.detach().item()),
+        "weighted_l1_loss": float(l1_loss.detach().item()),
+    }
+    if policy.config.use_vae and log_sigma_x2_hat is not None:
+        mean_kld = (
+            (-0.5 * (1 + log_sigma_x2_hat - mu_hat.pow(2) - log_sigma_x2_hat.exp())).sum(-1).mean()
+        )
+        loss_dict["kld_loss"] = float(mean_kld.detach().item())
+        loss = l1_loss + mean_kld * float(policy.config.kl_weight)
+    else:
+        loss = l1_loss
+    return loss, loss_dict
+
+
+def evaluate_closed_loop_grasp(
+    policy: Any,
+    contract: dict[str, Any],
+    *,
+    device: str,
+    episodes: int = SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES,
+    max_steps: int = SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
+    seed: int = 0,
+    n_action_steps: int = 30,
+) -> dict[str, float]:
+    """Cheap closed-loop rollouts: grasp / align rates for checkpoint selection."""
+    from port_pick_align.evaluation.eval_alignment import (
+        compute_pose_errors,
+        infer_grasp_success,
+        is_align_success,
+    )
+    from port_pick_align.simulation.env import PickAlignSimEnv, box_reset_options
+    from port_pick_align.simulation.policies import CheckpointPolicy
+
+    if episodes < 1:
+        raise ValueError(f"episodes must be >= 1, got {episodes}")
+    if max_steps < 1:
+        raise ValueError(f"max_steps must be >= 1, got {max_steps}")
+
+    chunk_size = int(contract["model"]["chunk_size"])
+    horizon = max(1, min(int(n_action_steps), chunk_size))
+    was_training = bool(policy.training)
+    policy.eval()
+    env = PickAlignSimEnv(
+        contract=contract,
+        max_episode_steps=max_steps,
+        render_cameras=True,
+    )
+    wrapped = CheckpointPolicy(
+        policy,
+        chunk_size=chunk_size,
+        device=device,
+        temporal_ensemble=False,
+    )
+    n_grasp = 0
+    n_align = 0
+    position_errors: list[float] = []
+    try:
+        for ep in range(episodes):
+            wrapped.reset()
+            obs, info = env.reset(seed=seed + ep, options=box_reset_options(randomize_box=True))
+            grasped_during = bool(info.get("grasping", False))
+            chunk: np.ndarray | None = None
+            chunk_i = 0
+            for _ in range(max_steps):
+                if chunk is None or chunk_i >= horizon:
+                    chunk = wrapped.predict(obs, info=info)
+                    chunk_i = 0
+                assert chunk is not None
+                action = chunk[chunk_i]
+                chunk_i += 1
+                obs, _reward, terminated, truncated, info = env.step(action)
+                grasped_during = grasped_during or bool(info.get("grasping", False))
+                if terminated or truncated:
+                    break
+            pos_mm, yaw_deg = compute_pose_errors(
+                info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
+            )
+            position_errors.append(float(pos_mm))
+            grasp = infer_grasp_success(
+                box_z=float(info["box_z"]),
+                table_z=float(info["table_z"]),
+                ee_xy=info["ee_xy"],
+                box_xy=info["box_xy"],
+            )
+            grasp = bool(grasp or grasped_during or pos_mm < 50.0)
+            if grasp:
+                n_grasp += 1
+            if is_align_success(pos_mm, yaw_deg):
+                n_align += 1
+    finally:
+        env.close()
+        if was_training:
+            policy.train()
+
+    return {
+        "grasp_success_rate": float(n_grasp) / float(episodes),
+        "align_success_rate": float(n_align) / float(episodes),
+        "mean_position_error_mm": float(np.mean(position_errors)) if position_errors else 0.0,
+        "n_episodes": float(episodes),
+    }
+
+
 def _arch_from_policy(policy: Any) -> dict[str, Any]:
     stored = getattr(policy, "_port_pick_align_arch", None)
     if isinstance(stored, dict):
@@ -259,20 +480,21 @@ def _save_checkpoint(
     val_l1: float | None,
     device_name: str,
     selection_metric: str,
+    closed_loop_grasp_rate: float | None = None,
 ) -> None:
-    torch.save(
-        {
-            "model_state_dict": policy.state_dict(),
-            "contract": contract,
-            "arch": _arch_from_policy(policy),
-            "step": step,
-            "train_loss": train_loss,
-            "val_l1": val_l1,
-            "device": device_name,
-            "selection_metric": selection_metric,
-        },
-        path,
-    )
+    payload: dict[str, Any] = {
+        "model_state_dict": policy.state_dict(),
+        "contract": contract,
+        "arch": _arch_from_policy(policy),
+        "step": step,
+        "train_loss": train_loss,
+        "val_l1": val_l1,
+        "device": device_name,
+        "selection_metric": selection_metric,
+    }
+    if closed_loop_grasp_rate is not None:
+        payload["closed_loop_grasp_rate"] = closed_loop_grasp_rate
+    torch.save(payload, path)
 
 
 def train_act(
@@ -291,11 +513,22 @@ def train_act(
     max_val_batches: int = 32,
     scheduler: str = "cosine",
     arch: str = "smoke",
+    gripper_loss_weight: float = 1.0,
+    gripper_dim: int = DEFAULT_GRIPPER_DIM,
+    transition_oversample_window: int = 0,
+    transition_oversample_factor: int = 1,
+    closed_loop_val_interval: int = 0,
+    closed_loop_val_episodes: int = SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES,
+    closed_loop_val_max_steps: int = SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
+    closed_loop_n_action_steps: int = 30,
+    selection_metric: str | None = None,
 ) -> Path:
     """Train ACT and save best_model.pt.
 
-    When a validation split exists, the checkpoint is the lowest validation L1.
-    Otherwise it is the lowest training loss. Returns the checkpoint path.
+    Default selection is lowest validation L1 when a val split exists, else
+    lowest training loss. Pass ``selection_metric='closed_loop_grasp'`` to keep
+    the checkpoint with the highest cheap closed-loop grasp rate (requires
+    ``closed_loop_val_interval > 0``).
     """
     if steps < 1:
         raise ValueError(f"steps must be >= 1, got {steps}")
@@ -307,6 +540,18 @@ def train_act(
         raise ValueError(f"max_val_batches must be >= 0, got {max_val_batches}")
     if scheduler not in {"cosine", "none"}:
         raise ValueError(f"scheduler must be 'cosine' or 'none', got {scheduler!r}")
+    if gripper_loss_weight <= 0:
+        raise ValueError(f"gripper_loss_weight must be > 0, got {gripper_loss_weight}")
+    if transition_oversample_factor < 1:
+        raise ValueError(
+            f"transition_oversample_factor must be >= 1, got {transition_oversample_factor}"
+        )
+    if transition_oversample_window < 0:
+        raise ValueError(
+            f"transition_oversample_window must be >= 0, got {transition_oversample_window}"
+        )
+    if closed_loop_val_interval < 0:
+        raise ValueError(f"closed_loop_val_interval must be >= 0, got {closed_loop_val_interval}")
 
     validate_contract(contract)
     device_name = resolve_device(device)
@@ -321,7 +566,47 @@ def train_act(
     train_data, val_data, n_train_episodes, n_val_episodes = split_train_val(
         dataset, val_ratio, seed
     )
-    selection_metric = "val_l1" if val_data is not None else "train_loss"
+    if selection_metric is None:
+        resolved_selection = "val_l1" if val_data is not None else "train_loss"
+    else:
+        resolved_selection = selection_metric
+    if resolved_selection not in {"val_l1", "train_loss", "closed_loop_grasp"}:
+        raise ValueError(
+            f"selection_metric must be val_l1, train_loss, or closed_loop_grasp, "
+            f"got {resolved_selection!r}"
+        )
+    if resolved_selection == "closed_loop_grasp" and closed_loop_val_interval < 1:
+        raise ValueError(
+            "selection_metric='closed_loop_grasp' requires closed_loop_val_interval >= 1"
+        )
+    if resolved_selection == "val_l1" and val_data is None:
+        resolved_selection = "train_loss"
+
+    n_transition_frames = 0
+    n_train_before_oversample = (
+        len(train_data.indices)  # type: ignore[attr-defined]
+        if isinstance(train_data, Subset)
+        else len(train_data)
+    )
+    if transition_oversample_factor > 1 and transition_oversample_window >= 0:
+        base_indices = (
+            list(train_data.indices)  # type: ignore[attr-defined]
+            if isinstance(train_data, Subset)
+            else list(range(len(train_data)))
+        )
+        transitions = find_gripper_transition_indices(
+            dataset, base_indices, gripper_dim=gripper_dim
+        )
+        n_transition_frames = len(transitions)
+        expanded = oversample_indices_near_transitions(
+            base_indices,
+            transitions,
+            dataset,
+            window=transition_oversample_window,
+            factor=transition_oversample_factor,
+        )
+        train_data = Subset(dataset, expanded)
+
     val_batch_cap: int | None = None if max_val_batches == 0 else max_val_batches
 
     policy = build_act_policy(contract, device=device_name, arch=arch)
@@ -366,9 +651,12 @@ def train_act(
     output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = output_dir / CHECKPOINT_NAME
 
-    best_score = float("inf")
+    # val_l1 / train_loss: minimize. closed_loop_grasp: maximize.
+    maximize = resolved_selection == "closed_loop_grasp"
+    best_score = float("-inf") if maximize else float("inf")
     best_train_loss = float("inf")
     best_val_l1: float | None = None
+    best_closed_loop_grasp: float | None = None
     history: list[dict[str, float | int | None]] = []
     step = 0
     data_iter = iter(train_loader)
@@ -380,7 +668,12 @@ def train_act(
             data_iter = iter(train_loader)
             batch = next(data_iter)
 
-        loss, _loss_dict = policy(batch)
+        loss, loss_dict = compute_act_train_loss(
+            policy,
+            batch,
+            gripper_loss_weight=gripper_loss_weight,
+            gripper_dim=gripper_dim,
+        )
         optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
@@ -396,22 +689,55 @@ def train_act(
         ran_val = val_loader is not None and (step % val_interval == 0 or step == steps)
         if ran_val and val_loader is not None:
             val_l1 = evaluate_val_l1(policy, val_loader, max_batches=val_batch_cap)
+            if best_val_l1 is None or val_l1 < best_val_l1:
+                best_val_l1 = val_l1
+
+        closed_loop_grasp: float | None = None
+        closed_loop_align: float | None = None
+        closed_loop_pos_mm: float | None = None
+        ran_closed_loop = closed_loop_val_interval > 0 and (
+            step % closed_loop_val_interval == 0 or step == steps
+        )
+        if ran_closed_loop:
+            cl_metrics = evaluate_closed_loop_grasp(
+                policy,
+                contract,
+                device=device_name,
+                episodes=closed_loop_val_episodes,
+                max_steps=closed_loop_val_max_steps,
+                seed=seed + step,
+                n_action_steps=closed_loop_n_action_steps,
+            )
+            closed_loop_grasp = float(cl_metrics["grasp_success_rate"])
+            closed_loop_align = float(cl_metrics["align_success_rate"])
+            closed_loop_pos_mm = float(cl_metrics["mean_position_error_mm"])
 
         record: dict[str, float | int | None] = {
             "step": step,
             "train_loss": loss_value,
+            "train_l1_unweighted": float(loss_dict["l1_loss"]),
             "lr": current_lr,
             "val_l1": val_l1,
+            "closed_loop_grasp_rate": closed_loop_grasp,
+            "closed_loop_align_rate": closed_loop_align,
+            "closed_loop_mean_position_error_mm": closed_loop_pos_mm,
         }
         history.append(record)
 
         improved = False
-        if selection_metric == "val_l1" and val_l1 is not None and val_l1 < best_score:
+        if resolved_selection == "val_l1" and val_l1 is not None and val_l1 < best_score:
             best_score = val_l1
-            best_val_l1 = val_l1
             improved = True
-        elif selection_metric == "train_loss" and loss_value < best_score:
+        elif resolved_selection == "train_loss" and loss_value < best_score:
             best_score = loss_value
+            improved = True
+        elif (
+            resolved_selection == "closed_loop_grasp"
+            and closed_loop_grasp is not None
+            and closed_loop_grasp > best_score
+        ):
+            best_score = closed_loop_grasp
+            best_closed_loop_grasp = closed_loop_grasp
             improved = True
         if improved:
             _save_checkpoint(
@@ -420,22 +746,31 @@ def train_act(
                 contract=contract,
                 step=step,
                 train_loss=loss_value,
-                val_l1=val_l1,
+                val_l1=val_l1 if val_l1 is not None else best_val_l1,
                 device_name=device_name,
-                selection_metric=selection_metric,
+                selection_metric=resolved_selection,
+                closed_loop_grasp_rate=closed_loop_grasp,
             )
 
         if lr_scheduler is not None:
             lr_scheduler.step()
 
-        if step == 1 or step % 10 == 0 or step == steps or val_l1 is not None:
+        if (
+            step == 1
+            or step % 10 == 0
+            or step == steps
+            or val_l1 is not None
+            or closed_loop_grasp is not None
+        ):
             val_text = f"{val_l1:.6f}" if val_l1 is not None else "n/a"
+            cl_text = f"{closed_loop_grasp:.2f}" if closed_loop_grasp is not None else "n/a"
             print(
                 f"step={step:04d}/{steps:04d} train_loss={loss_value:.6f} "
-                f"val_l1={val_text} lr={current_lr:.3e} best_{selection_metric}={best_score:.6f}"
+                f"val_l1={val_text} cl_grasp={cl_text} lr={current_lr:.3e} "
+                f"best_{resolved_selection}={best_score:.6f}"
             )
 
-    if selection_metric == "train_loss":
+    if resolved_selection == "train_loss":
         reported_best = best_train_loss
     else:
         reported_best = best_score
@@ -446,13 +781,24 @@ def train_act(
         "best_loss": reported_best,
         "best_train_loss": best_train_loss,
         "best_val_l1": best_val_l1,
-        "selection_metric": selection_metric,
+        "best_closed_loop_grasp_rate": best_closed_loop_grasp,
+        "selection_metric": resolved_selection,
         "learning_rate": learning_rate,
         "batch_size": batch_size,
         "val_ratio": val_ratio,
         "val_interval": val_interval,
         "max_val_batches": max_val_batches,
         "scheduler": scheduler,
+        "gripper_loss_weight": gripper_loss_weight,
+        "gripper_dim": gripper_dim,
+        "transition_oversample_window": transition_oversample_window,
+        "transition_oversample_factor": transition_oversample_factor,
+        "n_gripper_transitions": n_transition_frames,
+        "n_train_before_oversample": n_train_before_oversample,
+        "closed_loop_val_interval": closed_loop_val_interval,
+        "closed_loop_val_episodes": closed_loop_val_episodes,
+        "closed_loop_val_max_steps": closed_loop_val_max_steps,
+        "closed_loop_n_action_steps": closed_loop_n_action_steps,
         "n_train": len(train_data),
         "n_val": 0 if val_data is None else len(val_data),
         "n_train_episodes": n_train_episodes,
@@ -589,6 +935,75 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="mps, cuda, or cpu. Default: mps if available, else cuda, else cpu.",
     )
     parser.add_argument(
+        "--gripper-loss-weight",
+        type=float,
+        default=None,
+        help=(
+            "Multiply L1 on the gripper action dim. "
+            f"Default: {SIM_DEFAULT_GRIPPER_LOSS_WEIGHT} for --preset sim, else 1.0."
+        ),
+    )
+    parser.add_argument(
+        "--gripper-dim",
+        type=int,
+        default=DEFAULT_GRIPPER_DIM,
+        help="Action dimension index for the gripper (default: 5).",
+    )
+    parser.add_argument(
+        "--transition-oversample-window",
+        type=int,
+        default=None,
+        help=(
+            "Frames before/after open→close gripper transitions to oversample. "
+            f"Default: {SIM_DEFAULT_TRANSITION_OVERSAMPLE_WINDOW} for --preset sim, else 0."
+        ),
+    )
+    parser.add_argument(
+        "--transition-oversample-factor",
+        type=int,
+        default=None,
+        help=(
+            "How many times to include transition-window frames (1 = off). "
+            f"Default: {SIM_DEFAULT_TRANSITION_OVERSAMPLE_FACTOR} for --preset sim, else 1."
+        ),
+    )
+    parser.add_argument(
+        "--closed-loop-val-interval",
+        type=int,
+        default=None,
+        help=(
+            "Run cheap closed-loop grasp eval every N steps (0 = off). "
+            "Default: same as --val-interval for --preset sim, else 0."
+        ),
+    )
+    parser.add_argument(
+        "--closed-loop-val-episodes",
+        type=int,
+        default=SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES,
+        help="Episodes per closed-loop validation pulse.",
+    )
+    parser.add_argument(
+        "--closed-loop-val-max-steps",
+        type=int,
+        default=SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
+        help="Max control steps per closed-loop validation episode.",
+    )
+    parser.add_argument(
+        "--closed-loop-n-action-steps",
+        type=int,
+        default=30,
+        help="Chunk horizon executed between replans during closed-loop validation.",
+    )
+    parser.add_argument(
+        "--selection-metric",
+        choices=("val_l1", "train_loss", "closed_loop_grasp"),
+        default=None,
+        help=(
+            "Checkpoint selection rule. Default: val_l1 when a val split exists, "
+            "else train_loss. Use closed_loop_grasp to keep the best grasp rate."
+        ),
+    )
+    parser.add_argument(
         "--infer-only",
         action="store_true",
         help="Skip training and only run inference smoke from existing checkpoint.",
@@ -602,10 +1017,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def apply_preset_defaults(args: argparse.Namespace) -> None:
-    """Fill sim-expert paths when the user kept the synthetic defaults."""
+    """Fill sim-expert paths and grasp-transition defaults for --preset sim."""
     if args.preset != "sim":
         if args.arch is None:
             args.arch = "smoke"
+        if args.gripper_loss_weight is None:
+            args.gripper_loss_weight = 1.0
+        if args.transition_oversample_window is None:
+            args.transition_oversample_window = 0
+        if args.transition_oversample_factor is None:
+            args.transition_oversample_factor = 1
+        if args.closed_loop_val_interval is None:
+            args.closed_loop_val_interval = 0
         return
     if args.dataset_root == DEFAULT_DATASET_ROOT:
         args.dataset_root = SIM_DATASET_ROOT
@@ -615,6 +1038,14 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
         args.repo_id = SIM_REPO_ID
     if args.arch is None:
         args.arch = "full"
+    if args.gripper_loss_weight is None:
+        args.gripper_loss_weight = SIM_DEFAULT_GRIPPER_LOSS_WEIGHT
+    if args.transition_oversample_window is None:
+        args.transition_oversample_window = SIM_DEFAULT_TRANSITION_OVERSAMPLE_WINDOW
+    if args.transition_oversample_factor is None:
+        args.transition_oversample_factor = SIM_DEFAULT_TRANSITION_OVERSAMPLE_FACTOR
+    if args.closed_loop_val_interval is None:
+        args.closed_loop_val_interval = int(args.val_interval)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -641,6 +1072,15 @@ def main(argv: list[str] | None = None) -> None:
             max_val_batches=args.max_val_batches,
             scheduler=args.scheduler,
             arch=str(args.arch),
+            gripper_loss_weight=float(args.gripper_loss_weight),
+            gripper_dim=int(args.gripper_dim),
+            transition_oversample_window=int(args.transition_oversample_window),
+            transition_oversample_factor=int(args.transition_oversample_factor),
+            closed_loop_val_interval=int(args.closed_loop_val_interval),
+            closed_loop_val_episodes=int(args.closed_loop_val_episodes),
+            closed_loop_val_max_steps=int(args.closed_loop_val_max_steps),
+            closed_loop_n_action_steps=int(args.closed_loop_n_action_steps),
+            selection_metric=args.selection_metric,
         )
         print(f"Saved checkpoint: {checkpoint_path}")
 
