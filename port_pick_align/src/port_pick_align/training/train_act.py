@@ -564,7 +564,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--arch",
         choices=tuple(sorted(ARCH_PRESETS)),
         default=None,
-        help="smoke=small CI net; full=sim Phase 1.5 capacity. Default: full for --preset sim, else smoke.",
+        help=(
+            "smoke=small CI net; full=sim Phase 1.5 capacity. "
+            "Default: full for --preset sim, else smoke."
+        ),
     )
     parser.add_argument("--steps", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=2)
