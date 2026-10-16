@@ -15,10 +15,13 @@ import torch  # noqa: E402
 from torch.utils.data import DataLoader, TensorDataset  # noqa: E402
 
 from port_pick_align.contract import load_contract  # noqa: E402
+from port_pick_align.simulation.policies import ScriptedPickAlignPolicy  # noqa: E402
 from port_pick_align.training.policy import build_act_policy  # noqa: E402
 from port_pick_align.training.train_act import (  # noqa: E402
+    SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
     action_gripper_value,
     apply_preset_defaults,
+    closed_loop_selection_improves,
     compute_act_train_loss,
     evaluate_val_l1,
     find_gripper_transition_indices,
@@ -171,6 +174,8 @@ def test_sim_preset_enables_grasp_transition_defaults() -> None:
     assert args.transition_oversample_window == 15
     assert args.transition_oversample_factor == 5
     assert args.closed_loop_val_interval == 100
+    assert args.closed_loop_val_max_steps == 260
+    assert args.selection_metric == "closed_loop_align"
     assert args.arch == "full"
 
 
@@ -225,6 +230,46 @@ def test_find_and_oversample_gripper_transitions() -> None:
         indices, transitions, dataset, window=1, factor=1
     )
     assert unchanged == indices
+
+
+@pytest.mark.unit
+def test_find_release_transition_and_both() -> None:
+    class _GripDataset(torch.utils.data.Dataset):
+        def __init__(self) -> None:
+            # Close at index 1, release at index 3, all one episode.
+            self._grips = [1.2, 0.0, 0.0, 1.2, 1.2]
+
+        def __len__(self) -> int:
+            return len(self._grips)
+
+        def __getitem__(self, index: int) -> dict[str, Any]:
+            action = torch.zeros(6)
+            action[5] = float(self._grips[index])
+            return {"episode_index": 0, "action": action}
+
+    dataset = _GripDataset()
+    indices = list(range(len(dataset)))
+    assert find_gripper_transition_indices(dataset, indices, direction="open_to_close") == [1]
+    assert find_gripper_transition_indices(dataset, indices, direction="close_to_open") == [3]
+    assert find_gripper_transition_indices(dataset, indices, direction="both") == [1, 3]
+    with pytest.raises(ValueError, match="direction"):
+        find_gripper_transition_indices(dataset, indices, direction="sideways")
+
+
+@pytest.mark.unit
+def test_closed_loop_align_tie_breaks_on_position_error() -> None:
+    assert closed_loop_selection_improves(0.0, 150.0, None, None)
+    assert closed_loop_selection_improves(0.5, 80.0, 0.0, 10.0)
+    assert not closed_loop_selection_improves(0.0, 200.0, 0.5, 80.0)
+    assert closed_loop_selection_improves(0.5, 40.0, 0.5, 80.0)
+    assert not closed_loop_selection_improves(0.5, 80.0, 0.5, 40.0)
+    assert not closed_loop_selection_improves(0.5, 40.0, 0.5, 40.0)
+
+
+@pytest.mark.unit
+def test_closed_loop_val_horizon_matches_scripted_demo() -> None:
+    assert SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS == ScriptedPickAlignPolicy.horizon_steps()
+    assert SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS == 260
 
 
 @pytest.mark.unit

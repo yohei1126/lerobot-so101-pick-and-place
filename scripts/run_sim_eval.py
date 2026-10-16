@@ -18,10 +18,9 @@ if str(REPO_ROOT / "port_pick_align" / "src") not in sys.path:
 from port_pick_align.contract import load_contract
 from port_pick_align.evaluation.eval_alignment import (
     compute_pose_errors,
-    infer_grasp_success,
-    record_sample,
     samples_to_dicts,
     summarize,
+    trial_outcome,
 )
 from port_pick_align.simulation.env import PickAlignSimEnv, box_reset_options
 from port_pick_align.simulation.policies import (
@@ -197,16 +196,16 @@ def run_episode(
     pos_mm, yaw_deg = compute_pose_errors(
         info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
     )
-    grasp = infer_grasp_success(
+    return trial_outcome(
+        position_error_mm=pos_mm,
+        yaw_error_deg=yaw_deg,
+        grasping_now=bool(info.get("grasping", False)),
+        grasped_during=grasped_during,
         box_z=float(info["box_z"]),
         table_z=float(info["table_z"]),
         ee_xy=info["ee_xy"],
         box_xy=info["box_xy"],
     )
-    # Success if lifted during episode, or final pose is near the target frame.
-    near_target = pos_mm < 50.0
-    grasp = bool(grasp or grasped_during or near_target)
-    return record_sample(pos_mm, yaw_deg, grasp)
 
 
 def save_video(frames: list[np.ndarray], path: Path, fps: float = 30.0) -> None:
@@ -334,7 +333,9 @@ def main(argv: list[str] | None = None) -> int:
             samples.append(sample)
             print(
                 f"episode {ep}: pos_mm={sample.position_error_mm:.1f} "
-                f"yaw_deg={sample.yaw_error_deg:.1f} grasp={sample.grasp_success}"
+                f"yaw_deg={sample.yaw_error_deg:.1f} grasp={sample.grasp_success} "
+                f"holding_at_end={sample.holding_at_end} "
+                f"released_on_pad={sample.released_on_pad}"
             )
     finally:
         env.close()

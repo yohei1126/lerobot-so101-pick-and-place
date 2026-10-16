@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy as np
 import pytest
 
 pytest.importorskip("mujoco")
@@ -101,7 +104,6 @@ def test_untrained_checkpoint_temporal_ensemble_steps() -> None:
     """Closed-loop path with ensembling. Weights are random, so success is not expected."""
     pytest.importorskip("torch")
     pytest.importorskip("lerobot")
-    import numpy as np
 
     from port_pick_align.contract import load_contract
     from port_pick_align.simulation.env import PickAlignSimEnv
@@ -131,3 +133,138 @@ def test_untrained_checkpoint_temporal_ensemble_steps() -> None:
         assert len(policy._chunk_history) == 3
     finally:
         env.close()
+
+
+def _scripted_until_grasp(env: Any, seed: int = 0) -> tuple[Any, dict[str, Any], Any]:
+    from port_pick_align.simulation.policies import ScriptedPickAlignPolicy
+
+    policy = ScriptedPickAlignPolicy(chunk_size=30, action_dim=6)
+    policy.set_ik(env.solve_ik)
+    policy.reset()
+    obs, info = env.reset(seed=seed, options={"randomize_box": False, "box_yaw": 0.2})
+    chunk = np.zeros((30, 6), dtype=np.float32)
+    for _ in range(160):
+        chunk = policy.predict(obs, info=info)
+        obs, _, _, _, info = env.step(chunk[0])
+        if info.get("grasping"):
+            return obs, info, chunk[0]
+    raise AssertionError("scripted policy did not attach")
+
+
+@pytest.mark.simulation
+@pytest.mark.unit
+def test_gripper_hysteresis_keeps_carry_and_releases_when_open() -> None:
+    from port_pick_align.contract import load_contract
+    from port_pick_align.simulation.env import (
+        GRIPPER_CLOSE_THRESH,
+        GRIPPER_OPEN_THRESH,
+        PickAlignSimEnv,
+    )
+
+    assert GRIPPER_OPEN_THRESH > GRIPPER_CLOSE_THRESH
+    contract = load_contract()
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=400, render_cameras=False)
+    try:
+        _obs, info, hold = _scripted_until_grasp(env)
+        assert info["grasping"]
+        ambiguous = hold.copy()
+        ambiguous[5] = 0.55
+        for _ in range(5):
+            _obs, _, _, _, info = env.step(ambiguous)
+        assert info["grasping"]
+
+        opened = hold.copy()
+        opened[5] = 1.2
+        _obs, _, _, _, info = env.step(opened)
+        assert not info["grasping"]
+    finally:
+        env.close()
+
+
+@pytest.mark.simulation
+@pytest.mark.unit
+def test_attached_box_orientation_follows_gripper() -> None:
+    from port_pick_align.contract import load_contract
+    from port_pick_align.simulation.env import PickAlignSimEnv
+
+    contract = load_contract()
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=400, render_cameras=False)
+    try:
+        _obs, info, hold = _scripted_until_grasp(env)
+        closed = hold.copy()
+        closed[5] = 0.0
+
+        def relative_yaw() -> float:
+            ee = np.asarray(env.data.site_xmat[env._ee_site_id], dtype=np.float64).reshape(3, 3)
+            box = np.asarray(env.data.xmat[env._box_body_id], dtype=np.float64).reshape(3, 3)
+            rel = ee.T @ box
+            return float(np.arctan2(rel[1, 0], rel[0, 0]))
+
+        yaw0 = relative_yaw()
+        for _ in range(15):
+            _obs, _, _, _, info = env.step(closed)
+        assert info["grasping"]
+        assert abs(relative_yaw() - yaw0) < 0.05
+    finally:
+        env.close()
+
+
+@pytest.mark.simulation
+@pytest.mark.unit
+def test_goal_pose_flag_extends_state_only_when_enabled() -> None:
+    from port_pick_align.contract import load_contract
+    from port_pick_align.simulation.env import PickAlignSimEnv
+
+    contract = load_contract()
+    plain = PickAlignSimEnv(contract=contract, max_episode_steps=2, render_cameras=False)
+    flagged = PickAlignSimEnv(
+        contract=contract,
+        max_episode_steps=2,
+        render_cameras=False,
+        include_goal_in_state=True,
+    )
+    try:
+        obs, _info = plain.reset(seed=0, options={"randomize_box": False, "box_yaw": 0.0})
+        assert obs["state"].shape == (6,)
+        flagged_obs, info = flagged.reset(seed=0, options={"randomize_box": False, "box_yaw": 0.0})
+        assert flagged_obs["state"].shape == (9,)
+        assert flagged_obs["state"][6] == pytest.approx(float(info["target_xy"][0]))
+        assert flagged_obs["state"][7] == pytest.approx(float(info["target_xy"][1]))
+        assert flagged_obs["state"][8] == pytest.approx(float(info["target_yaw"]))
+    finally:
+        plain.close()
+        flagged.close()
+
+
+@pytest.mark.simulation
+@pytest.mark.unit
+def test_scripted_random_20_still_aligns() -> None:
+    """Oracle demos must keep 20/20 after grasp hysteresis and orientation lock."""
+    from port_pick_align.contract import load_contract
+    from port_pick_align.evaluation.eval_alignment import compute_pose_errors, is_align_success
+    from port_pick_align.simulation.env import PickAlignSimEnv
+    from port_pick_align.simulation.policies import ScriptedPickAlignPolicy
+
+    contract = load_contract()
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=260, render_cameras=False)
+    n_align = 0
+    try:
+        for seed in range(20):
+            policy = ScriptedPickAlignPolicy(chunk_size=30, action_dim=6)
+            policy.set_ik(env.solve_ik)
+            policy.reset()
+            obs, info = env.reset(seed=seed, options={"randomize_box": True})
+            for _ in range(260):
+                chunk = policy.predict(obs, info=info)
+                obs, _, terminated, truncated, info = env.step(chunk[0])
+                if terminated or truncated:
+                    break
+            pos_mm, yaw_deg = compute_pose_errors(
+                info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
+            )
+            assert not info["grasping"]
+            if is_align_success(pos_mm, yaw_deg):
+                n_align += 1
+    finally:
+        env.close()
+    assert n_align == 20

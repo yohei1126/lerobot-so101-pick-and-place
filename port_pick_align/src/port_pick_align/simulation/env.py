@@ -26,7 +26,13 @@ DEFAULT_HOME = np.array([0.0, -0.6, 0.9, 0.6, 0.0, 1.2], dtype=np.float32)
 TABLE_Z = 0.42
 BOX_HALF_Z = 0.02
 # Gripper hinge does not pinch fingers; sticky attach approximates grasp when closed.
-GRIPPER_CLOSED_THRESH = 0.45
+# Hysteresis: attach at or below CLOSE, release only at or above OPEN. Commands in
+# between keep the current grasp so a small regression dip during carry does not
+# drop the box. Expert demos command 0.0 (closed) and 1.2 (open).
+GRIPPER_CLOSE_THRESH = 0.45
+GRIPPER_OPEN_THRESH = 0.90
+# Midpoint kept for dataset scans that split the binary expert commands.
+GRIPPER_CLOSED_THRESH = GRIPPER_CLOSE_THRESH
 ATTACH_XY_M = 0.12
 ATTACH_Z_M = 0.15
 
@@ -63,6 +69,7 @@ class PickAlignSimEnv:
         render_height: int | None = None,
         max_episode_steps: int = 300,
         render_cameras: bool = True,
+        include_goal_in_state: bool = False,
     ) -> None:
         import mujoco
 
@@ -74,6 +81,9 @@ class PickAlignSimEnv:
         self.control_hz = float(control_hz)
         self.max_episode_steps = int(max_episode_steps)
         self.render_cameras = bool(render_cameras)
+        # Off by default: the ACT contract state is 6 joint positions. The goal is
+        # shown by the opaque pad. Set this to concatenate goal xy/yaw onto state.
+        self.include_goal_in_state = bool(include_goal_in_state)
 
         path = Path(mjcf_path) if mjcf_path is not None else DEFAULT_MJCF
         self.model = mujoco.MjModel.from_xml_path(str(path))
@@ -99,6 +109,8 @@ class PickAlignSimEnv:
         self._rng = np.random.default_rng()
         self._grasping = False
         self._grasp_offset: np.ndarray | None = None
+        # Box rotation relative to the EE site at the moment of attachment.
+        self._grasp_rot: np.ndarray | None = None
         self._box_placed = False
         self._placed_xy: np.ndarray | None = None
 
@@ -115,6 +127,11 @@ class PickAlignSimEnv:
             import gymnasium as gym
             from gymnasium import spaces
 
+            state_low = self._limits[:, 0]
+            state_high = self._limits[:, 1]
+            if self.include_goal_in_state:
+                state_low = np.concatenate([state_low, [-2.0, -2.0, -np.pi]])
+                state_high = np.concatenate([state_high, [2.0, 2.0, np.pi]])
             self.observation_space = spaces.Dict(
                 {
                     "top": spaces.Box(
@@ -130,9 +147,9 @@ class PickAlignSimEnv:
                         dtype=np.uint8,
                     ),
                     "state": spaces.Box(
-                        self._limits[:, 0],
-                        self._limits[:, 1],
-                        (6,),
+                        state_low.astype(np.float32),
+                        state_high.astype(np.float32),
+                        (int(state_low.shape[0]),),
                         dtype=np.float32,
                     ),
                 }
@@ -177,6 +194,7 @@ class PickAlignSimEnv:
         self._step_count = 0
         self._grasping = False
         self._grasp_offset = None
+        self._grasp_rot = None
         self._box_placed = False
         self._placed_xy = None
 
@@ -289,47 +307,66 @@ class PickAlignSimEnv:
         self.data.qvel[self._box_dof_adr : self._box_dof_adr + 6] = 0.0
         self._mujoco.mj_forward(self.model, self.data)
 
-    def _update_sticky_grasp(self, gripper_cmd: float) -> None:
-        """Attach box to EE while gripper is closed and nearby (demo grasp)."""
-        if gripper_cmd > GRIPPER_CLOSED_THRESH:
-            if self._grasping:
-                # Soft place on/near target; freeze thereafter so retreat cannot kick the box.
-                target_xy = np.asarray(
-                    self.data.site_xpos[self._target_site_id][:2], dtype=np.float64
-                )
-                box_xy = np.asarray(self.data.xpos[self._box_body_id][:2], dtype=np.float64)
-                place_xy = (
-                    target_xy.copy()
-                    if float(np.linalg.norm(box_xy - target_xy)) < 0.10
-                    else box_xy.copy()
-                )
-                self._place_box_on_table(place_xy)
-                self._box_placed = True
-                self._placed_xy = place_xy
-            self._grasping = False
-            self._grasp_offset = None
-            return
+    def _ee_rotation(self) -> np.ndarray:
+        return np.asarray(self.data.site_xmat[self._ee_site_id], dtype=np.float64).reshape(3, 3)
 
+    def _box_near_ee(self) -> bool:
         ee = np.asarray(self.data.site_xpos[self._ee_site_id], dtype=np.float64)
         box = np.asarray(self.data.xpos[self._box_body_id], dtype=np.float64)
-        near = (
+        return (
             float(np.linalg.norm(ee[:2] - box[:2])) <= ATTACH_XY_M
             and abs(float(ee[2] - box[2])) <= ATTACH_Z_M
         )
-        if not self._grasping and not near:
-            return
 
-        if not self._grasping:
-            self._grasping = True
-            # Hold box slightly below EE tip for a compact grasp offset.
-            self._grasp_offset = np.array([0.0, 0.0, -0.02], dtype=np.float64)
+    def _begin_grasp(self) -> None:
+        """Latch a rigid grasp: world XY tracks the EE, orientation stays on the gripper."""
+        ee_mat = self._ee_rotation()
+        box_mat = np.asarray(self.data.xmat[self._box_body_id], dtype=np.float64).reshape(3, 3)
+        self._grasping = True
+        # Zero XY offset so the box center follows the IK target. Z is just under the tip.
+        self._grasp_offset = np.array([0.0, 0.0, -0.02], dtype=np.float64)
+        self._grasp_rot = ee_mat.T @ box_mat
 
-        assert self._grasp_offset is not None
+    def _stick_box_to_ee(self) -> None:
+        assert self._grasp_offset is not None and self._grasp_rot is not None
+        ee = np.asarray(self.data.site_xpos[self._ee_site_id], dtype=np.float64)
         new_pos = ee + self._grasp_offset
+        new_rot = self._ee_rotation() @ self._grasp_rot
+        quat = np.zeros(4, dtype=np.float64)
+        self._mujoco.mju_mat2Quat(quat, np.ascontiguousarray(new_rot, dtype=np.float64).reshape(9))
         adr = self._box_qpos_adr
         self.data.qpos[adr : adr + 3] = new_pos
+        self.data.qpos[adr + 3 : adr + 7] = quat
         self.data.qvel[self._box_dof_adr : self._box_dof_adr + 6] = 0.0
         self._mujoco.mj_forward(self.model, self.data)
+
+    def _release_grasp(self) -> None:
+        """Place on the pad when close; otherwise set the box down where it is."""
+        target_xy = np.asarray(self.data.site_xpos[self._target_site_id][:2], dtype=np.float64)
+        box_xy = np.asarray(self.data.xpos[self._box_body_id][:2], dtype=np.float64)
+        place_xy = (
+            target_xy.copy() if float(np.linalg.norm(box_xy - target_xy)) < 0.10 else box_xy.copy()
+        )
+        self._place_box_on_table(place_xy)
+        self._box_placed = True
+        self._placed_xy = place_xy
+        self._grasping = False
+        self._grasp_offset = None
+        self._grasp_rot = None
+
+    def _update_sticky_grasp(self, gripper_cmd: float) -> None:
+        """Attach while closed and nearby; keep holding until the gripper is clearly open."""
+        if self._grasping:
+            if gripper_cmd >= GRIPPER_OPEN_THRESH:
+                self._release_grasp()
+                return
+            self._stick_box_to_ee()
+            return
+
+        if gripper_cmd > GRIPPER_CLOSE_THRESH or not self._box_near_ee():
+            return
+        self._begin_grasp()
+        self._stick_box_to_ee()
 
     def _joint_positions(self) -> np.ndarray:
         return np.array(
@@ -354,10 +391,16 @@ class PickAlignSimEnv:
             h, w = self.render_height, self.render_width
             top = np.zeros((h, w, 3), dtype=np.uint8)
             wrist = np.zeros((h, w, 3), dtype=np.uint8)
+        state = self._joint_positions()
+        if self.include_goal_in_state:
+            goal_xy, goal_yaw = self.target_pose()
+            state = np.concatenate(
+                [state, np.array([goal_xy[0], goal_xy[1], goal_yaw], dtype=np.float32)]
+            ).astype(np.float32)
         return {
             "top": top,
             "wrist": wrist,
-            "state": self._joint_positions(),
+            "state": state,
         }
 
     def box_pose(self) -> tuple[np.ndarray, float]:

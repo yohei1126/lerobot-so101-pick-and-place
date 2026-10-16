@@ -15,6 +15,7 @@ from port_pick_align.evaluation.eval_alignment import (
     record_sample,
     samples_to_dicts,
     summarize,
+    trial_outcome,
 )
 
 
@@ -23,6 +24,8 @@ def test_empty_summary_keys() -> None:
     summary = empty_summary()
     assert summary["n_samples"] == 0
     assert summary["grasp_success_rate"] == 0.0
+    assert summary["holding_at_end_rate"] == 0.0
+    assert summary["released_on_pad_rate"] == 0.0
     assert summary["align_success_rate"] == 0.0
     assert "mean_position_error_mm" in summary
     assert "mean_abs_yaw_error_deg" in summary
@@ -49,9 +52,17 @@ def test_summarize_success_rate_and_means() -> None:
 
 @pytest.mark.unit
 def test_samples_to_dicts() -> None:
-    sample = record_sample(1.5, -2.0, True)
+    sample = record_sample(1.5, -2.0, True, holding_at_end=True)
     rows = samples_to_dicts([sample])
-    assert rows == [{"position_error_mm": 1.5, "yaw_error_deg": -2.0, "grasp_success": True}]
+    assert rows == [
+        {
+            "position_error_mm": 1.5,
+            "yaw_error_deg": -2.0,
+            "grasp_success": True,
+            "holding_at_end": True,
+            "released_on_pad": False,
+        }
+    ]
 
 
 @pytest.mark.unit
@@ -75,3 +86,36 @@ def test_infer_grasp_and_align() -> None:
         ee_xy=np.array([0.0, 0.0]),
         box_xy=np.array([0.05, 0.0]),
     )
+
+
+@pytest.mark.unit
+def test_trial_outcome_reports_hold_and_release() -> None:
+    held = trial_outcome(
+        position_error_mm=150.0,
+        yaw_error_deg=10.0,
+        grasping_now=True,
+        grasped_during=True,
+        box_z=0.50,
+        table_z=0.42,
+    )
+    assert held.grasp_success
+    assert held.holding_at_end
+    assert not held.released_on_pad
+
+    placed = trial_outcome(
+        position_error_mm=4.0,
+        yaw_error_deg=0.0,
+        grasping_now=False,
+        grasped_during=True,
+        box_z=0.46,
+        table_z=0.42,
+    )
+    assert placed.grasp_success
+    assert not placed.holding_at_end
+    assert placed.released_on_pad
+
+    summary = summarize([held, placed])
+    assert summary["n_holding_at_end"] == 1
+    assert summary["holding_at_end_rate"] == pytest.approx(0.5)
+    assert summary["n_released_on_pad"] == 1
+    assert summary["released_on_pad_rate"] == pytest.approx(0.5)

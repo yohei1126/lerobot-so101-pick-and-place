@@ -33,8 +33,9 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "checkpoints" / "synthetic_act"
 SIM_DATASET_ROOT = REPO_ROOT / "data" / "sim_expert" / "lerobot"
 SIM_OUTPUT_DIR = REPO_ROOT / "checkpoints" / "sim_act"
 CHECKPOINT_NAME = "best_model.pt"
+LAST_CHECKPOINT_NAME = "last.pt"
 RECOMMENDED_MIN_STEPS = 1000
-# Match PickAlignSimEnv sticky-grasp threshold (open ≈ 1.2, closed ≈ 0.0).
+# Dataset scan midpoint between expert open (≈1.2) and closed (≈0.0).
 DEFAULT_GRIPPER_CLOSED_THRESH = 0.45
 DEFAULT_GRIPPER_DIM = 5
 # Sim-preset defaults for grasp-transition emphasis (smoke / explicit None → off/1.0).
@@ -42,7 +43,8 @@ SIM_DEFAULT_GRIPPER_LOSS_WEIGHT = 5.0
 SIM_DEFAULT_TRANSITION_OVERSAMPLE_FACTOR = 5
 SIM_DEFAULT_TRANSITION_OVERSAMPLE_WINDOW = 15
 SIM_DEFAULT_CLOSED_LOOP_VAL_EPISODES = 2
-SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS = 130
+# Full scripted horizon so release and align are visible (eval uses 260).
+SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS = 260
 
 
 def _mps_available() -> bool:
@@ -310,8 +312,16 @@ def find_gripper_transition_indices(
     *,
     gripper_dim: int = DEFAULT_GRIPPER_DIM,
     closed_thresh: float = DEFAULT_GRIPPER_CLOSED_THRESH,
+    direction: str = "open_to_close",
 ) -> list[int]:
-    """Dataset indices where the gripper crosses from open to closed within an episode."""
+    """Dataset indices where the gripper crosses within an episode.
+
+    ``direction`` is ``open_to_close`` (grasp), ``close_to_open`` (release), or ``both``.
+    """
+    if direction not in {"open_to_close", "close_to_open", "both"}:
+        raise ValueError(
+            f"direction must be open_to_close, close_to_open, or both, got {direction!r}"
+        )
     episode_of, grip_of = _episode_and_gripper_series(dataset, indices, gripper_dim=gripper_dim)
     by_episode: dict[int, list[int]] = {}
     for index in indices:
@@ -323,12 +333,13 @@ def find_gripper_transition_indices(
         previous_grip: float | None = None
         for index in ordered:
             grip = grip_of[index]
-            if (
-                previous_grip is not None
-                and previous_grip > closed_thresh
-                and grip <= closed_thresh
-            ):
-                transitions.append(index)
+            if previous_grip is not None:
+                closing = previous_grip > closed_thresh and grip <= closed_thresh
+                opening = previous_grip <= closed_thresh and grip > closed_thresh
+                if closing and direction in {"open_to_close", "both"}:
+                    transitions.append(index)
+                if opening and direction in {"close_to_open", "both"}:
+                    transitions.append(index)
             previous_grip = grip
     return transitions
 
@@ -341,7 +352,7 @@ def oversample_indices_near_transitions(
     window: int,
     factor: int,
 ) -> list[int]:
-    """Repeat frames within ``window`` of each open→close transition ``factor`` times.
+    """Repeat frames within ``window`` of each gripper transition ``factor`` times.
 
     ``factor=1`` leaves ``base_indices`` unchanged. Extra copies are appended so
     ``DataLoader(shuffle=True)`` still sees the full base set once per epoch.
@@ -427,6 +438,8 @@ def _empty_closed_loop_metrics(
         "grasp_success_rate": 0.0,
         "align_success_rate": 0.0,
         "mean_position_error_mm": 0.0,
+        "holding_at_end_rate": 0.0,
+        "released_on_pad_rate": 0.0,
         "n_episodes": float(max(0, episodes)),
         "error": error,
     }
@@ -453,8 +466,8 @@ def evaluate_closed_loop_grasp(
 
     from port_pick_align.evaluation.eval_alignment import (
         compute_pose_errors,
-        infer_grasp_success,
         is_align_success,
+        trial_outcome,
     )
     from port_pick_align.simulation.env import PickAlignSimEnv, box_reset_options
     from port_pick_align.simulation.policies import CheckpointPolicy
@@ -495,6 +508,8 @@ def evaluate_closed_loop_grasp(
         )
         n_grasp = 0
         n_align = 0
+        n_holding = 0
+        n_released = 0
         position_errors: list[float] = []
         for ep in range(episodes):
             wrapped.reset()
@@ -517,28 +532,39 @@ def evaluate_closed_loop_grasp(
                 info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
             )
             position_errors.append(float(pos_mm))
-            grasp = infer_grasp_success(
+            sample = trial_outcome(
+                position_error_mm=pos_mm,
+                yaw_error_deg=yaw_deg,
+                grasping_now=bool(info.get("grasping", False)),
+                grasped_during=grasped_during,
                 box_z=float(info["box_z"]),
                 table_z=float(info["table_z"]),
                 ee_xy=info["ee_xy"],
                 box_xy=info["box_xy"],
             )
-            grasp = bool(grasp or grasped_during or pos_mm < 50.0)
-            if grasp:
+            if sample.grasp_success:
                 n_grasp += 1
+            if sample.holding_at_end:
+                n_holding += 1
+            if sample.released_on_pad:
+                n_released += 1
             if is_align_success(pos_mm, yaw_deg):
                 n_align += 1
         metrics: dict[str, float | str | None] = {
             "grasp_success_rate": float(n_grasp) / float(episodes),
             "align_success_rate": float(n_align) / float(episodes),
             "mean_position_error_mm": (float(np.mean(position_errors)) if position_errors else 0.0),
+            "holding_at_end_rate": float(n_holding) / float(episodes),
+            "released_on_pad_rate": float(n_released) / float(episodes),
             "n_episodes": float(episodes),
             "error": None,
         }
         print(
             f"closed_loop_val end grasp={metrics['grasp_success_rate']} "
             f"align={metrics['align_success_rate']} "
-            f"pos_mm={metrics['mean_position_error_mm']}",
+            f"pos_mm={metrics['mean_position_error_mm']} "
+            f"holding={metrics['holding_at_end_rate']} "
+            f"released_on_pad={metrics['released_on_pad_rate']}",
             flush=True,
         )
         return metrics
@@ -563,6 +589,20 @@ def _arch_from_policy(policy: Any) -> dict[str, Any]:
     return resolve_arch("smoke")
 
 
+def closed_loop_selection_improves(
+    align_rate: float,
+    position_error_mm: float,
+    best_align_rate: float | None,
+    best_position_error_mm: float | None,
+) -> bool:
+    """True when align rate is higher, or equal and position error is lower."""
+    if best_align_rate is None or best_position_error_mm is None:
+        return True
+    if align_rate > best_align_rate:
+        return True
+    return align_rate == best_align_rate and position_error_mm < best_position_error_mm
+
+
 def _save_checkpoint(
     path: Path,
     *,
@@ -574,6 +614,8 @@ def _save_checkpoint(
     device_name: str,
     selection_metric: str,
     closed_loop_grasp_rate: float | None = None,
+    closed_loop_align_rate: float | None = None,
+    closed_loop_position_error_mm: float | None = None,
 ) -> None:
     payload: dict[str, Any] = {
         "model_state_dict": policy.state_dict(),
@@ -587,6 +629,10 @@ def _save_checkpoint(
     }
     if closed_loop_grasp_rate is not None:
         payload["closed_loop_grasp_rate"] = closed_loop_grasp_rate
+    if closed_loop_align_rate is not None:
+        payload["closed_loop_align_rate"] = closed_loop_align_rate
+    if closed_loop_position_error_mm is not None:
+        payload["closed_loop_position_error_mm"] = closed_loop_position_error_mm
     torch.save(payload, path)
 
 
@@ -619,9 +665,11 @@ def train_act(
     """Train ACT and save best_model.pt.
 
     Default selection is lowest validation L1 when a val split exists, else
-    lowest training loss. Pass ``selection_metric='closed_loop_grasp'`` to keep
-    the checkpoint with the highest cheap closed-loop grasp rate (requires
-    ``closed_loop_val_interval > 0``).
+    lowest training loss. Pass ``selection_metric='closed_loop_align'`` to keep
+    the checkpoint with the highest closed-loop align rate, breaking ties by
+    lower position error. ``closed_loop_grasp`` keeps the highest grasp rate.
+    Either closed-loop rule requires ``closed_loop_val_interval > 0``.
+    The final weights are always written to ``last.pt``.
     """
     if steps < 1:
         raise ValueError(f"steps must be >= 1, got {steps}")
@@ -663,14 +711,21 @@ def train_act(
         resolved_selection = "val_l1" if val_data is not None else "train_loss"
     else:
         resolved_selection = selection_metric
-    if resolved_selection not in {"val_l1", "train_loss", "closed_loop_grasp"}:
+    if resolved_selection not in {
+        "val_l1",
+        "train_loss",
+        "closed_loop_grasp",
+        "closed_loop_align",
+    }:
         raise ValueError(
-            f"selection_metric must be val_l1, train_loss, or closed_loop_grasp, "
-            f"got {resolved_selection!r}"
+            "selection_metric must be val_l1, train_loss, closed_loop_grasp, "
+            f"or closed_loop_align, got {resolved_selection!r}"
         )
-    if resolved_selection == "closed_loop_grasp" and closed_loop_val_interval < 1:
+    if resolved_selection in {"closed_loop_grasp", "closed_loop_align"} and (
+        closed_loop_val_interval < 1
+    ):
         raise ValueError(
-            "selection_metric='closed_loop_grasp' requires closed_loop_val_interval >= 1"
+            f"selection_metric={resolved_selection!r} requires closed_loop_val_interval >= 1"
         )
     if resolved_selection == "val_l1" and val_data is None:
         resolved_selection = "train_loss"
@@ -688,7 +743,10 @@ def train_act(
             else list(range(len(train_data)))
         )
         transitions = find_gripper_transition_indices(
-            dataset, base_indices, gripper_dim=gripper_dim
+            dataset,
+            base_indices,
+            gripper_dim=gripper_dim,
+            direction="both",
         )
         n_transition_frames = len(transitions)
         expanded = oversample_indices_near_transitions(
@@ -744,12 +802,14 @@ def train_act(
     output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = output_dir / CHECKPOINT_NAME
 
-    # val_l1 / train_loss: minimize. closed_loop_grasp: maximize.
-    maximize = resolved_selection == "closed_loop_grasp"
+    # val_l1 / train_loss: minimize. closed-loop rates: maximize.
+    maximize = resolved_selection in {"closed_loop_grasp", "closed_loop_align"}
     best_score = float("-inf") if maximize else float("inf")
     best_train_loss = float("inf")
     best_val_l1: float | None = None
     best_closed_loop_grasp: float | None = None
+    best_closed_loop_align: float | None = None
+    best_closed_loop_pos_mm: float | None = None
     history: list[dict[str, float | int | None]] = []
     step = 0
     data_iter = iter(train_loader)
@@ -788,6 +848,9 @@ def train_act(
         closed_loop_grasp: float | None = None
         closed_loop_align: float | None = None
         closed_loop_pos_mm: float | None = None
+        closed_loop_holding: float | None = None
+        closed_loop_released: float | None = None
+        cl_error: str | None = None
         ran_closed_loop = closed_loop_val_interval > 0 and (
             step % closed_loop_val_interval == 0 or step == steps
         )
@@ -804,9 +867,13 @@ def train_act(
             closed_loop_grasp = float(cl_metrics["grasp_success_rate"] or 0.0)
             closed_loop_align = float(cl_metrics["align_success_rate"] or 0.0)
             closed_loop_pos_mm = float(cl_metrics["mean_position_error_mm"] or 0.0)
-            if cl_metrics.get("error"):
+            closed_loop_holding = float(cl_metrics["holding_at_end_rate"] or 0.0)
+            closed_loop_released = float(cl_metrics["released_on_pad_rate"] or 0.0)
+            raw_error = cl_metrics.get("error")
+            cl_error = str(raw_error) if raw_error else None
+            if cl_error:
                 print(
-                    f"closed_loop_val error at step={step}: {cl_metrics['error']}",
+                    f"closed_loop_val error at step={step}: {cl_error}",
                     flush=True,
                 )
 
@@ -819,6 +886,8 @@ def train_act(
             "closed_loop_grasp_rate": closed_loop_grasp,
             "closed_loop_align_rate": closed_loop_align,
             "closed_loop_mean_position_error_mm": closed_loop_pos_mm,
+            "closed_loop_holding_at_end_rate": closed_loop_holding,
+            "closed_loop_released_on_pad_rate": closed_loop_released,
         }
         history.append(record)
 
@@ -832,10 +901,27 @@ def train_act(
         elif (
             resolved_selection == "closed_loop_grasp"
             and closed_loop_grasp is not None
+            and cl_error is None
             and closed_loop_grasp > best_score
         ):
             best_score = closed_loop_grasp
             best_closed_loop_grasp = closed_loop_grasp
+            improved = True
+        elif (
+            resolved_selection == "closed_loop_align"
+            and closed_loop_align is not None
+            and closed_loop_pos_mm is not None
+            and cl_error is None
+            and closed_loop_selection_improves(
+                closed_loop_align,
+                closed_loop_pos_mm,
+                best_closed_loop_align,
+                best_closed_loop_pos_mm,
+            )
+        ):
+            best_score = closed_loop_align
+            best_closed_loop_align = closed_loop_align
+            best_closed_loop_pos_mm = closed_loop_pos_mm
             improved = True
         if improved:
             _save_checkpoint(
@@ -848,6 +934,8 @@ def train_act(
                 device_name=device_name,
                 selection_metric=resolved_selection,
                 closed_loop_grasp_rate=closed_loop_grasp,
+                closed_loop_align_rate=closed_loop_align,
+                closed_loop_position_error_mm=closed_loop_pos_mm,
             )
 
         if lr_scheduler is not None:
@@ -862,14 +950,48 @@ def train_act(
         ):
             val_text = f"{val_l1:.6f}" if val_l1 is not None else "n/a"
             cl_text = f"{closed_loop_grasp:.2f}" if closed_loop_grasp is not None else "n/a"
+            align_text = f"{closed_loop_align:.2f}" if closed_loop_align is not None else "n/a"
+            pos_text = f"{closed_loop_pos_mm:.1f}" if closed_loop_pos_mm is not None else "n/a"
             print(
                 f"step={step:04d}/{steps:04d} train_loss={loss_value:.6f} "
-                f"val_l1={val_text} cl_grasp={cl_text} lr={current_lr:.3e} "
+                f"val_l1={val_text} cl_grasp={cl_text} cl_align={align_text} "
+                f"cl_pos_mm={pos_text} lr={current_lr:.3e} "
                 f"best_{resolved_selection}={best_score:.6f}"
             )
 
+    last_path = output_dir / LAST_CHECKPOINT_NAME
+    _save_checkpoint(
+        last_path,
+        policy=policy,
+        contract=contract,
+        step=step,
+        train_loss=loss_value,
+        val_l1=val_l1 if val_l1 is not None else best_val_l1,
+        device_name=device_name,
+        selection_metric=resolved_selection,
+        closed_loop_grasp_rate=closed_loop_grasp,
+        closed_loop_align_rate=closed_loop_align,
+        closed_loop_position_error_mm=closed_loop_pos_mm,
+    )
+    if not checkpoint_path.is_file():
+        _save_checkpoint(
+            checkpoint_path,
+            policy=policy,
+            contract=contract,
+            step=step,
+            train_loss=loss_value,
+            val_l1=val_l1 if val_l1 is not None else best_val_l1,
+            device_name=device_name,
+            selection_metric=resolved_selection,
+            closed_loop_grasp_rate=closed_loop_grasp,
+            closed_loop_align_rate=closed_loop_align,
+            closed_loop_position_error_mm=closed_loop_pos_mm,
+        )
+
     if resolved_selection == "train_loss":
         reported_best = best_train_loss
+    elif resolved_selection == "closed_loop_align" and best_closed_loop_align is not None:
+        reported_best = best_closed_loop_align
     else:
         reported_best = best_score
     metrics_path = output_dir / "training_metrics.json"
@@ -880,6 +1002,8 @@ def train_act(
         "best_train_loss": best_train_loss,
         "best_val_l1": best_val_l1,
         "best_closed_loop_grasp_rate": best_closed_loop_grasp,
+        "best_closed_loop_align_rate": best_closed_loop_align,
+        "best_closed_loop_position_error_mm": best_closed_loop_pos_mm,
         "selection_metric": resolved_selection,
         "learning_rate": learning_rate,
         "batch_size": batch_size,
@@ -904,6 +1028,7 @@ def train_act(
         "recommended_min_steps": RECOMMENDED_MIN_STEPS,
         "below_recommended_steps": step < RECOMMENDED_MIN_STEPS,
         "checkpoint": str(checkpoint_path),
+        "last_checkpoint": str(last_path),
         "dataset_root": str(dataset_root),
         "device": device_name,
         "repo_id": repo_id,
@@ -1052,7 +1177,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         default=None,
         help=(
-            "Frames before/after open→close gripper transitions to oversample. "
+            "Frames before/after gripper transitions (grasp and release) to oversample. "
             f"Default: {SIM_DEFAULT_TRANSITION_OVERSAMPLE_WINDOW} for --preset sim, else 0."
         ),
     )
@@ -1094,11 +1219,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--selection-metric",
-        choices=("val_l1", "train_loss", "closed_loop_grasp"),
+        choices=("val_l1", "train_loss", "closed_loop_grasp", "closed_loop_align"),
         default=None,
         help=(
-            "Checkpoint selection rule. Default: val_l1 when a val split exists, "
-            "else train_loss. Use closed_loop_grasp to keep the best grasp rate."
+            "Checkpoint selection rule. Default: closed_loop_align for --preset sim "
+            "(align rate, then lower position error); otherwise val_l1 when a val "
+            "split exists, else train_loss."
         ),
     )
     parser.add_argument(
@@ -1144,6 +1270,8 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
         args.transition_oversample_factor = SIM_DEFAULT_TRANSITION_OVERSAMPLE_FACTOR
     if args.closed_loop_val_interval is None:
         args.closed_loop_val_interval = int(args.val_interval)
+    if args.selection_metric is None and int(args.closed_loop_val_interval) > 0:
+        args.selection_metric = "closed_loop_align"
 
 
 def main(argv: list[str] | None = None) -> None:
