@@ -101,7 +101,7 @@
 
 ### 4.3 シミュレーション教示データによる学習
 
-`scripts/collect_sim_dataset.py` は、`PickAlignSimEnv` 上で `ScriptedPickAlignPolicy` をロールアウトし、直方体の初期平面位置とヨー角をランダム化した教示を LeRobotDataset として `data/sim_expert/lerobot/` に書く。観測はシミュレータから BGR（640×480）で取得し、閉ループ推論の色変換と画素順を揃えるため RGB で保存する。各エピソードは `validate_episode` による同期、フレーム間隔、関節可動域、静止判定と、アクションに対する同一の可動域検査を通ったものだけを残す。本収集は 50 以上 100 以下のエピソード、契約解像度、260 ステップである。この条件を満たしたログだけが `official_collection: true` になる。
+`scripts/collect_sim_dataset.py` は、`PickAlignSimEnv` 上で `ScriptedPickAlignPolicy` をロールアウトし、直方体の初期平面位置とヨー角をランダム化した教示を LeRobotDataset として `data/sim_expert/lerobot/` に書く。観測はシミュレータから BGR（640×480）で取得し、閉ループ推論の色変換と画素順を揃えるため RGB で保存する。各エピソードは `validate_episode` による同期、フレーム間隔、関節可動域、静止判定と、アクションに対する同一の可動域検査を通ったものだけを残す。本収集は 50 以上 100 以下のエピソード、契約解像度、260 ステップである。この条件を満たしたログだけが `official_collection: true` になる。現行のスクリプトは運搬中に箱のヨーをパッドへ合わせ、パッド上では開いた静止解放を長く取る。これより前に集めた教示は学習に使わず、取り直す。
 
 学習は次のコマンドで行う。デバイスは MPS、CUDA、CPU の順に選ぶ。検証用に分けたデータでの L1 が最小の重みを `checkpoints/sim_act/best_model.pt` に保存し、ステップごとの訓練損失、検証 L1、学習率を `checkpoints/sim_act/training_metrics.json` に書く。訓練損失は L1 と VAE の KL 項の和であり、検証 L1 とは別の量である。推奨ステップ数は 1,000 以上であり、未満の実行は同ファイルの `below_recommended_steps` が true になる。
 
@@ -121,12 +121,12 @@ python -m port_pick_align.training.train_act \
 
 ### 5.1 評価指標と達成結果
 
-比較プロトコルは、未知の初期配置（平面位置とヨー角のランダム化）、20 エピソード、最大 260 ステップである。整列成功は位置誤差 25 mm 以下かつヨー角誤差 15 deg 以下である。ACT を評価するときは Temporal Ensembling（係数 0.01）を有効にする。入口は `DEVICE=mps ./scripts/run_phase15_benchmark.sh` である。
+比較プロトコルは、未知の初期配置（平面位置とヨー角のランダム化）、20 エピソード、最大 260 ステップである。整列成功は位置誤差 25 mm 以下かつヨー角誤差 15 deg 以下である。達成判定は Temporal Ensembling なしの `n_action_steps=30` で、学習時のチェックポイント選択と同じ実行である。記録は `outputs/eval_sim_act/metrics.json` である。Temporal Ensembling（係数 0.01、毎ステップ再計画）は別指標で、`outputs/eval_sim_act_te/metrics.json` に書き、達成値には使わない。入口は `DEVICE=mps ./scripts/run_phase15_benchmark.sh` である。
 
 | 条件 | 記録 | 整列成功率 | 把持成功率 | 平均位置誤差 (mm) | 平均絶対ヨー角誤差 (deg) |
 | --- | --- | --- | --- | --- | --- |
 | scripted オラクル | 実測。20 試行。CPU。`docs/results/scripted_random_20.json` | 1.0 | 1.0 | 0.0 | 0.0 |
-| ACT + Temporal Ensembling | 未計測。`docs/results/eval_sim_act.pending.json` | 未計測 | 未計測 | 未計測 | 未計測 |
+| ACT chunk30（選択と同じ実行） | 未計測。`docs/results/eval_sim_act.pending.json` | 未計測 | 未計測 | 未計測 | 未計測 |
 
 オラクルの `thresholds_met` は true である。20 試行の位置誤差とヨー角誤差は、ログ上いずれも 0.0 である。ACT の行は測定値が無く、目標値（整列成功率 85% 以上、把持成功率 90% 以上、位置誤差 25 mm 未満、ヨー角誤差 15 deg 未満）を達成値として記入していない。本学習のチェックポイントを得た後、`outputs/eval_sim_act/metrics.json` の `status` が `measured` である `summary` だけをこの行へ転記する。`summary` が null のプレースホルダは転記しない。
 

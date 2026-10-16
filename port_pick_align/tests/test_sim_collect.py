@@ -39,6 +39,8 @@ def _frame(index: int, *, action: np.ndarray | None = None) -> CollectedFrame:
 @pytest.mark.unit
 def test_scripted_horizon_matches_phase_table() -> None:
     assert ScriptedPickAlignPolicy.horizon_steps() == 260
+    closed, opened = ScriptedPickAlignPolicy.pad_gripper_steps()
+    assert opened > closed
 
 
 @pytest.mark.unit

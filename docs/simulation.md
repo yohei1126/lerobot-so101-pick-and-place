@@ -79,6 +79,8 @@ python scripts/run_sim_eval.py --policy checkpoint \
   --checkpoint checkpoints/synthetic_act/best_model.pt --video-mode topdown
 
 # Phase 1.5 本評価。チェックポイントが無いときは失敗し、指標は作らない。
+# 達成判定は n_action_steps=30（Temporal Ensembling なし）で、
+# outputs/eval_sim_act/metrics.json に書く。TE は outputs/eval_sim_act_te/ の別指標。
 # Mac では DEVICE=mps。未計測のプレースホルダは docs/results/eval_sim_act.pending.json。
 DEVICE=mps ./scripts/run_phase15_benchmark.sh
 

@@ -43,7 +43,7 @@ summary = summarize([sample])
 # - summary["align_success_rate"]: 許容閾値（位置 ≤ 25 mm、ヨー角 ≤ 15 deg）に基づく整列成功率
 ```
 
-シミュレータからの自動計測では、[simulation.md](simulation.md) で解説する閉ループ評価スクリプト（`run_sim_eval.py`）から本モジュールが呼び出され、`outputs/eval/metrics.json` に結果が出力される。Phase 1.5 の ACT 本評価は `./scripts/run_phase15_benchmark.sh` が `outputs/eval_sim_act/metrics.json` を書く。チェックポイントが無い状態の記録は [results/eval_sim_act.pending.json](results/eval_sim_act.pending.json) であり、数値は含まない。
+シミュレータからの自動計測では、[simulation.md](simulation.md) で解説する閉ループ評価スクリプト（`run_sim_eval.py`）から本モジュールが呼び出され、`outputs/eval/metrics.json` に結果が出力される。Phase 1.5 の ACT 本評価は `./scripts/run_phase15_benchmark.sh` が chunk30 の結果を `outputs/eval_sim_act/metrics.json` に書く。Temporal Ensembling は `outputs/eval_sim_act_te/metrics.json` の別指標であり、達成判定には使わない。チェックポイントが無い状態の記録は [results/eval_sim_act.pending.json](results/eval_sim_act.pending.json) であり、数値は含まない。
 
 実装ファイル: [`port_pick_align/src/port_pick_align/evaluation/eval_alignment.py`](../port_pick_align/src/port_pick_align/evaluation/eval_alignment.py)
 

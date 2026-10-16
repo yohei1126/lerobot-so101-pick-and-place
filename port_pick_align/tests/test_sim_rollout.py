@@ -74,6 +74,8 @@ def test_scripted_pick_align_success() -> None:
         action_dim=int(contract["model"]["action_dim"]),
     )
     policy.set_ik(env.solve_ik)
+    policy.set_transport_plan(env.plan_transport_joints)
+    policy.set_transport_retarget(env.retarget_transport_joints)
     policy.reset()
     try:
         obs, info = env.reset(seed=0, options={"randomize_box": False, "box_yaw": 0.0})
@@ -140,6 +142,8 @@ def _scripted_until_grasp(env: Any, seed: int = 0) -> tuple[Any, dict[str, Any],
 
     policy = ScriptedPickAlignPolicy(chunk_size=30, action_dim=6)
     policy.set_ik(env.solve_ik)
+    policy.set_transport_plan(env.plan_transport_joints)
+    policy.set_transport_retarget(env.retarget_transport_joints)
     policy.reset()
     obs, info = env.reset(seed=seed, options={"randomize_box": False, "box_yaw": 0.2})
     chunk = np.zeros((30, 6), dtype=np.float32)
@@ -239,7 +243,11 @@ def test_goal_pose_flag_extends_state_only_when_enabled() -> None:
 @pytest.mark.simulation
 @pytest.mark.unit
 def test_scripted_random_20_still_aligns() -> None:
-    """Oracle demos must keep 20/20 after grasp hysteresis and orientation lock."""
+    """Oracle demos must keep 20/20, and the box must face the pad before release.
+
+    Final yaw is snapped to 0 when the gripper opens near the pad, so the
+    carried yaw is read on the last step that is still grasping.
+    """
     from port_pick_align.contract import load_contract
     from port_pick_align.evaluation.eval_alignment import compute_pose_errors, is_align_success
     from port_pick_align.simulation.env import PickAlignSimEnv
@@ -252,17 +260,34 @@ def test_scripted_random_20_still_aligns() -> None:
         for seed in range(20):
             policy = ScriptedPickAlignPolicy(chunk_size=30, action_dim=6)
             policy.set_ik(env.solve_ik)
+            policy.set_transport_plan(env.plan_transport_joints)
+            policy.set_transport_retarget(env.retarget_transport_joints)
             policy.reset()
             obs, info = env.reset(seed=seed, options={"randomize_box": True})
+            states: list[np.ndarray] = []
+            held_yaw_deg: float | None = None
+            held_pos_mm: float | None = None
             for _ in range(260):
                 chunk = policy.predict(obs, info=info)
+                states.append(np.asarray(obs["state"], dtype=np.float64).copy())
                 obs, _, terminated, truncated, info = env.step(chunk[0])
+                if info.get("grasping"):
+                    held_pos_mm, held_yaw_deg = compute_pose_errors(
+                        info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
+                    )
                 if terminated or truncated:
                     break
             pos_mm, yaw_deg = compute_pose_errors(
                 info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
             )
             assert not info["grasping"]
+            assert held_yaw_deg is not None and held_pos_mm is not None
+            assert held_pos_mm <= 25.0, f"seed {seed} still {held_pos_mm:.1f} mm from the pad"
+            # Wrist limits leave about 18 deg on the worst of these 20 spawns.
+            # Release still snaps yaw to 0. This bound is the carried pose.
+            assert abs(held_yaw_deg) <= 19.0, f"seed {seed} carried yaw {held_yaw_deg:.1f} deg"
+            state_var = float(np.mean(np.var(np.stack(states, axis=0), axis=0)))
+            assert state_var >= 1.0e-4
             if is_align_success(pos_mm, yaw_deg):
                 n_align += 1
     finally:

@@ -4,7 +4,7 @@
 
 ## 未実行: 学習済み ACT
 
-`eval_sim_act.pending.json` は Task 7.4 の本評価がまだ無いことを示す。本学習で `checkpoints/sim_act/best_model.pt` を得た後、次を実行する。成果物は Git 管理外の `outputs/eval_sim_act/` に書かれる。
+`eval_sim_act.pending.json` は Task 7.4 の本評価がまだ無いことを示す。本学習で `checkpoints/sim_act/best_model.pt` を得た後、次を実行する。達成判定用の成果物は Git 管理外の `outputs/eval_sim_act/`（`n_action_steps=30`、Temporal Ensembling なし）に書かれる。Temporal Ensembling は `outputs/eval_sim_act_te/` の別指標である。
 
 ```bash
 DEVICE=mps ./scripts/run_phase15_benchmark.sh
