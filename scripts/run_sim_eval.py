@@ -234,17 +234,13 @@ def run_episode(
     )
     # Attach open-vs-distance diagnostics for JSON (not part of AlignmentSample).
     sample_dict = {
-        **{
-            "position_error_mm": sample.position_error_mm,
-            "yaw_error_deg": sample.yaw_error_deg,
-            "grasp_success": sample.grasp_success,
-            "holding_at_end": sample.holding_at_end,
-            "released_on_pad": sample.released_on_pad,
-            "final_box_xy": list(sample.final_box_xy)
-            if sample.final_box_xy is not None
-            else None,
-            "pad_xy": list(sample.pad_xy) if sample.pad_xy is not None else None,
-        },
+        "position_error_mm": sample.position_error_mm,
+        "yaw_error_deg": sample.yaw_error_deg,
+        "grasp_success": sample.grasp_success,
+        "holding_at_end": sample.holding_at_end,
+        "released_on_pad": sample.released_on_pad,
+        "final_box_xy": list(sample.final_box_xy) if sample.final_box_xy is not None else None,
+        "pad_xy": list(sample.pad_xy) if sample.pad_xy is not None else None,
         "open_while_holding": open_events,
         "n_open_outside_gate": sum(
             1 for event in open_events if not event["inside_release_gate"]
