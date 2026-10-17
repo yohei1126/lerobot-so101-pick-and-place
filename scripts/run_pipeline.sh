@@ -457,6 +457,7 @@ for p in sorted(eval_root.glob("step_*")):
     if p.is_dir():
         order.append(p.name)
 
+all_initial_xy = []
 for stem in order:
     for mode, label in (("chunk30", f"chunk{n_action_steps}"), ("te", "TE")):
         metrics_path = eval_root / stem / mode / "metrics.json"
@@ -464,6 +465,10 @@ for stem in order:
             continue
         data = json.loads(metrics_path.read_text(encoding="utf-8"))
         summary = data.get("summary") or {}
+        for sample in data.get("samples") or []:
+            xy = sample.get("initial_box_xy")
+            if xy is not None and len(xy) >= 2:
+                all_initial_xy.append((float(xy[0]), float(xy[1])))
         rows.append(
             {
                 "checkpoint": stem,
@@ -476,6 +481,19 @@ for stem in order:
             }
         )
 
+if all_initial_xy:
+    xs = [xy[0] for xy in all_initial_xy]
+    ys = [xy[1] for xy in all_initial_xy]
+    unique_xy = len({(round(x, 6), round(y, 6)) for x, y in all_initial_xy})
+    initial_pose_line = (
+        f"- Initial box XY spread: "
+        f"x=[{min(xs):.4f}, {max(xs):.4f}], "
+        f"y=[{min(ys):.4f}, {max(ys):.4f}], "
+        f"unique={unique_xy}/{len(all_initial_xy)}"
+    )
+else:
+    initial_pose_line = "- Initial box XY spread: — (no initial_box_xy in metrics)"
+
 lines = [
     f"# Pipeline results: `{run_name}`",
     "",
@@ -483,6 +501,7 @@ lines = [
     f"- Eval episodes per cell: {eval_episodes}",
     f"- Chunk mode: `n_action_steps={n_action_steps}` (Temporal Ensembling off)",
     f"- TE mode: temporal ensembling on (`n_action_steps=1`)",
+    initial_pose_line,
     "",
     "| Checkpoint | Mode | Align rate | Mean pos err (mm) | Median pos err (mm) | Grasp rate |",
     "| --- | --- | ---: | ---: | ---: | ---: |",

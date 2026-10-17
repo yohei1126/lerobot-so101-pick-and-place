@@ -169,6 +169,10 @@ def run_episode(
     obs, info = env.reset(
         seed=seed, options=box_reset_options(randomize_box=randomize_box)
     )
+    initial_box_xy = [
+        float(v) for v in np.asarray(info["box_xy"], dtype=np.float64).reshape(2)
+    ]
+    initial_box_yaw = float(info["box_yaw"])
     grasped_during = bool(info.get("grasping", False))
     chunk: np.ndarray | None = None
     chunk_i = 0
@@ -232,16 +236,22 @@ def run_episode(
         box_xy=info["box_xy"],
         pad_xy=info["target_xy"],
     )
+    final_box_yaw = float(info["box_yaw"])
     # Attach open-vs-distance diagnostics for JSON (not part of AlignmentSample).
     sample_dict = {
         "position_error_mm": sample.position_error_mm,
         "yaw_error_deg": sample.yaw_error_deg,
+        "yaw_err_deg": sample.yaw_error_deg,
         "grasp_success": sample.grasp_success,
         "holding_at_end": sample.holding_at_end,
         "released_on_pad": sample.released_on_pad,
+        "seed": int(seed),
+        "initial_box_xy": initial_box_xy,
+        "initial_box_yaw": initial_box_yaw,
         "final_box_xy": list(sample.final_box_xy)
         if sample.final_box_xy is not None
         else None,
+        "final_box_yaw": final_box_yaw,
         "pad_xy": list(sample.pad_xy) if sample.pad_xy is not None else None,
         "open_while_holding": open_events,
         "n_open_outside_gate": sum(
