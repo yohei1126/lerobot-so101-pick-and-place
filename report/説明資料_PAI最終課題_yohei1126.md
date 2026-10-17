@@ -101,7 +101,7 @@
 
 ### 4.3 シミュレーション教示データによる学習
 
-`scripts/collect_sim_dataset.py` は、`PickAlignSimEnv` 上で `ScriptedPickAlignPolicy` をロールアウトし、直方体の初期平面位置とヨー角をランダム化した教示を LeRobotDataset として `data/sim_expert/lerobot/` に書く。観測はシミュレータから BGR（640×480）で取得し、閉ループ推論の色変換と画素順を揃えるため RGB で保存する。各エピソードは `validate_episode` による同期、フレーム間隔、関節可動域、静止判定と、アクションに対する同一の可動域検査を通ったものだけを残す。本収集は 50 以上 100 以下のエピソード、契約解像度、260 ステップである。この条件を満たしたログだけが `official_collection: true` になる。現行のスクリプトは運搬中に箱のヨーをパッドへ合わせ、パッド上では開いた静止解放を長く取る。これより前に集めた教示は学習に使わず、取り直す。
+`scripts/collect_sim_dataset.py` は、`PickAlignSimEnv` 上で `ScriptedPickAlignPolicy` をロールアウトし、直方体の初期平面位置とヨー角をランダム化した教示を LeRobotDataset として `data/sim_expert/lerobot/` に書く。観測はシミュレータから BGR（640×480）で取得し、閉ループ推論の色変換と画素順を揃えるため RGB で保存する。各エピソードは `validate_episode` による同期、フレーム間隔、関節可動域、静止判定と、アクションに対する同一の可動域検査を通ったものだけを残す。本収集は 50 以上 100 以下のエピソード、契約解像度、260 ステップである。この条件を満たしたログだけが `official_collection: true` になる。現行のスクリプトは運搬中に箱のヨーをパッドへ合わせ、パッド手前ではチャンク長以上の閉じた approach で降下し、パッド上では開いた静止解放を長く取る。解放はパッド近傍に限る。これより前に集めた教示は学習に使わず、取り直す。
 
 学習は次のコマンドで行う。デバイスは MPS、CUDA、CPU の順に選ぶ。検証用に分けたデータでの L1 が最小の重みを `checkpoints/sim_act/best_model.pt` に保存し、ステップごとの訓練損失、検証 L1、学習率を `checkpoints/sim_act/training_metrics.json` に書く。訓練損失は L1 と VAE の KL 項の和であり、検証 L1 とは別の量である。推奨ステップ数は 1,000 以上であり、未満の実行は同ファイルの `below_recommended_steps` が true になる。
 

@@ -143,6 +143,13 @@ class ScriptedPickAlignPolicy:
     weight does not change that mean, and lowering the threshold would also open
     on smeared carry commands.
 
+    Late carry also needs a long closed approach before that open. With
+    ``n_action_steps=30``, a short closed place lets one chunk open while the box
+    is still 11–14 cm short of the pad. An approach longer than the chunk keeps
+    those predictions closed until a replan over the pad. The approach uses IK at
+    an intermediate height so the arm keeps descending instead of freezing on the
+    high carry joints.
+
     Wrist targets are planned once, from the home posture, and then commanded as
     those joint vectors. A later IK seeded from the carried posture would not
     match the orientation the search measured. The grasp vector is held until the
@@ -150,18 +157,21 @@ class ScriptedPickAlignPolicy:
     pad during transport.
     """
 
-    # Durations sum to the closed-loop horizon (260). Grasp/lift stay long enough
-    # to attach and clear the table; the pad dwell is open, not closed.
+    # Durations sum to the closed-loop horizon (260). Approach is longer than the
+    # ACT chunk so closed transport fills a full chunk before the open dwell.
     _PHASES: tuple[PhaseSpec, ...] = (
-        ("hover", 32, "box", 0.13, 1.2, "pregrasp"),
-        ("descend", 28, "box", 0.055, 1.2, "grasp"),
-        ("grasp", 25, "box", 0.055, 0.0, "grasp"),
-        ("lift", 25, "box", 0.15, 0.0, "pregrasp_transport"),
-        ("carry", 40, "target", 0.15, 0.0, "carry"),
-        ("place", 12, "target", 0.06, 0.0, "place"),
-        ("release", 63, "target", 0.06, 1.2, "place"),
+        ("hover", 28, "box", 0.13, 1.2, "pregrasp"),
+        ("descend", 26, "box", 0.055, 1.2, "grasp"),
+        ("grasp", 24, "box", 0.055, 0.0, "grasp"),
+        ("lift", 22, "box", 0.15, 0.0, "pregrasp_transport"),
+        ("carry", 45, "target", 0.15, 0.0, "carry"),
+        # Closed descend over the pad path (IK + carry wrist). z_off > 0.08 so
+        # pad_gripper_steps does not count these as settled pad labels.
+        ("approach", 32, "target", 0.10, 0.0, "pregrasp_transport"),
+        ("place", 8, "target", 0.06, 0.0, "place"),
+        ("release", 48, "target", 0.06, 1.2, "place"),
         # Retreat toward home-ish XY so the arm does not shove the placed box.
-        ("retreat", 35, "home", 0.16, 1.2, "pregrasp_transport"),
+        ("retreat", 27, "home", 0.16, 1.2, "pregrasp_transport"),
     )
 
     def __init__(self, chunk_size: int = 30, action_dim: int = 6) -> None:

@@ -33,6 +33,7 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "checkpoints" / "synthetic_act"
 SIM_DATASET_ROOT = REPO_ROOT / "data" / "sim_expert" / "lerobot"
 SIM_OUTPUT_DIR = REPO_ROOT / "checkpoints" / "sim_act"
 CHECKPOINT_NAME = "best_model.pt"
+CHECKPOINT_TE_NAME = "best_model_te.pt"
 LAST_CHECKPOINT_NAME = "last.pt"
 RECOMMENDED_MIN_STEPS = 1000
 # Dataset scan midpoint between expert open (≈1.2) and closed (≈0.0).
@@ -50,6 +51,14 @@ SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS = 260
 # Selection rollouts execute this many chunk steps between replans. Temporal
 # ensembling is logged beside it and does not choose best_model.pt.
 CLOSED_LOOP_SELECTION_N_ACTION_STEPS = 30
+# Keep mid-run weights: late training can erase grasp (last @5000 → 0%).
+SIM_DEFAULT_CHECKPOINT_INTERVAL = 500
+# Closed-loop pulses without selection improvement before stopping (0 = off).
+# At interval 100, patience 10 ≈ 1000 steps after the best chunk30 pulse.
+SIM_DEFAULT_EARLY_STOP_PATIENCE = 10
+# Cosine floor as a fraction of peak LR. 0.01 left updates too weak after the
+# mid-run peak; 0.1 keeps a usable step size until early stop.
+COSINE_ETA_MIN_RATIO = 0.1
 
 
 def _mps_available() -> bool:
@@ -633,6 +642,8 @@ def _save_checkpoint(
     closed_loop_grasp_rate: float | None = None,
     closed_loop_align_rate: float | None = None,
     closed_loop_position_error_mm: float | None = None,
+    closed_loop_te_align_rate: float | None = None,
+    closed_loop_te_position_error_mm: float | None = None,
 ) -> None:
     payload: dict[str, Any] = {
         "model_state_dict": policy.state_dict(),
@@ -650,6 +661,10 @@ def _save_checkpoint(
         payload["closed_loop_align_rate"] = closed_loop_align_rate
     if closed_loop_position_error_mm is not None:
         payload["closed_loop_position_error_mm"] = closed_loop_position_error_mm
+    if closed_loop_te_align_rate is not None:
+        payload["closed_loop_te_align_rate"] = closed_loop_te_align_rate
+    if closed_loop_te_position_error_mm is not None:
+        payload["closed_loop_te_position_error_mm"] = closed_loop_te_position_error_mm
     torch.save(payload, path)
 
 
@@ -679,6 +694,8 @@ def train_act(
     closed_loop_n_action_steps: int = CLOSED_LOOP_SELECTION_N_ACTION_STEPS,
     closed_loop_te_episodes: int = 0,
     selection_metric: str | None = None,
+    checkpoint_interval: int = 0,
+    early_stop_patience: int = 0,
 ) -> Path:
     """Train ACT and save best_model.pt.
 
@@ -689,9 +706,11 @@ def train_act(
     30) and temporal ensembling off. ``closed_loop_grasp`` keeps the highest
     grasp rate on the same rollout. Either closed-loop rule requires
     ``closed_loop_val_interval > 0``. When ``closed_loop_te_episodes > 0``, the
-    same pulse also logs a temporal-ensemble rollout; those numbers are not
-    compared when saving ``best_model.pt``. The final weights are always
-    written to ``last.pt``.
+    same pulse also logs a temporal-ensemble rollout and saves the best TE
+    weights to ``best_model_te.pt``; TE does not choose ``best_model.pt``.
+    ``checkpoint_interval > 0`` writes ``step_XXXXX.pt`` every N steps.
+    ``early_stop_patience > 0`` stops after that many closed-loop pulses without
+    a selection improvement. The final weights are always written to ``last.pt``.
     """
     if steps < 1:
         raise ValueError(f"steps must be >= 1, got {steps}")
@@ -721,6 +740,10 @@ def train_act(
         raise ValueError(
             f"closed_loop_n_action_steps must be >= 1, got {closed_loop_n_action_steps}"
         )
+    if checkpoint_interval < 0:
+        raise ValueError(f"checkpoint_interval must be >= 0, got {checkpoint_interval}")
+    if early_stop_patience < 0:
+        raise ValueError(f"early_stop_patience must be >= 0, got {early_stop_patience}")
 
     validate_contract(contract)
     device_name = resolve_device(device)
@@ -797,7 +820,7 @@ def train_act(
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
             T_max=steps,
-            eta_min=learning_rate * 0.01,
+            eta_min=learning_rate * COSINE_ETA_MIN_RATIO,
         )
     else:
         lr_scheduler = None
@@ -829,6 +852,7 @@ def train_act(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = output_dir / CHECKPOINT_NAME
+    te_checkpoint_path = output_dir / CHECKPOINT_TE_NAME
 
     # val_l1 / train_loss: minimize. closed-loop rates: maximize.
     maximize = resolved_selection in {"closed_loop_grasp", "closed_loop_align"}
@@ -838,8 +862,12 @@ def train_act(
     best_closed_loop_grasp: float | None = None
     best_closed_loop_align: float | None = None
     best_closed_loop_pos_mm: float | None = None
+    best_te_align: float | None = None
+    best_te_pos_mm: float | None = None
     selected_te_align: float | None = None
     selected_te_pos_mm: float | None = None
+    pulses_without_improvement = 0
+    stopped_early = False
     history: list[dict[str, float | int | None]] = []
     if closed_loop_val_interval > 0:
         print(
@@ -848,7 +876,10 @@ def train_act(
             f"exec=n_action_steps_{int(closed_loop_n_action_steps)} "
             "temporal_ensemble=off "
             f"episodes={int(closed_loop_val_episodes)} "
-            f"te_episodes={int(closed_loop_te_episodes)} (logged only)",
+            f"te_episodes={int(closed_loop_te_episodes)} "
+            f"(best TE → {CHECKPOINT_TE_NAME}) "
+            f"checkpoint_interval={int(checkpoint_interval)} "
+            f"early_stop_patience={int(early_stop_patience)}",
             flush=True,
         )
     step = 0
@@ -1001,6 +1032,7 @@ def train_act(
             selected_te_pos_mm = te_pos_mm
             improved = True
         if improved:
+            pulses_without_improvement = 0
             _save_checkpoint(
                 checkpoint_path,
                 policy=policy,
@@ -1013,6 +1045,57 @@ def train_act(
                 closed_loop_grasp_rate=closed_loop_grasp,
                 closed_loop_align_rate=closed_loop_align,
                 closed_loop_position_error_mm=closed_loop_pos_mm,
+                closed_loop_te_align_rate=te_align,
+                closed_loop_te_position_error_mm=te_pos_mm,
+            )
+        elif ran_closed_loop and cl_error is None and early_stop_patience > 0:
+            pulses_without_improvement += 1
+
+        te_improved = (
+            te_align is not None
+            and te_pos_mm is not None
+            and closed_loop_selection_improves(
+                te_align,
+                te_pos_mm,
+                best_te_align,
+                best_te_pos_mm,
+            )
+        )
+        if te_improved:
+            best_te_align = te_align
+            best_te_pos_mm = te_pos_mm
+            _save_checkpoint(
+                te_checkpoint_path,
+                policy=policy,
+                contract=contract,
+                step=step,
+                train_loss=loss_value,
+                val_l1=val_l1 if val_l1 is not None else best_val_l1,
+                device_name=device_name,
+                selection_metric="closed_loop_te_align",
+                closed_loop_grasp_rate=te_grasp,
+                closed_loop_align_rate=closed_loop_align,
+                closed_loop_position_error_mm=closed_loop_pos_mm,
+                closed_loop_te_align_rate=te_align,
+                closed_loop_te_position_error_mm=te_pos_mm,
+            )
+
+        if checkpoint_interval > 0 and step % checkpoint_interval == 0 and step != steps:
+            periodic_path = output_dir / f"step_{step:05d}.pt"
+            _save_checkpoint(
+                periodic_path,
+                policy=policy,
+                contract=contract,
+                step=step,
+                train_loss=loss_value,
+                val_l1=val_l1 if val_l1 is not None else best_val_l1,
+                device_name=device_name,
+                selection_metric=resolved_selection,
+                closed_loop_grasp_rate=closed_loop_grasp,
+                closed_loop_align_rate=closed_loop_align,
+                closed_loop_position_error_mm=closed_loop_pos_mm,
+                closed_loop_te_align_rate=te_align,
+                closed_loop_te_position_error_mm=te_pos_mm,
             )
 
         if lr_scheduler is not None:
@@ -1038,6 +1121,21 @@ def train_act(
                 f"lr={current_lr:.3e} best_{resolved_selection}={best_score:.6f}"
             )
 
+        if (
+            early_stop_patience > 0
+            and ran_closed_loop
+            and cl_error is None
+            and pulses_without_improvement >= early_stop_patience
+        ):
+            stopped_early = True
+            print(
+                f"early stop at step={step}: no {resolved_selection} improvement for "
+                f"{pulses_without_improvement} closed-loop pulses "
+                f"(patience={early_stop_patience})",
+                flush=True,
+            )
+            break
+
     last_path = output_dir / LAST_CHECKPOINT_NAME
     _save_checkpoint(
         last_path,
@@ -1051,6 +1149,8 @@ def train_act(
         closed_loop_grasp_rate=closed_loop_grasp,
         closed_loop_align_rate=closed_loop_align,
         closed_loop_position_error_mm=closed_loop_pos_mm,
+        closed_loop_te_align_rate=te_align,
+        closed_loop_te_position_error_mm=te_pos_mm,
     )
     if not checkpoint_path.is_file():
         _save_checkpoint(
@@ -1065,6 +1165,8 @@ def train_act(
             closed_loop_grasp_rate=closed_loop_grasp,
             closed_loop_align_rate=closed_loop_align,
             closed_loop_position_error_mm=closed_loop_pos_mm,
+            closed_loop_te_align_rate=te_align,
+            closed_loop_te_position_error_mm=te_pos_mm,
         )
 
     if resolved_selection == "train_loss":
@@ -1077,12 +1179,15 @@ def train_act(
     metrics = {
         "result": "PASS",
         "steps": step,
+        "stopped_early": stopped_early,
         "best_loss": reported_best,
         "best_train_loss": best_train_loss,
         "best_val_l1": best_val_l1,
         "best_closed_loop_grasp_rate": best_closed_loop_grasp,
         "best_closed_loop_align_rate": best_closed_loop_align,
         "best_closed_loop_position_error_mm": best_closed_loop_pos_mm,
+        "best_closed_loop_te_align_rate": best_te_align,
+        "best_closed_loop_te_position_error_mm": best_te_pos_mm,
         "selection_metric": resolved_selection,
         "closed_loop_selection_exec": f"n_action_steps_{int(closed_loop_n_action_steps)}",
         "closed_loop_te_used_for_selection": False,
@@ -1094,6 +1199,7 @@ def train_act(
         "val_interval": val_interval,
         "max_val_batches": max_val_batches,
         "scheduler": scheduler,
+        "cosine_eta_min_ratio": COSINE_ETA_MIN_RATIO if scheduler == "cosine" else None,
         "gripper_loss_weight": gripper_loss_weight,
         "gripper_dim": gripper_dim,
         "transition_oversample_window": transition_oversample_window,
@@ -1105,6 +1211,8 @@ def train_act(
         "closed_loop_val_max_steps": closed_loop_val_max_steps,
         "closed_loop_n_action_steps": closed_loop_n_action_steps,
         "closed_loop_te_episodes": closed_loop_te_episodes,
+        "checkpoint_interval": checkpoint_interval,
+        "early_stop_patience": early_stop_patience,
         "n_train": len(train_data),
         "n_val": 0 if val_data is None else len(val_data),
         "n_train_episodes": n_train_episodes,
@@ -1112,6 +1220,7 @@ def train_act(
         "recommended_min_steps": RECOMMENDED_MIN_STEPS,
         "below_recommended_steps": step < RECOMMENDED_MIN_STEPS,
         "checkpoint": str(checkpoint_path),
+        "te_checkpoint": str(te_checkpoint_path) if te_checkpoint_path.is_file() else None,
         "last_checkpoint": str(last_path),
         "dataset_root": str(dataset_root),
         "device": device_name,
@@ -1329,6 +1438,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=None,
+        help=(
+            "Write step_XXXXX.pt every N steps (0 = off). "
+            f"Default: {SIM_DEFAULT_CHECKPOINT_INTERVAL} for --preset sim, else 0."
+        ),
+    )
+    parser.add_argument(
+        "--early-stop-patience",
+        type=int,
+        default=None,
+        help=(
+            "Stop after this many closed-loop pulses without a selection-metric "
+            "improvement (0 = off). "
+            f"Default: {SIM_DEFAULT_EARLY_STOP_PATIENCE} for --preset sim when "
+            "closed-loop validation is on, else 0."
+        ),
+    )
+    parser.add_argument(
         "--infer-only",
         action="store_true",
         help="Skip training and only run inference smoke from existing checkpoint.",
@@ -1356,6 +1485,10 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
             args.closed_loop_val_interval = 0
         if args.closed_loop_te_episodes is None:
             args.closed_loop_te_episodes = 0
+        if args.checkpoint_interval is None:
+            args.checkpoint_interval = 0
+        if args.early_stop_patience is None:
+            args.early_stop_patience = 0
         return
     if args.dataset_root == DEFAULT_DATASET_ROOT:
         args.dataset_root = SIM_DATASET_ROOT
@@ -1380,6 +1513,13 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
             args.closed_loop_te_episodes = int(args.closed_loop_val_episodes)
         else:
             args.closed_loop_te_episodes = 0
+    if args.checkpoint_interval is None:
+        args.checkpoint_interval = SIM_DEFAULT_CHECKPOINT_INTERVAL
+    if args.early_stop_patience is None:
+        if int(args.closed_loop_val_interval) > 0:
+            args.early_stop_patience = SIM_DEFAULT_EARLY_STOP_PATIENCE
+        else:
+            args.early_stop_patience = 0
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -1416,6 +1556,8 @@ def main(argv: list[str] | None = None) -> None:
             closed_loop_n_action_steps=int(args.closed_loop_n_action_steps),
             closed_loop_te_episodes=int(args.closed_loop_te_episodes),
             selection_metric=args.selection_metric,
+            checkpoint_interval=int(args.checkpoint_interval),
+            early_stop_patience=int(args.early_stop_patience),
         )
         print(f"Saved checkpoint: {checkpoint_path}")
 

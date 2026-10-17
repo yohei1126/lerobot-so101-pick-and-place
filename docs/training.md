@@ -44,9 +44,9 @@ python -m port_pick_align.training.train_act \
 #   checkpoints/sim_act/training_metrics.json
 ```
 
-`--preset sim` はチェックポイントを閉ループ整列率で選ぶ。実行は `n_action_steps=30`（Temporal Ensembling なし）で、検証エピソード数の既定は 10（`--closed-loop-val-episodes` で 10〜20 に変える）。同じ間隔で Temporal Ensembling の整列率と位置誤差を別指標としてログする。この指標は `best_model.pt` の選択に使わない。無効にするときは `--closed-loop-te-episodes 0`。
+`--preset sim` はチェックポイントを閉ループ整列率で選ぶ。実行は `n_action_steps=30`（Temporal Ensembling なし）で、検証エピソード数の既定は 10（`--closed-loop-val-episodes` で 10〜20 に変える）。同じ間隔で Temporal Ensembling の整列率と位置誤差を別指標としてログし、最良の TE 重みを `best_model_te.pt` に保存する。TE は `best_model.pt` の選択には使わない。無効にするときは `--closed-loop-te-episodes 0`。500 step ごとに `step_XXXXX.pt` を残し、閉ループ選択が 10 パルス改善しなければ早期終了する（`--checkpoint-interval` / `--early-stop-patience` で変更。0 でオフ）。コサイン減衰の下限はピーク LR の 10% である。
 
-グリッパ損失の重みは 5 のままである。パッド姿勢では閉じたプレースと開いた解放が同じ腕の目標を共有し、L1 はグリッパ次元の条件付き平均へ寄る。重みを上げても平均は動かない。解放閾値 0.90 も変えない。中間の指令で運搬中に箱を落とすためである。教示側で、パッド高さの静止区間を開いた解放に偏らせる。
+グリッパ損失の重みは 5 のままである。パッド姿勢では閉じたプレースと開いた解放が同じ腕の目標を共有し、L1 はグリッパ次元の条件付き平均へ寄る。重みを上げても平均は動かない。解放閾値 0.90 も変えない。中間の指令で運搬中に箱を落とすためである。シミュレータは開指令でもパッド近傍（10 cm 以内）になるまで解放しない。教示側では、チャンク長を超える閉じた approach のあとに開いた静止解放を置く。
 
 メモリが不足する場合は `--batch-size` を下げる。CPU でのループ確認例（本学習の代替ではない）:
 
@@ -62,7 +62,11 @@ python -m port_pick_align.training.train_act \
 
 ## Issue #39 以降の再収集と再学習
 
-教示軌道を変えた。運搬中（lift / carry / place）に箱のヨーをパッドへ合わせ、パッド高さでは短い閉じたプレースのあとに長い開いた静止解放を置く。既存の `data/sim_expert/lerobot` と `data/sim_expert/lerobot_post37` にはこの軌道が無い。学習の前に取り直す。取り直し無しの再学習では、パッド近傍でグリッパが開かない失敗が残る。
+教示軌道を変えた。運搬中（lift / carry / place）に箱のヨーをパッドへ合わせ、パッド高さでは短い閉じたプレースのあとに長い開いた静止解放を置く。既存の `data/sim_expert/lerobot` と `data/sim_expert/lerobot_post37` にはこの軌道が無い。
+
+## Issue #41 以降の再収集と再学習
+
+教示にチャンク長以上の閉じた `approach`（パッド上空からの降下）を足した。`data/sim_expert/lerobot_post39` にはこの区間が無い。学習の前に取り直す。取り直し無しの再学習では、パッド手前での早期解放と運搬停止が残りやすい。解放の近傍ゲートはシミュレータ側の変更なので、古い重みの評価にも効くが、approach を学習するには新教示が必要である。
 
 収集と学習は Mac（MPS）で行う。このリポジトリのクラウド環境では学習を回さない。
 
@@ -72,23 +76,23 @@ pip install -e "port_pick_align/[simulation,training]"
 
 python scripts/collect_sim_dataset.py \
   --episodes 100 \
-  --output data/sim_expert/lerobot_post39
+  --output data/sim_expert/lerobot_post41
 
 caffeinate -dimsu python -X faulthandler -m port_pick_align.training.train_act \
   --preset sim \
-  --dataset-root data/sim_expert/lerobot_post39 \
-  --output-dir checkpoints/sim_act_post39 \
+  --dataset-root data/sim_expert/lerobot_post41 \
+  --output-dir checkpoints/sim_act_post41 \
   --steps 5000 \
   --batch-size 8 \
   --device mps \
   --skip-infer
 
-# 達成判定は chunk30。TE は outputs/eval_sim_act_te/ の別指標。
+# 達成判定は chunk30。TE 最良は best_model_te.pt。
 DEVICE=mps EPISODES=20 N_ACTION_STEPS=30 \
-  ./scripts/run_phase15_benchmark.sh checkpoints/sim_act_post39/best_model.pt
+  ./scripts/run_phase15_benchmark.sh checkpoints/sim_act_post41/best_model.pt
 ```
 
-`training_metrics.json` の `closed_loop_selection_exec` は `n_action_steps_30`、`closed_loop_te_used_for_selection` は false である。`history` の `closed_loop_te_align_rate` が TE の別指標である。
+`training_metrics.json` の `closed_loop_selection_exec` は `n_action_steps_30`、`closed_loop_te_used_for_selection` は false である。`best_closed_loop_te_align_rate` と `te_checkpoint` が TE 最良、`stopped_early` が早期終了の有無である。`history` の `closed_loop_te_align_rate` も参照する。
 
 ## 推論検証のみの実行
 

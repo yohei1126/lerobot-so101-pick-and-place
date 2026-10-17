@@ -162,6 +162,7 @@ def test_gripper_hysteresis_keeps_carry_and_releases_when_open() -> None:
     from port_pick_align.simulation.env import (
         GRIPPER_CLOSE_THRESH,
         GRIPPER_OPEN_THRESH,
+        RELEASE_NEAR_PAD_M,
         PickAlignSimEnv,
     )
 
@@ -177,10 +178,57 @@ def test_gripper_hysteresis_keeps_carry_and_releases_when_open() -> None:
             _obs, _, _, _, info = env.step(ambiguous)
         assert info["grasping"]
 
+        # Open far from the pad must keep holding (gated release).
         opened = hold.copy()
         opened[5] = 1.2
+        target_xy = np.asarray(info["target_xy"], dtype=np.float64)
+        box_xy = np.asarray(info["box_xy"], dtype=np.float64)
+        assert float(np.linalg.norm(box_xy - target_xy)) >= RELEASE_NEAR_PAD_M
         _obs, _, _, _, info = env.step(opened)
+        assert info["grasping"]
+
+        # Carry to the pad with an open command; release gates on proximity.
+        table_z = float(info["table_z"])
+        place_xyz = np.array([target_xy[0], target_xy[1], table_z + 0.06], dtype=np.float64)
+        place_q = np.asarray(env.solve_ik(place_xyz), dtype=np.float32).reshape(6)
+        place_q[5] = 1.2
+        for _ in range(120):
+            _obs, _, _, _, info = env.step(place_q)
+            if not info["grasping"]:
+                break
         assert not info["grasping"]
+        assert (
+            float(np.linalg.norm(np.asarray(info["box_xy"], dtype=np.float64) - target_xy))
+            < RELEASE_NEAR_PAD_M
+        )
+    finally:
+        env.close()
+
+
+@pytest.mark.simulation
+@pytest.mark.unit
+def test_early_open_far_from_pad_keeps_grasp() -> None:
+    """Smeared open commands short of the pad must not drop the box in place."""
+    from port_pick_align.contract import load_contract
+    from port_pick_align.simulation.env import RELEASE_NEAR_PAD_M, PickAlignSimEnv
+
+    contract = load_contract()
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=400, render_cameras=False)
+    try:
+        _obs, info, hold = _scripted_until_grasp(env)
+        assert info["grasping"]
+        opened = hold.copy()
+        opened[5] = 1.2
+        for _ in range(10):
+            _obs, _, _, _, info = env.step(opened)
+        assert info["grasping"]
+        dist = float(
+            np.linalg.norm(
+                np.asarray(info["box_xy"], dtype=np.float64)
+                - np.asarray(info["target_xy"], dtype=np.float64)
+            )
+        )
+        assert dist >= RELEASE_NEAR_PAD_M
     finally:
         env.close()
 
