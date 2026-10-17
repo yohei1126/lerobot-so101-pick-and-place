@@ -90,6 +90,11 @@ caffeinate -dimsu python -X faulthandler -m port_pick_align.training.train_act \
 # 達成判定は chunk30。TE 最良は best_model_te.pt。
 DEVICE=mps EPISODES=20 N_ACTION_STEPS=30 \
   ./scripts/run_phase15_benchmark.sh checkpoints/sim_act_post41/best_model.pt
+
+# 収集→学習→全チェックポイント×chunk30/TE 評価を一括（nohup 可）:
+# 詳細と status.json / summary.md は README の「教示収集→学習→評価の一括実行」を参照。
+nohup ./scripts/run_pipeline.sh --run post41 --device mps --pr N \
+  > results/post41/pipeline.log 2>&1 &
 ```
 
 `training_metrics.json` の `closed_loop_selection_exec` は `n_action_steps_30`、`closed_loop_te_used_for_selection` は false である。`best_closed_loop_te_align_rate` と `te_checkpoint` が TE 最良、`stopped_early` が早期終了の有無である。`history` の `closed_loop_te_align_rate` も参照する。

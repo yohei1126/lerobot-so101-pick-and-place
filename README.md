@@ -26,6 +26,37 @@
 ./scripts/e2e_pipeline_smoke.sh
 ```
 
+## 教示収集→学習→評価の一括実行
+
+Issue #41 以降の再学習のように、収集・ACT 学習・複数チェックポイントの閉ループ評価を無人で回すときは `scripts/run_pipeline.sh` を使う。進捗は `results/<run>/status.json`、比較表は `results/<run>/summary.md` に書き出される。エージェントは `nohup` で起動した直後に終了してよい。
+
+```bash
+source .venv/bin/activate
+pip install -e "port_pick_align/[simulation,training]"
+
+# Mac (MPS) 本学習。終了時に PR へ summary.md をコメントする例:
+mkdir -p results/post41
+nohup ./scripts/run_pipeline.sh \
+  --run post41 \
+  --device mps \
+  --dataset-dir data/sim_expert/lerobot_post41 \
+  --checkpoint-dir checkpoints/sim_act_post41 \
+  --steps 5000 \
+  --collect-episodes 100 \
+  --eval-episodes 20 \
+  --pr 42 \
+  > results/post41/pipeline.log 2>&1 &
+echo "pid=$!  status=results/post41/status.json"
+
+# 収集または学習を飛ばして評価だけ再実行:
+./scripts/run_pipeline.sh --run post41 --skip-collect --skip-train --device mps
+
+# CPU スモーク（少数エピソード・約 50 step）:
+./scripts/run_pipeline.sh --smoke --device cpu
+```
+
+評価対象は存在する `best_model.pt` / `best_model_te.pt` / `last.pt` / `step_*.pt` で、それぞれ chunk30 と Temporal Ensembling の両方を既存の `scripts/run_sim_eval.py` で回す。`--pr N` は `gh` が無い環境ではスキップする。
+
 ## 成果物の提出
 
 - 提出前チェックリスト: [docs/submission.md](docs/submission.md)
