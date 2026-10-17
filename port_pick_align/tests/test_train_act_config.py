@@ -18,7 +18,10 @@ from port_pick_align.contract import load_contract  # noqa: E402
 from port_pick_align.simulation.policies import ScriptedPickAlignPolicy  # noqa: E402
 from port_pick_align.training.policy import build_act_policy  # noqa: E402
 from port_pick_align.training.train_act import (  # noqa: E402
+    COSINE_ETA_MIN_RATIO,
+    SIM_DEFAULT_CHECKPOINT_INTERVAL,
     SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
+    SIM_DEFAULT_EARLY_STOP_PATIENCE,
     action_gripper_value,
     apply_preset_defaults,
     closed_loop_selection_improves,
@@ -180,6 +183,9 @@ def test_sim_preset_enables_grasp_transition_defaults() -> None:
     assert args.closed_loop_val_max_steps == 260
     assert args.selection_metric == "closed_loop_align"
     assert args.arch == "full"
+    assert args.checkpoint_interval == SIM_DEFAULT_CHECKPOINT_INTERVAL
+    assert args.early_stop_patience == SIM_DEFAULT_EARLY_STOP_PATIENCE
+    assert COSINE_ETA_MIN_RATIO == pytest.approx(0.1)
 
 
 @pytest.mark.unit
@@ -192,6 +198,16 @@ def test_sim_preset_can_disable_temporal_ensemble_metric() -> None:
 
 
 @pytest.mark.unit
+def test_sim_preset_can_disable_early_stop_and_periodic_checkpoints() -> None:
+    args = parse_args(
+        ["--preset", "sim", "--checkpoint-interval", "0", "--early-stop-patience", "0"]
+    )
+    apply_preset_defaults(args)
+    assert args.checkpoint_interval == 0
+    assert args.early_stop_patience == 0
+
+
+@pytest.mark.unit
 def test_non_sim_preset_keeps_grasp_helpers_off() -> None:
     args = parse_args([])
     apply_preset_defaults(args)
@@ -200,6 +216,8 @@ def test_non_sim_preset_keeps_grasp_helpers_off() -> None:
     assert args.transition_oversample_factor == 1
     assert args.closed_loop_val_interval == 0
     assert args.closed_loop_te_episodes == 0
+    assert args.checkpoint_interval == 0
+    assert args.early_stop_patience == 0
 
 
 @pytest.mark.unit
@@ -292,6 +310,22 @@ def test_pad_release_hold_dominates_closed_place() -> None:
     assert closed > 0
     assert opened >= 4 * closed
     assert ScriptedPickAlignPolicy.horizon_steps() == 260
+
+
+@pytest.mark.unit
+def test_closed_approach_covers_full_action_chunk() -> None:
+    """Closed approach+place must exceed n_action_steps so chunks stay closed until replan."""
+    closed_before_open = 0
+    for name, duration, ref, z_off, grip, _wrist in ScriptedPickAlignPolicy._PHASES:
+        if name == "release":
+            break
+        if ref == "target" and grip <= 0.45:
+            closed_before_open += int(duration)
+        _ = z_off
+    assert closed_before_open > 30
+    approach = next(p for p in ScriptedPickAlignPolicy._PHASES if p[0] == "approach")
+    assert approach[1] >= 30
+    assert approach[4] <= 0.45
 
 
 @pytest.mark.unit

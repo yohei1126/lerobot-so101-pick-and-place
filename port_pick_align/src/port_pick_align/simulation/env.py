@@ -30,8 +30,13 @@ BOX_HALF_Z = 0.02
 # uses the command and stays at OPEN: expert demos command 0.0 and 1.2, and a
 # lower open threshold would also drop the box on a smeared carry command.
 # Commands between CLOSE and OPEN keep the current grasp.
+# Open alone is not enough: chunk execution can smear an open into late carry
+# 11–14 cm short of the pad. Release only when the box is also near the pad so
+# an early open keeps holding while the arm finishes the approach.
 GRIPPER_CLOSE_THRESH = 0.45
 GRIPPER_OPEN_THRESH = 0.90
+# Planar radius for pad snap and for gated release (must match).
+RELEASE_NEAR_PAD_M = 0.10
 # Attach only once the hinge is nearly shut. Attaching on the close command
 # latches the box while the finger is still open, then the rest of the close
 # twists it. 0.05 rad is the closed pose the yaw plan models.
@@ -501,12 +506,20 @@ class PickAlignSimEnv:
         self.data.qvel[self._box_dof_adr : self._box_dof_adr + 6] = 0.0
         self._mujoco.mj_forward(self.model, self.data)
 
+    def _box_near_pad(self) -> bool:
+        """True when the box XY is inside the pad snap / release gate radius."""
+        target_xy = np.asarray(self.data.site_xpos[self._target_site_id][:2], dtype=np.float64)
+        box_xy = np.asarray(self.data.xpos[self._box_body_id][:2], dtype=np.float64)
+        return float(np.linalg.norm(box_xy - target_xy)) < RELEASE_NEAR_PAD_M
+
     def _release_grasp(self) -> None:
         """Place on the pad when close; otherwise set the box down where it is."""
         target_xy = np.asarray(self.data.site_xpos[self._target_site_id][:2], dtype=np.float64)
         box_xy = np.asarray(self.data.xpos[self._box_body_id][:2], dtype=np.float64)
         place_xy = (
-            target_xy.copy() if float(np.linalg.norm(box_xy - target_xy)) < 0.10 else box_xy.copy()
+            target_xy.copy()
+            if float(np.linalg.norm(box_xy - target_xy)) < RELEASE_NEAR_PAD_M
+            else box_xy.copy()
         )
         self._place_box_on_table(place_xy)
         self._box_placed = True
@@ -516,9 +529,9 @@ class PickAlignSimEnv:
         self._grasp_rot = None
 
     def _update_sticky_grasp(self, gripper_cmd: float) -> None:
-        """Attach once the joint has closed; keep holding until the command is open."""
+        """Attach once closed; release only on an open command near the pad."""
         if self._grasping:
-            if gripper_cmd >= GRIPPER_OPEN_THRESH:
+            if gripper_cmd >= GRIPPER_OPEN_THRESH and self._box_near_pad():
                 self._release_grasp()
                 return
             self._stick_box_to_ee()
