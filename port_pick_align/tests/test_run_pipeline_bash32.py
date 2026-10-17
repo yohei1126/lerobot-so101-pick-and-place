@@ -44,3 +44,12 @@ def test_run_pipeline_posts_failure_comment_when_pr_set() -> None:
     # fail() must invoke the helper before exiting.
     fail_fn = text[text.index("fail()") : text.index("on_fail()")]
     assert "post_pr_failure_comment" in fail_fn
+
+
+@pytest.mark.unit
+def test_run_pipeline_exposes_min_steps_and_patience() -> None:
+    text = PIPELINE.read_text(encoding="utf-8")
+    assert "--min-steps)" in text
+    assert "--early-stop-patience)" in text
+    assert 'train_cmd+=(--min-steps "$MIN_STEPS")' in text
+    assert 'train_cmd+=(--early-stop-patience "$EARLY_STOP_PATIENCE")' in text

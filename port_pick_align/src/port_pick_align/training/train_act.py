@@ -56,6 +56,8 @@ SIM_DEFAULT_CHECKPOINT_INTERVAL = 500
 # Closed-loop pulses without selection improvement before stopping (0 = off).
 # At interval 100, patience 10 ≈ 1000 steps after the best chunk30 pulse.
 SIM_DEFAULT_EARLY_STOP_PATIENCE = 10
+# Do not early-stop before this many steps (align can stay 0% while carry improves).
+SIM_DEFAULT_MIN_STEPS = 3000
 # Cosine floor as a fraction of peak LR. 0.01 left updates too weak after the
 # mid-run peak; 0.1 keeps a usable step size until early stop.
 COSINE_ETA_MIN_RATIO = 0.1
@@ -630,12 +632,53 @@ def closed_loop_selection_improves(
     best_align_rate: float | None,
     best_position_error_mm: float | None,
 ) -> bool:
-    """True when align rate is higher, or equal and position error is lower."""
+    """Lexicographic progress: (align_rate, -mean_position_error_mm).
+
+    A higher align rate always wins. When align rates tie (including both 0%),
+    a lower mean position error counts as improvement so early stopping and
+    ``best_model.pt`` / ``best_model_te.pt`` can track carry progress.
+    """
     if best_align_rate is None or best_position_error_mm is None:
         return True
     if align_rate > best_align_rate:
         return True
     return align_rate == best_align_rate and position_error_mm < best_position_error_mm
+
+
+def next_pulses_without_improvement(
+    pulses: int,
+    *,
+    chunk_improved: bool,
+    te_improved: bool,
+    ran_closed_loop: bool,
+    has_cl_error: bool,
+    early_stop_patience: int,
+) -> int:
+    """Reset patience when chunk30 or TE improves; otherwise count a flat pulse."""
+    if chunk_improved or te_improved:
+        return 0
+    if ran_closed_loop and not has_cl_error and early_stop_patience > 0:
+        return pulses + 1
+    return pulses
+
+
+def should_trigger_early_stop(
+    *,
+    early_stop_patience: int,
+    pulses_without_improvement: int,
+    step: int,
+    min_steps: int,
+    ran_closed_loop: bool,
+    has_cl_error: bool,
+) -> bool:
+    """True only after ``min_steps`` and ``early_stop_patience`` flat pulses."""
+    if early_stop_patience <= 0:
+        return False
+    if not ran_closed_loop or has_cl_error:
+        return False
+    if step < min_steps:
+        return False
+    return pulses_without_improvement >= early_stop_patience
 
 
 def _save_checkpoint(
@@ -705,22 +748,25 @@ def train_act(
     selection_metric: str | None = None,
     checkpoint_interval: int = 0,
     early_stop_patience: int = 0,
+    min_steps: int = 0,
 ) -> Path:
     """Train ACT and save best_model.pt.
 
     Default selection is lowest validation L1 when a val split exists, else
     lowest training loss. Pass ``selection_metric='closed_loop_align'`` to keep
     the checkpoint with the highest closed-loop align rate, breaking ties by
-    lower position error. That rate is measured with ``n_action_steps`` (default
-    30) and temporal ensembling off. ``closed_loop_grasp`` keeps the highest
-    grasp rate on the same rollout. Either closed-loop rule requires
-    ``closed_loop_val_interval > 0``. When ``closed_loop_te_episodes > 0``, the
-    same pulse also logs a temporal-ensemble rollout and saves the best TE
-    weights to ``best_model_te.pt``; TE does not choose ``best_model.pt``.
-    ``checkpoint_interval > 0`` writes ``step_XXXXX.pt`` every N steps.
-    ``early_stop_patience > 0`` stops after that many closed-loop pulses without
-    a chunk-selection *or* TE improvement (patience resets if either improves).
-    The final weights are always written to ``last.pt``.
+    lower position error (lexicographic ``(align, -error)``). That rate is
+    measured with ``n_action_steps`` (default 30) and temporal ensembling off.
+    ``closed_loop_grasp`` keeps the highest grasp rate on the same rollout.
+    Either closed-loop rule requires ``closed_loop_val_interval > 0``. When
+    ``closed_loop_te_episodes > 0``, the same pulse also logs a
+    temporal-ensemble rollout and saves the best TE weights to
+    ``best_model_te.pt`` with the same lexicographic rule; TE does not choose
+    ``best_model.pt``. ``checkpoint_interval > 0`` writes ``step_XXXXX.pt``
+    every N steps. ``early_stop_patience > 0`` stops after that many
+    closed-loop pulses without a chunk-selection *or* TE improvement
+    (patience resets if either improves on ``(align, -error)``), but never
+    before ``min_steps``. The final weights are always written to ``last.pt``.
     """
     if steps < 1:
         raise ValueError(f"steps must be >= 1, got {steps}")
@@ -754,6 +800,8 @@ def train_act(
         raise ValueError(f"checkpoint_interval must be >= 0, got {checkpoint_interval}")
     if early_stop_patience < 0:
         raise ValueError(f"early_stop_patience must be >= 0, got {early_stop_patience}")
+    if min_steps < 0:
+        raise ValueError(f"min_steps must be >= 0, got {min_steps}")
 
     validate_contract(contract)
     device_name = resolve_device(device)
@@ -889,7 +937,8 @@ def train_act(
             f"te_episodes={int(closed_loop_te_episodes)} "
             f"(best TE → {CHECKPOINT_TE_NAME}) "
             f"checkpoint_interval={int(checkpoint_interval)} "
-            f"early_stop_patience={int(early_stop_patience)}",
+            f"early_stop_patience={int(early_stop_patience)} "
+            f"min_steps={int(min_steps)}",
             flush=True,
         )
     step = 0
@@ -1071,12 +1120,16 @@ def train_act(
                 closed_loop_te_position_error_mm=te_pos_mm,
             )
 
-        # Patience resets when either the selection metric or TE improves so a
-        # strong TE pulse is not discarded while chunk30 is still flat.
-        if improved or te_improved:
-            pulses_without_improvement = 0
-        elif ran_closed_loop and cl_error is None and early_stop_patience > 0:
-            pulses_without_improvement += 1
+        # Patience resets when either chunk30 or TE improves on (align, -error)
+        # so a strong TE pulse (or lower error at 0% align) is not discarded.
+        pulses_without_improvement = next_pulses_without_improvement(
+            pulses_without_improvement,
+            chunk_improved=improved,
+            te_improved=te_improved,
+            ran_closed_loop=ran_closed_loop,
+            has_cl_error=cl_error is not None,
+            early_stop_patience=early_stop_patience,
+        )
 
         if improved:
             _save_checkpoint(
@@ -1136,17 +1189,19 @@ def train_act(
                 f"lr={current_lr:.3e} best_{resolved_selection}={best_score:.6f}"
             )
 
-        if (
-            early_stop_patience > 0
-            and ran_closed_loop
-            and cl_error is None
-            and pulses_without_improvement >= early_stop_patience
+        if should_trigger_early_stop(
+            early_stop_patience=early_stop_patience,
+            pulses_without_improvement=pulses_without_improvement,
+            step=step,
+            min_steps=min_steps,
+            ran_closed_loop=ran_closed_loop,
+            has_cl_error=cl_error is not None,
         ):
             stopped_early = True
             print(
                 f"early stop at step={step}: no {resolved_selection} or TE improvement "
                 f"for {pulses_without_improvement} closed-loop pulses "
-                f"(patience={early_stop_patience})",
+                f"(patience={early_stop_patience}, min_steps={min_steps})",
                 flush=True,
             )
             break
@@ -1229,6 +1284,7 @@ def train_act(
         "closed_loop_te_episodes": closed_loop_te_episodes,
         "checkpoint_interval": checkpoint_interval,
         "early_stop_patience": early_stop_patience,
+        "min_steps": min_steps,
         "n_train": len(train_data),
         "n_val": 0 if val_data is None else len(val_data),
         "n_train_episodes": n_train_episodes,
@@ -1468,9 +1524,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Stop after this many closed-loop pulses without a selection-metric "
-            "or TE improvement (0 = off). "
+            "or TE improvement on (align rate, -position error) (0 = off). "
             f"Default: {SIM_DEFAULT_EARLY_STOP_PATIENCE} for --preset sim when "
             "closed-loop validation is on, else 0."
+        ),
+    )
+    parser.add_argument(
+        "--min-steps",
+        type=int,
+        default=None,
+        help=(
+            "Never early-stop before this many training steps "
+            f"(default: {SIM_DEFAULT_MIN_STEPS} for --preset sim when "
+            "closed-loop validation is on, else 0)."
         ),
     )
     parser.add_argument(
@@ -1505,6 +1571,8 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
             args.checkpoint_interval = 0
         if args.early_stop_patience is None:
             args.early_stop_patience = 0
+        if args.min_steps is None:
+            args.min_steps = 0
         return
     if args.dataset_root == DEFAULT_DATASET_ROOT:
         args.dataset_root = SIM_DATASET_ROOT
@@ -1536,6 +1604,11 @@ def apply_preset_defaults(args: argparse.Namespace) -> None:
             args.early_stop_patience = SIM_DEFAULT_EARLY_STOP_PATIENCE
         else:
             args.early_stop_patience = 0
+    if args.min_steps is None:
+        if int(args.closed_loop_val_interval) > 0:
+            args.min_steps = SIM_DEFAULT_MIN_STEPS
+        else:
+            args.min_steps = 0
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -1574,6 +1647,7 @@ def main(argv: list[str] | None = None) -> None:
             selection_metric=args.selection_metric,
             checkpoint_interval=int(args.checkpoint_interval),
             early_stop_patience=int(args.early_stop_patience),
+            min_steps=int(args.min_steps),
         )
         print(f"Saved checkpoint: {checkpoint_path}")
 
