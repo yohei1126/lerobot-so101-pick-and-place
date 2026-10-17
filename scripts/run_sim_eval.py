@@ -239,7 +239,9 @@ def run_episode(
         "grasp_success": sample.grasp_success,
         "holding_at_end": sample.holding_at_end,
         "released_on_pad": sample.released_on_pad,
-        "final_box_xy": list(sample.final_box_xy) if sample.final_box_xy is not None else None,
+        "final_box_xy": list(sample.final_box_xy)
+        if sample.final_box_xy is not None
+        else None,
         "pad_xy": list(sample.pad_xy) if sample.pad_xy is not None else None,
         "open_while_holding": open_events,
         "n_open_outside_gate": sum(
