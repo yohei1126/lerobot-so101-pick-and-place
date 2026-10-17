@@ -22,15 +22,18 @@ from port_pick_align.training.train_act import (  # noqa: E402
     SIM_DEFAULT_CHECKPOINT_INTERVAL,
     SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS,
     SIM_DEFAULT_EARLY_STOP_PATIENCE,
+    SIM_DEFAULT_MIN_STEPS,
     action_gripper_value,
     apply_preset_defaults,
     closed_loop_selection_improves,
     compute_act_train_loss,
     evaluate_val_l1,
     find_gripper_transition_indices,
+    next_pulses_without_improvement,
     oversample_indices_near_transitions,
     parse_args,
     resolve_device,
+    should_trigger_early_stop,
     split_train_val,
 )
 
@@ -185,6 +188,7 @@ def test_sim_preset_enables_grasp_transition_defaults() -> None:
     assert args.arch == "full"
     assert args.checkpoint_interval == SIM_DEFAULT_CHECKPOINT_INTERVAL
     assert args.early_stop_patience == SIM_DEFAULT_EARLY_STOP_PATIENCE
+    assert args.min_steps == SIM_DEFAULT_MIN_STEPS
     assert COSINE_ETA_MIN_RATIO == pytest.approx(0.1)
 
 
@@ -200,11 +204,21 @@ def test_sim_preset_can_disable_temporal_ensemble_metric() -> None:
 @pytest.mark.unit
 def test_sim_preset_can_disable_early_stop_and_periodic_checkpoints() -> None:
     args = parse_args(
-        ["--preset", "sim", "--checkpoint-interval", "0", "--early-stop-patience", "0"]
+        [
+            "--preset",
+            "sim",
+            "--checkpoint-interval",
+            "0",
+            "--early-stop-patience",
+            "0",
+            "--min-steps",
+            "0",
+        ]
     )
     apply_preset_defaults(args)
     assert args.checkpoint_interval == 0
     assert args.early_stop_patience == 0
+    assert args.min_steps == 0
 
 
 @pytest.mark.unit
@@ -218,6 +232,7 @@ def test_non_sim_preset_keeps_grasp_helpers_off() -> None:
     assert args.closed_loop_te_episodes == 0
     assert args.checkpoint_interval == 0
     assert args.early_stop_patience == 0
+    assert args.min_steps == 0
 
 
 @pytest.mark.unit
@@ -298,6 +313,75 @@ def test_closed_loop_align_tie_breaks_on_position_error() -> None:
 
 
 @pytest.mark.unit
+def test_best_model_selection_by_error_when_align_ties() -> None:
+    """best_model / best_model_te: same align → prefer lower mean position error."""
+    best_align, best_err = 0.0, 220.0
+    candidate_align, candidate_err = 0.0, 180.0
+    assert closed_loop_selection_improves(candidate_align, candidate_err, best_align, best_err)
+    # Would replace best_model.pt / best_model_te.pt under the shared rule.
+    best_align, best_err = candidate_align, candidate_err
+    assert not closed_loop_selection_improves(0.0, 190.0, best_align, best_err)
+    assert closed_loop_selection_improves(0.1, 250.0, best_align, best_err)
+
+
+@pytest.mark.unit
+def test_patience_resets_when_error_improves_at_zero_align() -> None:
+    """At 0% align, a lower mean position error must clear early-stop patience."""
+    chunk_improved = closed_loop_selection_improves(0.0, 160.0, 0.0, 200.0)
+    te_improved = False
+    pulses = next_pulses_without_improvement(
+        7,
+        chunk_improved=chunk_improved,
+        te_improved=te_improved,
+        ran_closed_loop=True,
+        has_cl_error=False,
+        early_stop_patience=10,
+    )
+    assert chunk_improved
+    assert pulses == 0
+    # Flat 0% align with worse/equal error keeps counting.
+    flat = not closed_loop_selection_improves(0.0, 160.0, 0.0, 160.0)
+    assert flat
+    pulses = next_pulses_without_improvement(
+        3,
+        chunk_improved=False,
+        te_improved=False,
+        ran_closed_loop=True,
+        has_cl_error=False,
+        early_stop_patience=10,
+    )
+    assert pulses == 4
+
+
+@pytest.mark.unit
+def test_no_early_stop_before_min_steps() -> None:
+    assert not should_trigger_early_stop(
+        early_stop_patience=10,
+        pulses_without_improvement=10,
+        step=1400,
+        min_steps=3000,
+        ran_closed_loop=True,
+        has_cl_error=False,
+    )
+    assert should_trigger_early_stop(
+        early_stop_patience=10,
+        pulses_without_improvement=10,
+        step=3000,
+        min_steps=3000,
+        ran_closed_loop=True,
+        has_cl_error=False,
+    )
+    assert not should_trigger_early_stop(
+        early_stop_patience=10,
+        pulses_without_improvement=9,
+        step=5000,
+        min_steps=3000,
+        ran_closed_loop=True,
+        has_cl_error=False,
+    )
+
+
+@pytest.mark.unit
 def test_closed_loop_val_horizon_matches_scripted_demo() -> None:
     assert SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS == ScriptedPickAlignPolicy.horizon_steps()
     assert SIM_DEFAULT_CLOSED_LOOP_VAL_MAX_STEPS == 260
@@ -332,12 +416,15 @@ def test_closed_approach_covers_full_action_chunk() -> None:
 @pytest.mark.unit
 def test_early_stop_resets_when_te_or_chunk_improves() -> None:
     """Patience must clear on TE improvement even if chunk30 selection is flat."""
-    # Mirrors train_act: selection improve OR te_improved → reset counter.
-    chunk_improved = False
     te_improved = closed_loop_selection_improves(0.9, 5.0, 0.0, 200.0)
-    pulses = 3
-    if chunk_improved or te_improved:
-        pulses = 0
+    pulses = next_pulses_without_improvement(
+        3,
+        chunk_improved=False,
+        te_improved=te_improved,
+        ran_closed_loop=True,
+        has_cl_error=False,
+        early_stop_patience=10,
+    )
     assert te_improved
     assert pulses == 0
     te_flat = not closed_loop_selection_improves(0.5, 80.0, 0.9, 5.0)

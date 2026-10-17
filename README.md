@@ -42,6 +42,8 @@ nohup ./scripts/run_pipeline.sh \
   --dataset-dir data/sim_expert/lerobot_post41 \
   --checkpoint-dir checkpoints/sim_act_post41 \
   --steps 5000 \
+  --min-steps 3000 \
+  --early-stop-patience 10 \
   --collect-episodes 100 \
   --eval-episodes 20 \
   --pr 42 \
@@ -54,6 +56,8 @@ echo "pid=$!  status=results/post41/status.json"
 # CPU スモーク（少数エピソード・約 50 step）:
 ./scripts/run_pipeline.sh --smoke --device cpu
 ```
+
+早期終了は chunk30 / TE の `(整列率, -平均位置誤差)` を辞書式に見て、どちらかが改善すれば patience をリセットする（整列 0% でも誤差が下がれば進捗）。`--min-steps`（既定 3000）より前は早期終了しない。`best_model.pt` / `best_model_te.pt` も同じ基準で選ぶ。`--early-stop-patience` / `--min-steps` を省略すると `train_act --preset sim` の既定に従う。
 
 評価対象は存在する `best_model.pt` / `best_model_te.pt` / `last.pt` / `step_*.pt` で、それぞれ chunk30 と Temporal Ensembling の両方を既存の `scripts/run_sim_eval.py` で回す。`--pr N` は `gh` が無い環境ではスキップする。
 

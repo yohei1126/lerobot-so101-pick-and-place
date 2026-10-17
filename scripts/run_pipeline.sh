@@ -26,6 +26,9 @@ EVAL_EPISODES=20
 EVAL_MAX_STEPS=260
 N_ACTION_STEPS=30
 BATCH_SIZE=8
+# Empty → train_act --preset sim defaults (patience 10, min-steps 3000).
+EARLY_STOP_PATIENCE=""
+MIN_STEPS=""
 PR_NUMBER=""
 SKIP_COLLECT=0
 SKIP_TRAIN=0
@@ -47,6 +50,9 @@ Usage: ./scripts/run_pipeline.sh [options]
   --eval-episodes N       closed-loop eval episodes per checkpoint×mode (default: 20)
   --eval-max-steps N      eval horizon (default: 260)
   --batch-size N          training batch size (default: 8)
+  --early-stop-patience N closed-loop pulses without (align,-error) progress before stop
+                          (default: train_act sim preset = 10; 0 = off)
+  --min-steps N           never early-stop before this step (default: train_act sim = 3000)
   --pr N                  on success, post summary.md via `gh pr comment N`
   --skip-collect          skip demonstration collection
   --skip-train            skip training (evaluate existing checkpoints)
@@ -69,6 +75,8 @@ while [[ $# -gt 0 ]]; do
     --eval-episodes) EVAL_EPISODES="$2"; shift 2 ;;
     --eval-max-steps) EVAL_MAX_STEPS="$2"; shift 2 ;;
     --batch-size) BATCH_SIZE="$2"; shift 2 ;;
+    --early-stop-patience) EARLY_STOP_PATIENCE="$2"; shift 2 ;;
+    --min-steps) MIN_STEPS="$2"; shift 2 ;;
     --pr) PR_NUMBER="$2"; shift 2 ;;
     --skip-collect) SKIP_COLLECT=1; shift ;;
     --skip-train) SKIP_TRAIN=1; shift ;;
@@ -100,6 +108,13 @@ if [[ "$SMOKE" -eq 1 ]]; then
   EVAL_MAX_STEPS=80
   BATCH_SIZE=1
   DEVICE="${DEVICE:-cpu}"
+  # Smoke must not inherit the sim early-stop / min-steps floor.
+  if [[ -z "$EARLY_STOP_PATIENCE" ]]; then
+    EARLY_STOP_PATIENCE=0
+  fi
+  if [[ -z "$MIN_STEPS" ]]; then
+    MIN_STEPS=0
+  fi
   EXTRA_COLLECT_ARGS+=(--allow-short --allow-failures --max-steps 80)
   EXTRA_TRAIN_ARGS+=(
     --arch smoke
@@ -109,7 +124,6 @@ if [[ "$SMOKE" -eq 1 ]]; then
     --closed-loop-te-episodes 1
     --closed-loop-val-max-steps 80
     --checkpoint-interval 25
-    --early-stop-patience 0
   )
 fi
 
@@ -312,6 +326,12 @@ if [[ "$SKIP_TRAIN" -eq 0 ]]; then
   )
   if [[ -n "$DEVICE" ]]; then
     train_cmd+=(--device "$DEVICE")
+  fi
+  if [[ -n "$EARLY_STOP_PATIENCE" ]]; then
+    train_cmd+=(--early-stop-patience "$EARLY_STOP_PATIENCE")
+  fi
+  if [[ -n "$MIN_STEPS" ]]; then
+    train_cmd+=(--min-steps "$MIN_STEPS")
   fi
   if [[ ${#EXTRA_TRAIN_ARGS[@]} -gt 0 ]]; then
     train_cmd+=("${EXTRA_TRAIN_ARGS[@]}")
