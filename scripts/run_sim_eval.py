@@ -22,7 +22,12 @@ from port_pick_align.evaluation.eval_alignment import (
     summarize,
     trial_outcome,
 )
-from port_pick_align.simulation.env import PickAlignSimEnv, box_reset_options
+from port_pick_align.simulation.env import (
+    GRIPPER_OPEN_THRESH,
+    RELEASE_NEAR_PAD_M,
+    PickAlignSimEnv,
+    box_reset_options,
+)
 from port_pick_align.simulation.policies import (
     CheckpointPolicy,
     MockPolicy,
@@ -168,6 +173,7 @@ def run_episode(
     chunk: np.ndarray | None = None
     chunk_i = 0
     horizon = max(1, int(n_action_steps))
+    open_events: list[dict[str, float | bool | int]] = []
     for step in range(max_steps):
         if chunk is None or chunk_i >= min(horizon, int(chunk.shape[0])):
             chunk = policy.predict(obs, info=info)
@@ -190,6 +196,23 @@ def run_episode(
                         width=int(env.render_width),
                     )
                 )
+        grip_cmd = float(action[5])
+        if grip_cmd >= GRIPPER_OPEN_THRESH and info.get("grasping", False):
+            box_xy = np.asarray(info["box_xy"], dtype=np.float64).reshape(2)
+            pad_xy = np.asarray(info["target_xy"], dtype=np.float64).reshape(2)
+            dist_m = float(np.linalg.norm(box_xy - pad_xy))
+            open_events.append(
+                {
+                    "step": int(step),
+                    "grip_cmd": grip_cmd,
+                    "box_x": float(box_xy[0]),
+                    "box_y": float(box_xy[1]),
+                    "pad_x": float(pad_xy[0]),
+                    "pad_y": float(pad_xy[1]),
+                    "box_pad_dist_mm": dist_m * 1000.0,
+                    "inside_release_gate": dist_m < RELEASE_NEAR_PAD_M,
+                }
+            )
         obs, _reward, terminated, truncated, info = env.step(action)
         grasped_during = grasped_during or bool(info.get("grasping", False))
         if terminated or truncated:
@@ -198,7 +221,7 @@ def run_episode(
     pos_mm, yaw_deg = compute_pose_errors(
         info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
     )
-    return trial_outcome(
+    sample = trial_outcome(
         position_error_mm=pos_mm,
         yaw_error_deg=yaw_deg,
         grasping_now=bool(info.get("grasping", False)),
@@ -207,7 +230,26 @@ def run_episode(
         table_z=float(info["table_z"]),
         ee_xy=info["ee_xy"],
         box_xy=info["box_xy"],
+        pad_xy=info["target_xy"],
     )
+    # Attach open-vs-distance diagnostics for JSON (not part of AlignmentSample).
+    sample_dict = {
+        "position_error_mm": sample.position_error_mm,
+        "yaw_error_deg": sample.yaw_error_deg,
+        "grasp_success": sample.grasp_success,
+        "holding_at_end": sample.holding_at_end,
+        "released_on_pad": sample.released_on_pad,
+        "final_box_xy": list(sample.final_box_xy) if sample.final_box_xy is not None else None,
+        "pad_xy": list(sample.pad_xy) if sample.pad_xy is not None else None,
+        "open_while_holding": open_events,
+        "n_open_outside_gate": sum(
+            1 for event in open_events if not event["inside_release_gate"]
+        ),
+        "n_open_inside_gate": sum(
+            1 for event in open_events if event["inside_release_gate"]
+        ),
+    }
+    return sample, sample_dict
 
 
 def save_video(frames: list[np.ndarray], path: Path, fps: float = 30.0) -> None:
@@ -317,10 +359,11 @@ def main(argv: list[str] | None = None) -> int:
         rr.init("port_pick_align_sim", spawn=True)
 
     samples = []
+    sample_rows: list[dict[str, Any]] = []
     frames: list[np.ndarray] | None = [] if args.save_video else None
     try:
         for ep in range(args.episodes):
-            sample = run_episode(
+            sample, sample_row = run_episode(
                 env,
                 policy,
                 max_steps=args.max_steps,
@@ -333,11 +376,18 @@ def main(argv: list[str] | None = None) -> int:
                 n_action_steps=n_action_steps,
             )
             samples.append(sample)
+            sample_rows.append(sample_row)
+            box_xy = sample.final_box_xy
+            pad_xy = sample.pad_xy
             print(
                 f"episode {ep}: pos_mm={sample.position_error_mm:.1f} "
                 f"yaw_deg={sample.yaw_error_deg:.1f} grasp={sample.grasp_success} "
                 f"holding_at_end={sample.holding_at_end} "
-                f"released_on_pad={sample.released_on_pad}"
+                f"released_on_pad={sample.released_on_pad} "
+                f"box_xy={None if box_xy is None else [round(v, 4) for v in box_xy]} "
+                f"pad_xy={None if pad_xy is None else [round(v, 4) for v in pad_xy]} "
+                f"open_out_gate={sample_row['n_open_outside_gate']} "
+                f"open_in_gate={sample_row['n_open_inside_gate']}"
             )
     finally:
         env.close()
@@ -375,7 +425,8 @@ def main(argv: list[str] | None = None) -> int:
         "thresholds": thresholds,
         "thresholds_met": met,
         "summary": summary,
-        "samples": samples_to_dicts(samples),
+        # Prefer the richer per-episode rows (raw XY + open-gate diagnostics).
+        "samples": sample_rows if sample_rows else samples_to_dicts(samples),
     }
     metrics_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {metrics_path}")

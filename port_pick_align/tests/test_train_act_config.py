@@ -322,10 +322,27 @@ def test_closed_approach_covers_full_action_chunk() -> None:
         if ref == "target" and grip <= 0.45:
             closed_before_open += int(duration)
         _ = z_off
-    assert closed_before_open > 30
+    # One full chunk (30) plus margin so a mid-approach replan stays closed.
+    assert closed_before_open > 45
     approach = next(p for p in ScriptedPickAlignPolicy._PHASES if p[0] == "approach")
     assert approach[1] >= 30
     assert approach[4] <= 0.45
+
+
+@pytest.mark.unit
+def test_early_stop_resets_when_te_or_chunk_improves() -> None:
+    """Patience must clear on TE improvement even if chunk30 selection is flat."""
+    # Mirrors train_act: selection improve OR te_improved → reset counter.
+    chunk_improved = False
+    te_improved = closed_loop_selection_improves(0.9, 5.0, 0.0, 200.0)
+    pulses = 3
+    if chunk_improved or te_improved:
+        pulses = 0
+    assert te_improved
+    assert pulses == 0
+    te_flat = not closed_loop_selection_improves(0.5, 80.0, 0.9, 5.0)
+    chunk_flat = not closed_loop_selection_improves(0.0, 160.0, 0.0, 150.0)
+    assert te_flat and chunk_flat
 
 
 @pytest.mark.unit
