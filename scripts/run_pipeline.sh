@@ -204,6 +204,40 @@ set_phase() {
   echo "==> [$PHASE] $PROGRESS"
 }
 
+post_pr_failure_comment() {
+  # Best-effort: never re-enter fail() from here (no set -e exit on gh errors).
+  local rc="$1"
+  local comment_file
+  if [[ -z "$PR_NUMBER" ]]; then
+    return 0
+  fi
+  if ! command -v gh >/dev/null 2>&1; then
+    echo "WARN: gh not available; skipping failure PR comment" >&2
+    return 0
+  fi
+  comment_file="$(mktemp "${TMPDIR:-/tmp}/pipeline-fail.XXXXXX.md")"
+  {
+    echo "## Pipeline failed"
+    echo ""
+    echo "- run: \`$RUN_NAME\`"
+    echo "- phase: \`$PHASE\`"
+    echo "- progress: \`$PROGRESS\`"
+    echo "- status: \`$STATE\` (exit $rc)"
+    echo "- status file: \`$STATUS_FILE\`"
+    echo "- log: \`$LOG_FILE\`"
+    echo ""
+    echo "### Error tail"
+    echo ""
+    echo '```'
+    printf '%s\n' "$ERROR_TAIL"
+    echo '```'
+  } >"$comment_file"
+  if ! gh pr comment "$PR_NUMBER" --body-file "$comment_file"; then
+    echo "WARN: gh pr comment (failure) failed; status left at $STATUS_FILE" >&2
+  fi
+  rm -f "$comment_file"
+}
+
 fail() {
   local rc="${1:-1}"
   local msg="${2:-pipeline failed during phase=$PHASE}"
@@ -219,6 +253,7 @@ fail() {
   write_status "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "ERROR: $msg (rc=$rc). See $STATUS_FILE and $LOG_FILE" >&2
   trap - ERR
+  post_pr_failure_comment "$rc" || true
   exit "$rc"
 }
 
@@ -291,7 +326,10 @@ fi
 # ---------------------------------------------------------------------------
 set_phase "eval" "discovering checkpoints in $CKPT_DIR"
 
-mapfile -t CHECKPOINTS < <(
+# bash 3.2 (macOS /bin/bash) has no mapfile/readarray — fill the array with read.
+# Prefer command substitution over process-substitution+mapfile so a non-zero
+# python exit is visible under `set -e` on older bash.
+_ckpt_list="$(
   python3 - "$CKPT_DIR" <<'PY'
 from pathlib import Path
 import sys
@@ -309,7 +347,15 @@ if not names:
     raise SystemExit(f"no checkpoints found under {root}")
 print("\n".join(names))
 PY
-)
+)" || fail 1 "checkpoint discovery failed under $CKPT_DIR"
+CHECKPOINTS=()
+while IFS= read -r _ckpt_line || [[ -n "$_ckpt_line" ]]; do
+  [[ -n "$_ckpt_line" ]] && CHECKPOINTS+=("$_ckpt_line")
+done <<< "$_ckpt_list"
+unset _ckpt_list _ckpt_line
+if [[ ${#CHECKPOINTS[@]} -eq 0 ]]; then
+  fail 1 "no checkpoints discovered under $CKPT_DIR"
+fi
 
 EVAL_DEVICE="${DEVICE:-cpu}"
 ckpt_i=0
