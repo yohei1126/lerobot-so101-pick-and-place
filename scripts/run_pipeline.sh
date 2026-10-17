@@ -204,18 +204,27 @@ set_phase() {
   echo "==> [$PHASE] $PROGRESS"
 }
 
-on_fail() {
-  local rc=$?
+fail() {
+  local rc="${1:-1}"
+  local msg="${2:-pipeline failed during phase=$PHASE}"
   STATE="failed"
+  ERROR_TAIL="$msg"
   if [[ -f "$LOG_FILE" ]]; then
-    ERROR_TAIL="$(tail -n 40 "$LOG_FILE" 2>/dev/null || true)"
-  fi
-  if [[ -z "$ERROR_TAIL" ]]; then
-    ERROR_TAIL="pipeline exited with status $rc during phase=$PHASE"
+    local log_tail
+    log_tail="$(tail -n 40 "$LOG_FILE" 2>/dev/null || true)"
+    if [[ -n "$log_tail" ]]; then
+      ERROR_TAIL="$log_tail"
+    fi
   fi
   write_status "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  echo "ERROR: pipeline failed (rc=$rc). See $STATUS_FILE and $LOG_FILE" >&2
+  echo "ERROR: $msg (rc=$rc). See $STATUS_FILE and $LOG_FILE" >&2
+  trap - ERR
   exit "$rc"
+}
+
+on_fail() {
+  local rc=$?
+  fail "$rc" "pipeline exited with status $rc during phase=$PHASE"
 }
 trap on_fail ERR
 
@@ -226,17 +235,12 @@ write_status
 echo "Pipeline run=$RUN_NAME results=$RESULTS_DIR"
 
 need_cmd() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "ERROR: required command not found: $1" >&2
-    exit 1
-  }
+  command -v "$1" >/dev/null 2>&1 || fail 1 "required command not found: $1"
 }
 need_cmd python3
 
-python3 -c "import port_pick_align" 2>/dev/null || {
-  echo "ERROR: port_pick_align not importable; run: pip install -e \"port_pick_align/[simulation,training]\"" >&2
-  exit 1
-}
+python3 -c "import port_pick_align" 2>/dev/null \
+  || fail 1 "port_pick_align not importable; run: pip install -e \"port_pick_align/[simulation,training]\""
 
 # ---------------------------------------------------------------------------
 # Phase: collect
@@ -254,10 +258,7 @@ if [[ "$SKIP_COLLECT" -eq 0 ]]; then
   "${collect_cmd[@]}"
 else
   set_phase "collect" "skipped"
-  [[ -d "$DATASET_DIR" ]] || {
-    echo "ERROR: --skip-collect but dataset missing: $DATASET_DIR" >&2
-    exit 1
-  }
+  [[ -d "$DATASET_DIR" ]] || fail 1 "--skip-collect but dataset missing: $DATASET_DIR"
 fi
 
 # ---------------------------------------------------------------------------
