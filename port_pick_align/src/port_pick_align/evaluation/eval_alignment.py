@@ -25,6 +25,7 @@ class AlignmentSample:
     ``grasp_success`` stays the legacy broad flag (lifted, ever attached, or
     already near the pad). ``holding_at_end`` and ``released_on_pad`` split that
     flag so a mid-episode attach is not reported as a finished transport.
+    ``final_box_xy`` / ``pad_xy`` are raw planar poses (meters) for audit logs.
     """
 
     position_error_mm: float
@@ -32,6 +33,19 @@ class AlignmentSample:
     grasp_success: bool
     holding_at_end: bool = False
     released_on_pad: bool = False
+    final_box_xy: tuple[float, float] | None = None
+    pad_xy: tuple[float, float] | None = None
+
+
+def _xy_tuple(
+    xy: Sequence[float] | np.ndarray | None,
+) -> tuple[float, float] | None:
+    if xy is None:
+        return None
+    arr = np.asarray(xy, dtype=np.float64).reshape(-1)
+    if arr.shape[0] < 2:
+        raise ValueError("xy must have at least 2 elements")
+    return (float(arr[0]), float(arr[1]))
 
 
 def record_sample(
@@ -41,6 +55,8 @@ def record_sample(
     *,
     holding_at_end: bool = False,
     released_on_pad: bool = False,
+    final_box_xy: Sequence[float] | np.ndarray | None = None,
+    pad_xy: Sequence[float] | np.ndarray | None = None,
 ) -> AlignmentSample:
     """Create an immutable sample from measured (or placeholder) metrics."""
     return AlignmentSample(
@@ -49,6 +65,8 @@ def record_sample(
         grasp_success=bool(grasp_success),
         holding_at_end=bool(holding_at_end),
         released_on_pad=bool(released_on_pad),
+        final_box_xy=_xy_tuple(final_box_xy),
+        pad_xy=_xy_tuple(pad_xy),
     )
 
 
@@ -62,6 +80,7 @@ def trial_outcome(
     table_z: float,
     ee_xy: Sequence[float] | np.ndarray | None = None,
     box_xy: Sequence[float] | np.ndarray | None = None,
+    pad_xy: Sequence[float] | np.ndarray | None = None,
     near_pad_mm: float = 50.0,
 ) -> AlignmentSample:
     """Score one finished episode.
@@ -85,6 +104,8 @@ def trial_outcome(
         grasp_success,
         holding_at_end=holding,
         released_on_pad=released,
+        final_box_xy=box_xy,
+        pad_xy=pad_xy,
     )
 
 

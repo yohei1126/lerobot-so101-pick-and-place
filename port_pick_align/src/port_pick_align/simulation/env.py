@@ -133,6 +133,10 @@ class PickAlignSimEnv:
         self._grasp_rot: np.ndarray | None = None
         self._box_placed = False
         self._placed_xy: np.ndarray | None = None
+        self._placed_yaw: float = 0.0
+        # Yaw sampled while the gripper is still closed. Opening the hinge rotates
+        # the EE site and would corrupt the sticky-box yaw if read at release.
+        self._stable_box_yaw: float = 0.0
 
         limits = self.contract["robot"]["joint_limits"]
         self._limits = np.array(
@@ -217,6 +221,8 @@ class PickAlignSimEnv:
         self._grasp_rot = None
         self._box_placed = False
         self._placed_xy = None
+        self._placed_yaw = 0.0
+        self._stable_box_yaw = 0.0
 
         home = DEFAULT_HOME.copy()
         if options and "home" in options:
@@ -264,7 +270,7 @@ class PickAlignSimEnv:
 
         self._update_sticky_grasp(float(clipped[5]))
         if self._box_placed and self._placed_xy is not None:
-            self._place_box_on_table(self._placed_xy)
+            self._place_box_on_table(self._placed_xy, yaw=float(self._placed_yaw))
         self._step_count += 1
         obs = self._get_obs()
         info = self._info()
@@ -513,15 +519,18 @@ class PickAlignSimEnv:
         return float(np.linalg.norm(box_xy - target_xy)) < RELEASE_NEAR_PAD_M
 
     def _release_grasp(self) -> None:
-        """Place on the pad when close; otherwise set the box down where it is."""
-        target_xy = np.asarray(self.data.site_xpos[self._target_site_id][:2], dtype=np.float64)
-        box_xy = np.asarray(self.data.xpos[self._box_body_id][:2], dtype=np.float64)
-        place_xy = (
-            target_xy.copy()
-            if float(np.linalg.norm(box_xy - target_xy)) < RELEASE_NEAR_PAD_M
-            else box_xy.copy()
-        )
-        self._place_box_on_table(place_xy)
+        """Set the box down at its current XY (no pad-center snap).
+
+        Older code teleported XY to the pad and forced yaw to 0 whenever the
+        release gate passed. That made successful gated releases report exactly
+        0.0 mm / 0° and inflated TE align rates. Keep the 10 cm open gate, but
+        score the true planar placement. Yaw uses the last closed-gripper sample
+        so opening the hinge cannot twist the recorded pose.
+        """
+        place_xy, _ignored_yaw = self.box_pose()
+        place_xy = np.asarray(place_xy, dtype=np.float64).reshape(2).copy()
+        self._placed_yaw = float(self._stable_box_yaw)
+        self._place_box_on_table(place_xy, yaw=self._placed_yaw)
         self._box_placed = True
         self._placed_xy = place_xy
         self._grasping = False
@@ -535,6 +544,8 @@ class PickAlignSimEnv:
                 self._release_grasp()
                 return
             self._stick_box_to_ee()
+            if gripper_cmd < GRIPPER_OPEN_THRESH:
+                _xy, self._stable_box_yaw = self.box_pose()
             return
 
         gripper_pos = float(self._joint_positions()[5])
@@ -542,6 +553,7 @@ class PickAlignSimEnv:
             return
         self._begin_grasp()
         self._stick_box_to_ee()
+        _xy, self._stable_box_yaw = self.box_pose()
 
     def _joint_positions(self) -> np.ndarray:
         return np.array(

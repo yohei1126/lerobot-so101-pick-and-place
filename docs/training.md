@@ -44,9 +44,9 @@ python -m port_pick_align.training.train_act \
 #   checkpoints/sim_act/training_metrics.json
 ```
 
-`--preset sim` はチェックポイントを閉ループ整列率で選ぶ。実行は `n_action_steps=30`（Temporal Ensembling なし）で、検証エピソード数の既定は 10（`--closed-loop-val-episodes` で 10〜20 に変える）。同じ間隔で Temporal Ensembling の整列率と位置誤差を別指標としてログし、最良の TE 重みを `best_model_te.pt` に保存する。TE は `best_model.pt` の選択には使わない。無効にするときは `--closed-loop-te-episodes 0`。500 step ごとに `step_XXXXX.pt` を残し、閉ループ選択が 10 パルス改善しなければ早期終了する（`--checkpoint-interval` / `--early-stop-patience` で変更。0 でオフ）。コサイン減衰の下限はピーク LR の 10% である。
+`--preset sim` はチェックポイントを閉ループ整列率で選ぶ。実行は `n_action_steps=30`（Temporal Ensembling なし）で、検証エピソード数の既定は 10（`--closed-loop-val-episodes` で 10〜20 に変える）。同じ間隔で Temporal Ensembling の整列率と位置誤差を別指標としてログし、最良の TE 重みを `best_model_te.pt` に保存する。TE は `best_model.pt` の選択には使わないが、chunk30 か TE のどちらかが改善すれば早期終了カウンタをリセットする。無効にするときは `--closed-loop-te-episodes 0`。500 step ごとに `step_XXXXX.pt` を残し、閉ループ選択も TE も 10 パルス改善しなければ早期終了する（`--checkpoint-interval` / `--early-stop-patience` で変更。0 でオフ）。コサイン減衰の下限はピーク LR の 10% である。
 
-グリッパ損失の重みは 5 のままである。パッド姿勢では閉じたプレースと開いた解放が同じ腕の目標を共有し、L1 はグリッパ次元の条件付き平均へ寄る。重みを上げても平均は動かない。解放閾値 0.90 も変えない。中間の指令で運搬中に箱を落とすためである。シミュレータは開指令でもパッド近傍（10 cm 以内）になるまで解放しない。教示側では、チャンク長を超える閉じた approach のあとに開いた静止解放を置く。
+グリッパ損失の重みは 5 のままである。パッド姿勢では閉じたプレースと開いた解放が同じ腕の目標を共有し、L1 はグリッパ次元の条件付き平均へ寄る。重みを上げても平均は動かない。解放閾値 0.90 も変えない。中間の指令で運搬中に箱を落とすためである。シミュレータは開指令でもパッド近傍（10 cm 以内）になるまで解放しないが、解放時にパッド中心へスナップしない（最終箱 XY / ヨーをそのまま評価する）。教示側では、`n_action_steps=30` を超える閉じた approach+place のあとに開いた静止解放を置く。
 
 メモリが不足する場合は `--batch-size` を下げる。CPU でのループ確認例（本学習の代替ではない）:
 
@@ -67,6 +67,10 @@ python -m port_pick_align.training.train_act \
 ## Issue #41 以降の再収集と再学習
 
 教示にチャンク長以上の閉じた `approach`（パッド上空からの降下）を足した。`data/sim_expert/lerobot_post39` にはこの区間が無い。学習の前に取り直す。取り直し無しの再学習では、パッド手前での早期解放と運搬停止が残りやすい。解放の近傍ゲートはシミュレータ側の変更なので、古い重みの評価にも効くが、approach を学習するには新教示が必要である。
+
+## Issue #45 以降の再収集と再学習
+
+解放時のパッド中心スナップ（XY・ヨー強制 0）を止め、評価は最終箱 XY / パッド XY をエピソードごとに出す。早期終了は chunk30 か TE のどちらかが改善すればリセットする。教示の閉じた approach+place を `n_action_steps=30` に合わせて長くしたので、`lerobot_post41` では不足する。マージ後に取り直してから再学習する。
 
 収集と学習は Mac（MPS）で行う。このリポジトリのクラウド環境では学習を回さない。
 

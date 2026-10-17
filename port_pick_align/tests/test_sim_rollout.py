@@ -235,6 +235,64 @@ def test_early_open_far_from_pad_keeps_grasp() -> None:
 
 @pytest.mark.simulation
 @pytest.mark.unit
+def test_release_near_pad_keeps_actual_xy_and_stable_yaw() -> None:
+    """Gated release must not teleport the box to the pad center or force yaw 0.
+
+    That snap previously made TE eval report exactly 0.0 mm / 0° whenever the
+    10 cm gate passed, which looked like a perfect align false positive.
+    """
+    from port_pick_align.contract import load_contract
+    from port_pick_align.evaluation.eval_alignment import compute_pose_errors
+    from port_pick_align.simulation.env import RELEASE_NEAR_PAD_M, PickAlignSimEnv
+
+    contract = load_contract()
+    env = PickAlignSimEnv(contract=contract, max_episode_steps=400, render_cameras=False)
+    try:
+        _obs, info, hold = _scripted_until_grasp(env)
+        assert info["grasping"]
+        target_xy = np.asarray(info["target_xy"], dtype=np.float64)
+        # Offset inside the gate but clearly away from the pad center.
+        offset = np.array([0.06, -0.04], dtype=np.float64)
+        assert float(np.linalg.norm(offset)) < RELEASE_NEAR_PAD_M
+        table_z = float(info["table_z"])
+        carry_xyz = np.array(
+            [target_xy[0] + offset[0], target_xy[1] + offset[1], table_z + 0.08],
+            dtype=np.float64,
+        )
+        q = np.asarray(env.solve_ik(carry_xyz), dtype=np.float32).reshape(6)
+        q[4] = 0.35
+        q[5] = 0.0
+        for _ in range(80):
+            _obs, _, _, _, info = env.step(q)
+            if not info["grasping"]:
+                break
+        assert info["grasping"]
+        pre_xy = np.asarray(info["box_xy"], dtype=np.float64).copy()
+        pre_yaw = float(info["box_yaw"])
+        assert float(np.linalg.norm(pre_xy - target_xy)) < RELEASE_NEAR_PAD_M
+        open_q = q.copy()
+        open_q[5] = 1.2
+        _obs, _, _, _, info = env.step(open_q)
+        assert not info["grasping"]
+        post_xy = np.asarray(info["box_xy"], dtype=np.float64)
+        post_yaw = float(info["box_yaw"])
+        assert float(np.linalg.norm(post_xy - pre_xy)) < 0.01
+        # Stable closed-grasp yaw is preserved (not forced to 0, not hinge-twisted).
+        assert abs(post_yaw - pre_yaw) < 0.20
+        assert abs(post_yaw) > 0.02 or abs(pre_yaw) <= 0.02
+        # Must not be snapped exactly onto the pad (unless we were already there).
+        if float(np.linalg.norm(pre_xy - target_xy)) > 0.02:
+            assert float(np.linalg.norm(post_xy - target_xy)) > 0.01
+        pos_mm, _yaw = compute_pose_errors(
+            info["box_xy"], info["box_yaw"], info["target_xy"], info["target_yaw"]
+        )
+        assert pos_mm > 1.0
+    finally:
+        env.close()
+
+
+@pytest.mark.simulation
+@pytest.mark.unit
 def test_attached_box_orientation_follows_gripper() -> None:
     from port_pick_align.contract import load_contract
     from port_pick_align.simulation.env import PickAlignSimEnv
@@ -291,10 +349,10 @@ def test_goal_pose_flag_extends_state_only_when_enabled() -> None:
 @pytest.mark.simulation
 @pytest.mark.unit
 def test_scripted_random_20_still_aligns() -> None:
-    """Oracle demos must keep 20/20, and the box must face the pad before release.
+    """Oracle demos must keep 20/20 without a pad-center / yaw-0 release snap.
 
-    Final yaw is snapped to 0 when the gripper opens near the pad, so the
-    carried yaw is read on the last step that is still grasping.
+    Carried yaw is read on the last closed-gripper grasp step. Release keeps the
+    actual box XY and that stable yaw (opening the hinge must not twist it).
     """
     from port_pick_align.contract import load_contract
     from port_pick_align.evaluation.eval_alignment import compute_pose_errors, is_align_success
@@ -332,12 +390,19 @@ def test_scripted_random_20_still_aligns() -> None:
             assert held_yaw_deg is not None and held_pos_mm is not None
             assert held_pos_mm <= 25.0, f"seed {seed} still {held_pos_mm:.1f} mm from the pad"
             # Wrist limits leave about 18 deg on the worst of these 20 spawns.
-            # Release still snaps yaw to 0. This bound is the carried pose.
             assert abs(held_yaw_deg) <= 19.0, f"seed {seed} carried yaw {held_yaw_deg:.1f} deg"
+            # Final pose must stay near the carried pose (no pad-center teleport).
+            assert abs(pos_mm - held_pos_mm) < 15.0, (
+                f"seed {seed} pos jumped held={held_pos_mm:.1f} final={pos_mm:.1f}"
+            )
             state_var = float(np.mean(np.var(np.stack(states, axis=0), axis=0)))
             assert state_var >= 1.0e-4
+            # Position threshold must always hold once the pad snap is gone.
+            assert pos_mm <= 25.0, f"seed {seed} final pos {pos_mm:.1f} mm"
             if is_align_success(pos_mm, yaw_deg):
                 n_align += 1
     finally:
         env.close()
-    assert n_align == 20
+    # Wrist limits leave ~18° on the worst spawn; DoD yaw is 15°, so 19/20 is
+    # the honest floor without a yaw-0 release snap.
+    assert n_align >= 19, f"align {n_align}/20"

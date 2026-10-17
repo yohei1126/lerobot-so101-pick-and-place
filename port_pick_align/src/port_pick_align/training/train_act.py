@@ -567,6 +567,15 @@ def evaluate_closed_loop_grasp(
                 table_z=float(info["table_z"]),
                 ee_xy=info["ee_xy"],
                 box_xy=info["box_xy"],
+                pad_xy=info["target_xy"],
+            )
+            print(
+                f"closed_loop_val ep={ep} mode={label} "
+                f"pos_mm={pos_mm:.1f} yaw_deg={yaw_deg:.1f} "
+                f"box_xy={[round(float(v), 4) for v in np.asarray(info['box_xy']).reshape(2)]} "
+                f"pad_xy={[round(float(v), 4) for v in np.asarray(info['target_xy']).reshape(2)]} "
+                f"holding={sample.holding_at_end} released_on_pad={sample.released_on_pad}",
+                flush=True,
             )
             if sample.grasp_success:
                 n_grasp += 1
@@ -710,7 +719,8 @@ def train_act(
     weights to ``best_model_te.pt``; TE does not choose ``best_model.pt``.
     ``checkpoint_interval > 0`` writes ``step_XXXXX.pt`` every N steps.
     ``early_stop_patience > 0`` stops after that many closed-loop pulses without
-    a selection improvement. The final weights are always written to ``last.pt``.
+    a chunk-selection *or* TE improvement (patience resets if either improves).
+    The final weights are always written to ``last.pt``.
     """
     if steps < 1:
         raise ValueError(f"steps must be >= 1, got {steps}")
@@ -1031,25 +1041,6 @@ def train_act(
             selected_te_align = te_align
             selected_te_pos_mm = te_pos_mm
             improved = True
-        if improved:
-            pulses_without_improvement = 0
-            _save_checkpoint(
-                checkpoint_path,
-                policy=policy,
-                contract=contract,
-                step=step,
-                train_loss=loss_value,
-                val_l1=val_l1 if val_l1 is not None else best_val_l1,
-                device_name=device_name,
-                selection_metric=resolved_selection,
-                closed_loop_grasp_rate=closed_loop_grasp,
-                closed_loop_align_rate=closed_loop_align,
-                closed_loop_position_error_mm=closed_loop_pos_mm,
-                closed_loop_te_align_rate=te_align,
-                closed_loop_te_position_error_mm=te_pos_mm,
-            )
-        elif ran_closed_loop and cl_error is None and early_stop_patience > 0:
-            pulses_without_improvement += 1
 
         te_improved = (
             te_align is not None
@@ -1074,6 +1065,30 @@ def train_act(
                 device_name=device_name,
                 selection_metric="closed_loop_te_align",
                 closed_loop_grasp_rate=te_grasp,
+                closed_loop_align_rate=closed_loop_align,
+                closed_loop_position_error_mm=closed_loop_pos_mm,
+                closed_loop_te_align_rate=te_align,
+                closed_loop_te_position_error_mm=te_pos_mm,
+            )
+
+        # Patience resets when either the selection metric or TE improves so a
+        # strong TE pulse is not discarded while chunk30 is still flat.
+        if improved or te_improved:
+            pulses_without_improvement = 0
+        elif ran_closed_loop and cl_error is None and early_stop_patience > 0:
+            pulses_without_improvement += 1
+
+        if improved:
+            _save_checkpoint(
+                checkpoint_path,
+                policy=policy,
+                contract=contract,
+                step=step,
+                train_loss=loss_value,
+                val_l1=val_l1 if val_l1 is not None else best_val_l1,
+                device_name=device_name,
+                selection_metric=resolved_selection,
+                closed_loop_grasp_rate=closed_loop_grasp,
                 closed_loop_align_rate=closed_loop_align,
                 closed_loop_position_error_mm=closed_loop_pos_mm,
                 closed_loop_te_align_rate=te_align,
@@ -1129,8 +1144,8 @@ def train_act(
         ):
             stopped_early = True
             print(
-                f"early stop at step={step}: no {resolved_selection} improvement for "
-                f"{pulses_without_improvement} closed-loop pulses "
+                f"early stop at step={step}: no {resolved_selection} or TE improvement "
+                f"for {pulses_without_improvement} closed-loop pulses "
                 f"(patience={early_stop_patience})",
                 flush=True,
             )
@@ -1191,6 +1206,7 @@ def train_act(
         "selection_metric": resolved_selection,
         "closed_loop_selection_exec": f"n_action_steps_{int(closed_loop_n_action_steps)}",
         "closed_loop_te_used_for_selection": False,
+        "closed_loop_te_resets_early_stop": True,
         "selected_closed_loop_te_align_rate": selected_te_align,
         "selected_closed_loop_te_position_error_mm": selected_te_pos_mm,
         "learning_rate": learning_rate,
@@ -1452,7 +1468,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Stop after this many closed-loop pulses without a selection-metric "
-            "improvement (0 = off). "
+            "or TE improvement (0 = off). "
             f"Default: {SIM_DEFAULT_EARLY_STOP_PATIENCE} for --preset sim when "
             "closed-loop validation is on, else 0."
         ),

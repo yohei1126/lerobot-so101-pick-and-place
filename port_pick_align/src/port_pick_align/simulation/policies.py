@@ -157,21 +157,22 @@ class ScriptedPickAlignPolicy:
     pad during transport.
     """
 
-    # Durations sum to the closed-loop horizon (260). Approach is longer than the
-    # ACT chunk so closed transport fills a full chunk before the open dwell.
+    # Durations sum to the closed-loop horizon (260). Closed approach+place must
+    # cover more than one n_action_steps=30 chunk so a replan during approach
+    # still executes only closed gripper labels before the open dwell.
     _PHASES: tuple[PhaseSpec, ...] = (
         ("hover", 28, "box", 0.13, 1.2, "pregrasp"),
         ("descend", 26, "box", 0.055, 1.2, "grasp"),
         ("grasp", 24, "box", 0.055, 0.0, "grasp"),
         ("lift", 22, "box", 0.15, 0.0, "pregrasp_transport"),
-        ("carry", 45, "target", 0.15, 0.0, "carry"),
+        ("carry", 35, "target", 0.15, 0.0, "carry"),
         # Closed descend over the pad path (IK + carry wrist). z_off > 0.08 so
         # pad_gripper_steps does not count these as settled pad labels.
-        ("approach", 32, "target", 0.10, 0.0, "pregrasp_transport"),
-        ("place", 8, "target", 0.06, 0.0, "place"),
-        ("release", 48, "target", 0.06, 1.2, "place"),
+        ("approach", 40, "target", 0.10, 0.0, "pregrasp_transport"),
+        ("place", 10, "target", 0.06, 0.0, "place"),
+        ("release", 50, "target", 0.06, 1.2, "place"),
         # Retreat toward home-ish XY so the arm does not shove the placed box.
-        ("retreat", 27, "home", 0.16, 1.2, "pregrasp_transport"),
+        ("retreat", 25, "home", 0.16, 1.2, "pregrasp_transport"),
     )
 
     def __init__(self, chunk_size: int = 30, action_dim: int = 6) -> None:

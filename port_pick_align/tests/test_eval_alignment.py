@@ -52,7 +52,14 @@ def test_summarize_success_rate_and_means() -> None:
 
 @pytest.mark.unit
 def test_samples_to_dicts() -> None:
-    sample = record_sample(1.5, -2.0, True, holding_at_end=True)
+    sample = record_sample(
+        1.5,
+        -2.0,
+        True,
+        holding_at_end=True,
+        final_box_xy=(0.41, 0.02),
+        pad_xy=(0.40, 0.0),
+    )
     rows = samples_to_dicts([sample])
     assert rows == [
         {
@@ -61,6 +68,8 @@ def test_samples_to_dicts() -> None:
             "grasp_success": True,
             "holding_at_end": True,
             "released_on_pad": False,
+            "final_box_xy": (0.41, 0.02),
+            "pad_xy": (0.40, 0.0),
         }
     ]
 
