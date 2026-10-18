@@ -163,13 +163,25 @@ def is_align_success(
     ) <= float(yaw_thresh_deg)
 
 
+def _median(values: Sequence[float]) -> float:
+    """Return the median of ``values`` (requires a non-empty sequence)."""
+    ordered = sorted(float(v) for v in values)
+    n = len(ordered)
+    mid = n // 2
+    if n % 2 == 1:
+        return ordered[mid]
+    return 0.5 * (ordered[mid - 1] + ordered[mid])
+
+
 def empty_summary() -> dict[str, Any]:
     """Return an empty aggregate with stable keys for reporting / CI."""
     return {
         "n_samples": 0,
         "mean_position_error_mm": 0.0,
+        "median_position_error_mm": 0.0,
         "std_position_error_mm": 0.0,
         "mean_abs_yaw_error_deg": 0.0,
+        "median_abs_yaw_error_deg": 0.0,
         "std_abs_yaw_error_deg": 0.0,
         "grasp_success_rate": 0.0,
         "n_grasp_success": 0,
@@ -188,7 +200,12 @@ def summarize(
     pos_thresh_mm: float = DEFAULT_ALIGN_POS_MM,
     yaw_thresh_deg: float = DEFAULT_ALIGN_YAW_DEG,
 ) -> dict[str, Any]:
-    """Aggregate samples into mean/std errors and success rates."""
+    """Aggregate samples into mean/std/median errors and success rates.
+
+    Yaw reporting uses the absolute per-episode error in degrees
+    (``mean_abs_yaw_error_deg`` / ``median_abs_yaw_error_deg``), matching the
+    DoD mean-abs-yaw threshold in ``docs/results/README.md``.
+    """
     if not samples:
         return empty_summary()
 
@@ -226,8 +243,10 @@ def summarize(
     return {
         "n_samples": n,
         "mean_position_error_mm": mean_pos,
+        "median_position_error_mm": _median(positions),
         "std_position_error_mm": std_pos,
         "mean_abs_yaw_error_deg": mean_yaw,
+        "median_abs_yaw_error_deg": _median(abs_yaws),
         "std_abs_yaw_error_deg": std_yaw,
         "grasp_success_rate": n_ok / n,
         "n_grasp_success": n_ok,
