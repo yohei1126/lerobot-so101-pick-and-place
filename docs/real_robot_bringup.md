@@ -177,7 +177,37 @@ lerobot-teleoperate \
 
 Rerun ビューアは表示のみで保存しない。`$PORT_*` を使う場合は上記ポートを環境変数に合わせる。
 
+## 収録前チェック（必須）
+
+**毎回 `lerobot-record` の直前に実施する。** 未通過のまま収録しない。同じ robot / teleop / cameras フラグで 60 秒テレオペし、Rerun で確認する。
+
+```bash
+lerobot-teleoperate \
+  --robot.type=so101_follower \
+  --robot.port=$PORT_FOLLOWER \
+  --robot.id=follower \
+  --robot.cameras="{ top: {type: opencv, index_or_path: 1, width: 640, height: 480, fps: 30}, wrist: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30} }" \
+  --teleop.type=so101_leader \
+  --teleop.port=$PORT_LEADER \
+  --teleop.id=leader \
+  --display_data=true \
+  --fps=60 \
+  --teleop_time_s=60
+```
+
+| # | 確認項目 |
+| --- | --- |
+| (a) | **top:** スポンジ・白い紙・グリッパが作業域全体で画角に入る |
+| (b) | **wrist:** 接近時にグリッパ先端とスポンジが見える |
+| (c) | Leader を pick-and-place 全経路（端点含む）でゆっくり動かし、Follower がカメラスタンド／C920 ポール（基部から約 35 cm 以上離す）やテーブルクランプに当たらない |
+| (d) | カメラ警告なし、ループがおよそ 60 Hz を維持 |
+| (e) | スポンジと紙がテープ印の開始位置にある |
+
+どれか NG なら Ctrl+C → 修正 → 再チェック。**すべて OK になってから Rerun を閉じ、次節の `lerobot-record` に進む。**
+
 ## デモ収録（`lerobot-record`）
+
+**前提:** 直前の [収録前チェック（必須）](#収録前チェック必須) をすべて通過していること。
 
 2026-10-18 試行（2 回とも成功）:
 
@@ -217,7 +247,7 @@ lerobot-record \
 - 対話ターミナルが無い／pynput が無いとキーボード（Right / Left / Esc）は無効で、タイマー駆動のみになる。音声キュー（`Recording episode N` / `Reset the environment` / `Stop recording`）に従う（Mac のサウンドを ON）。
 - ハングした実行はシリアルポートを占有したまま残ることがある。再実行前に `pkill -f lerobot-record` し、`lsof` で両 `/dev/tty.usbmodem*` が空いていることを確認。余った Rerun ウィンドウも閉じる。
 - dataset v3.0 ではカメラごとに動画が連結され、`videos/observation.images.<cam>/chunk-000/file-000.mp4` に格納される。
-- 画角（trial3 先頭フレーム確認）: wrist はスポンジ・紙・グリッパが写る。**top（C920）はスポンジと紙のみでグリッパが画外。** 本格収録前に C920 を少し下げて後ろへずらすか、下向きに傾けてグリッパ作業域を入れる。
+- 画角（trial3 先頭フレーム確認）: wrist はスポンジ・紙・グリッパが写る。**top（C920）はスポンジと紙のみでグリッパが画外**だった。収録前チェック (a)(b) で C920 を少し下げて後ろへ／下向きに傾け、グリッパ作業域が入ることを確認してから収録する。
 - `objc: Class AVFFrameReceiver is implemented in both ... cv2 ... and /opt/homebrew ... ffmpeg` は無害な警告（このログが出ても収録は成功する）。
 
 ## シャットダウン
