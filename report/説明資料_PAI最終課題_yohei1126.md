@@ -4,185 +4,350 @@
 
 **OmniCampusアカウント名:** `yohei1126`
 
-> 注意: 氏名・所属・メールアドレスなどの個人情報は記載しないこと。
+> 注意: 氏名・所属・メールアドレスなどの個人情報は記載しないこと。  
+> 本稿は提出用 PDF（DoD ⑤）向けの原稿である。残 TODO は実機証拠リンク・成果動画・最終 PDF のみ（付録 B）。`./scripts/build_report_pdf.sh yohei1126` で PDF 化する。
 
-## 1. 課題設定と社会的背景（創造性）
+## 0. 本稿の位置づけと出典方針
+
+- 定量値の正本は `docs/results/` にピン留めした JSON である（[`docs/results/README.md`](../docs/results/README.md)、[`post50_official_summary.json`](../docs/results/post50_official_summary.json)）。表示の丸めは summary ファイル、転記根拠は各セル JSON の `summary` およびエピソード配列とする。
+- 単位系は [`docs/units.md`](../docs/units.md)（および `port_pick_align/units.py`）に従う。
+- 図表は [`docs/figures/`](../docs/figures/)（[`manifest.json`](../docs/figures/manifest.json)）。
+- その他の主要出典: [Issue #23](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/issues/23)（DoD）、[PR #34](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103)（post50 パイプライン経緯）、[PR #52](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/52) / [Issue #51](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/issues/51)、[`docs/plan_b.md`](../docs/plan_b.md)、[`docs/hardware.md`](../docs/hardware.md)。
+
+---
+
+## 1. 課題設定と社会的背景（創造性）／課題と目標（DoD）
 
 ### 1.1 背景と課題
 
-造船・海事・港湾現場では、熟練作業者の不足と危険空間での反復作業への対応が急務となっている。コンテナ荷役やヤード内における部品・治具の整列作業は、視覚的には単純に見えるものの、要求される位置・姿勢の許容誤差が厳しく、失敗に伴う再作業コストが大きい。本課題では、この「把持して枠へ精密に整列する」一連の操作を卓上サイズの日常品モックに縮約し、Physical AI におけるデータ収集、学習、評価のループを安全に再現する。産業スケールの現場作業を、再現可能なデスクトップ環境で検証可能な RobOps パイプラインとして構築することが本資料の主題である。
+造船・海事・港湾現場では、熟練作業者の不足と危険空間での反復作業への対応が急務である。コンテナや部品パレットの整列は視覚的には単純でも、位置・姿勢の許容誤差が厳しく、失敗時の再作業コストが大きい。本課題では「把持して枠へ精密に整列する」操作を卓上直方体モックに縮約し、データ収集・学習・評価の RobOps ループを安全に再現する。
 
-### 1.2 本課題のタスク定義
+### 1.2 タスク定義
 
-- **対象物**: 小型直方体箱（机上モック。実現場におけるコンテナおよび部品パレットに相当）
-- **目標**: 机上に設定した目標枠（マスキングテープによる目標領域）へ平面位置およびヨー角を整合させて配置
-- **成功条件（評価 API）**: 平面位置誤差 25 mm 以下、ヨー角誤差 15 deg 以下、把持（持ち上げまたは目標近傍への整列）完了
-- **観測情報**: Top および Wrist の 2 眼カメラ画像（640×480、30 fps）ならびに関節 6 自由度の状態量
-- **制御指令**: ACT（Action Chunking with Transformers、chunk_size=30）またはデモ用 scripted ポリシーによる関節位置指令
-
-### 1.3 公式サンプルに対する独自性
-
-シミュレータ単体での動作確認にとどまらず、次の5要素を単一のリポジトリへ統合した。(1) `configs/contract.yaml` によるトピック名・データ形状の一元管理、(2) rosbag2 から LeRobot 形式への変換器およびデータ品質バリデータの実装、(3) GitHub Actions を用いた CI パイプラインの構築、(4) ROS 2 推論モックと Rerun による状態可視化、(5) MuJoCo を用いた閉ループ評価環境の整備である。港湾荷役における整列作業を卓上モックとしてモデル化し、収集データの品質検証から再学習に至る RobOps ループを構造化した点が、公式サンプルに対する差分である。
-
-## 2. システムアーキテクチャ（技術力）
-
-### 2.1 ハードウェア構成
-
-実機環境としては、6 自由度アーム SO-ARM101（Feetech 製サーボモータ）および USB カメラ 2 台の構成を設計対象としている。機材配備前の段階では、通信契約の定義とドライラン手順（udev ルールおよび Feetech 拡張パッケージの依存解決）を先行して整備した。
-
-| 項目 | 仕様 |
+| 項目 | 内容 |
 | --- | --- |
-| マニピュレータ | SO-ARM101 相当 6 自由度（shoulder_pan から gripper）。`lerobot_type: so101_follower` |
-| カメラ | Top および Wrist の 2 系統、各 640×480（30 fps）、トピック名 `/camera/{top,wrist}/image_raw` |
-| モック対象 | 小型直方体箱および机上目標枠（マスキングテープによる枠線） |
+| 対象物 | 小型直方体箱（机上モック。現場のコンテナ／部品パレットに相当） |
+| 目標 | 机上の目標枠（パッド）へ平面位置およびヨー角を整合させて配置 |
+| 成功条件（評価 API） | 平面位置誤差 ≤ 25 mm、ヨー角誤差 ≤ 15 deg（[`docs/evaluation.md`](../docs/evaluation.md)、[`docs/hardware.md`](../docs/hardware.md)） |
+| 観測 | Top / Wrist 2 眼カメラ（640×480、30 fps）および関節 6 DoF |
+| 制御 | ACT（chunk_size=30）による関節位置指令。比較のため Temporal Ensembling（TE）も評価 |
+
+### 1.3 Phase 1.5 完了基準（DoD）
+
+出典: [Issue #23](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/issues/23)。
+
+| # | 項目 | 判定 | 根拠 |
+| --- | --- | --- | --- |
+| ① | 教示の自動収集（50〜100 エピソードの LeRobotDataset） | 達成 | post50 パイプライン（`checkpoints/sim_act_post50`） |
+| ② | MPS 上での本格学習 | 達成 | 同上。学習曲線は図 2 |
+| ③ | Temporal Ensembling 実装 | 達成 | TE 評価セルおよびコード |
+| ④ | 定量ベンチマーク（整列 ≥ 85%、平均位置誤差 < 25 mm） | **TE モードで達成** | [`eval_sim_act_post50_best_model_te_te.json`](../docs/results/eval_sim_act_post50_best_model_te_te.json) |
+| ⑤ | 提出用 PDF | **未完了** | TODO: 所有者による最終 PDF ビルド |
+
+**DoD ④ の達成モード:**  
+`best_model_te` を Temporal Ensembling（`n_action_steps=1`）で評価したとき、整列成功率 1.000、平均位置誤差 18.081 mm（中央値 18.955 mm）であり、DoD を満たす。正本: [`docs/results/eval_sim_act_post50_best_model_te_te.json`](../docs/results/eval_sim_act_post50_best_model_te_te.json)（一覧: [`post50_official_summary.json`](../docs/results/post50_official_summary.json)）。  
+初期のベンチマーク文書では達成判定を chunk30 側に置いていたが、本稿では実測上 DoD を満たす実行モードとして **TE を主達成**と明記する。chunk30 比較セルは未達である（第 5 章）。
+
+把持成功率の参考閾値（≥ 90%）は [`docs/results/README.md`](../docs/results/README.md) にあり、上記 TE セルでは把持率 1.000 である。
+
+### 1.4 公式サンプルに対する独自性
+
+(1) `configs/contract.yaml` による契約一元管理、(2) rosbag2→LeRobot 変換と品質バリデータ、(3) GitHub Actions CI、(4) ROS 2 推論モックと Rerun、(5) MuJoCo 閉ループ評価、を単一リポジトリに統合した。港湾整列を卓上モック化し、品質検証から再学習までの RobOps を構造化した点が差分である。
+
+---
+
+## 2. システムアーキテクチャ（技術力）／環境
+
+### 2.1 シミュレーション環境
+
+| 項目 | 内容 |
+| --- | --- |
+| 物理エンジン | MuJoCo（`PickAlignSimEnv`、資産 `so101_tabletop.xml`） |
+| アーム | SO-101 相当 6 DoF（`lerobot_type: so101_follower`） |
+| 学習フレームワーク | LeRobot + ACT（ResNet18、chunk_size=30） |
+| 本学習デバイス | Mac Apple Silicon（MPS） |
+| 契約 SSOT | [`configs/contract.yaml`](../configs/contract.yaml)（画像 640×480、関節名、chunk_size） |
 
 ### 2.2 ソフトウェアスタック
 
-システムは、ROS 2 実行環境と機械学習・シミュレーション環境を明確に分離して構成している。
-
 | 実行層 | 役割 |
 | --- | --- |
-| Docker (ROS 2 Humble) | 推論ノードモック、rosbag 記録・再生、Rerun 可視化、バリデータ統合テスト |
-| Host venv (`port_pick_align`) | 合成データ生成、ACT 訓練、フォーマット変換・品質検証、MuJoCo シミュレーション |
-| Cloud GPU（任意） | ACT モデルの本格学習 |
-| `configs/contract.yaml` | トピック名、画像解像度、関節自由度、品質検証閾値の一元管理（Single Source of Truth） |
+| Docker (ROS 2 Humble) | 推論モック、rosbag、Rerun、バリデータ結合試験 |
+| Host venv (`port_pick_align`) | 教示収集、ACT 訓練、変換・検証、MuJoCo 評価 |
+| 無人パイプライン | `scripts/run_pipeline.sh`（収集→学習→全 ckpt×chunk30/TE 評価） |
 
 ```text
-[rosbag2 / mock sensors]
+[MuJoCo scripted expert] ──collect──▶ LeRobotDataset
         │
         ▼
- converter + validator  ──contract.yaml──▶  LeRobotDataset
+   ACT train (MPS) ──▶ best_model.pt / best_model_te.pt
         │
-        ▼
-   ACT train / ckpt
-        │
-        ├─▶ ROS 2 act_policy_node ──▶ /joint_commands (+ Rerun)
-        └─▶ MuJoCo PickAlignSimEnv ──▶ metrics.json / sim_rollout.mp4
+        ├─▶ chunk30 評価 (n_action_steps=30)
+        └─▶ TE 評価 (temporal ensembling, n_action_steps=1)
+                 └──▶ docs/results/*.json（ピン留め）
 ```
 
-## 3. データパイプラインと品質管理（RobOps / 技術力）
+### 2.3 単位系（sim / 契約 / 実機）
 
-### 3.1 データ収集から学習までの処理フロー
+出典: [`docs/units.md`](../docs/units.md)。
 
-1. rosbag2 形式で Top/Wrist カメラ画像および `/joint_states` を契約仕様に準拠して記録する。
-2. `scripts/convert_bag.py` により画像と関節状態のタイムスタンプを同期し、LeRobotDataset 形式へ変換する。
-3. 実機データ取得前に、合成データ生成器（`generate_synthetic_dataset.py`）を用いて 2 眼画像および 6 自由度関節の ACT 学習パイプラインの疎通を確認する。
-4. 実機データの代わりに、MuJoCo の scripted オラクルから画像と関節目標を自動収集し、品質バリデータを通したエピソードだけを学習に使う。
-5. 学習済み重みを ROS 2 推論ノードまたは MuJoCo 閉ループシミュレータへ供給する。
-
-### 3.2 データ品質の自動検証
-
-テストフィクスチャ `port_pick_align/tests/fixtures/sample_bag/` および GitHub Actions（単体・統合テスト）により、データ品質ゲートを適用する。
-
-| 検証項目 | 判定条件 / 閾値 | 検証結果 |
-| --- | --- | --- |
-| 時刻同期 | 画像・関節間のタイムスタンプ差 33 ms 超過を検出 | 単体テストにて意図的に遅延させた bag の棄却を確認 |
-| フレーム欠落 | フレーム間隔 50 ms 超過（実効レート 20 fps 未満）を検出 | 同上 |
-| スキーマ整合性 | `contract.yaml` 定義のトピック名、次元数、解像度との合致 | 契約ロード試験および変換器試験を通過 |
-| 関節可動域・静止検知 | 許容可動域の超過および分散ほぼゼロのエピソードを除外 | バリデータ単体テストを通過 |
-
-## 4. モデル選定と学習（技術力）
-
-### 4.1 モデルの選定理由
-
-本タスクでは、模倣学習モデルとして ACT（Action Chunking with Transformers）を採用した。時系列のアクションチャンクを出力する構造により累積誤差を抑制でき、LeRobot フレームワークとの親和性が高く、短ホライズンの把持・整列タスクに適しているためである。パイプラインの結合確認段階では、軽量な ResNet18 を視覚バックボーンとして固定している。
-
-### 4.2 ハイパーパラメータと学習結果
-
-| 項目 | 設定値 |
-| --- | --- |
-| アクションチャンク長（chunk_size） | 30 |
-| 視覚バックボーン | ResNet18 |
-| アクション次元 / 視覚入力 | 6 自由度 / Top および Wrist（2 眼） |
-| 学習設定 | 合成データセットを用いた 100 ステップの軽量学習（API 疎通検証） |
-| 出力成果物 | `checkpoints/synthetic_act/best_model.pt` |
-
-合成データを用いた学習の主たる目的は、入出力テンソルの形状整合性と訓練・推論 API の疎通確認である。100 ステップの合成データ学習は、タスク分布を含まない疎通確認である。実タスクに向けた学習手順は 4.3 に述べる。
-
-### 4.3 シミュレーション教示データによる学習
-
-`scripts/collect_sim_dataset.py` は、`PickAlignSimEnv` 上で `ScriptedPickAlignPolicy` をロールアウトし、直方体の初期平面位置とヨー角をランダム化した教示を LeRobotDataset として `data/sim_expert/lerobot/` に書く。観測はシミュレータから BGR（640×480）で取得し、閉ループ推論の色変換と画素順を揃えるため RGB で保存する。各エピソードは `validate_episode` による同期、フレーム間隔、関節可動域、静止判定と、アクションに対する同一の可動域検査を通ったものだけを残す。本収集は 50 以上 100 以下のエピソード、契約解像度、260 ステップである。この条件を満たしたログだけが `official_collection: true` になる。現行のスクリプトは運搬中に箱のヨーをパッドへ合わせ、パッド手前ではチャンク長以上の閉じた approach で降下し、パッド上では開いた静止解放を長く取る。解放はパッド近傍に限る。これより前に集めた教示は学習に使わず、取り直す。
-
-学習は次のコマンドで行う。デバイスは MPS、CUDA、CPU の順に選ぶ。検証用に分けたデータでの L1 が最小の重みを `checkpoints/sim_act/best_model.pt` に保存し、ステップごとの訓練損失、検証 L1、学習率を `checkpoints/sim_act/training_metrics.json` に書く。訓練損失は L1 と VAE の KL 項の和であり、検証 L1 とは別の量である。推奨ステップ数は 1,000 以上であり、未満の実行は同ファイルの `below_recommended_steps` が true になる。
-
-```bash
-python -m port_pick_align.training.train_act \
-  --preset sim \
-  --steps 2000 \
-  --batch-size 8 \
-  --lr 1e-4
-```
-
-本資料の作成時点では、50 エピソード以上の教示データに対する 1,000 ステップ以上の学習ログは無い。短縮実行の損失は本節に転記しない。損失曲線は、上記コマンドの完了後に `training_metrics.json` の `history` から転記する。転記してよいのは `below_recommended_steps` が false のファイルに限る。
-
-## 5. 定量評価と動作検証（実用性）
-
-> 注意: 本節の数値は Plan B（MuJoCo シミュレーション）における検証結果である。実機配備後は実機計測値へ更新し、[docs/plan_b.md](../docs/plan_b.md) の方針と同期させる。
-
-### 5.1 評価指標と達成結果
-
-比較プロトコルは、未知の初期配置（平面位置とヨー角のランダム化）、20 エピソード、最大 260 ステップである。整列成功は位置誤差 25 mm 以下かつヨー角誤差 15 deg 以下である。達成判定は Temporal Ensembling なしの `n_action_steps=30` で、学習時のチェックポイント選択と同じ実行である。記録は `outputs/eval_sim_act/metrics.json` である。Temporal Ensembling（係数 0.01、毎ステップ再計画）は別指標で、`outputs/eval_sim_act_te/metrics.json` に書き、達成値には使わない。入口は `DEVICE=mps ./scripts/run_phase15_benchmark.sh` である。
-
-| 条件 | 記録 | 整列成功率 | 把持成功率 | 平均位置誤差 (mm) | 平均絶対ヨー角誤差 (deg) |
-| --- | --- | --- | --- | --- | --- |
-| scripted オラクル | 実測。20 試行。CPU。`docs/results/scripted_random_20.json` | 1.0 | 1.0 | 0.0 | 0.0 |
-| ACT chunk30（選択と同じ実行） | 未計測。`docs/results/eval_sim_act.pending.json` | 未計測 | 未計測 | 未計測 | 未計測 |
-
-オラクルの `thresholds_met` は true である。20 試行の位置誤差とヨー角誤差は、ログ上いずれも 0.0 である。ACT の行は測定値が無く、目標値（整列成功率 85% 以上、把持成功率 90% 以上、位置誤差 25 mm 未満、ヨー角誤差 15 deg 未満）を達成値として記入していない。本学習のチェックポイントを得た後、`outputs/eval_sim_act/metrics.json` の `status` が `measured` である `summary` だけをこの行へ転記する。`summary` が null のプレースホルダは転記しない。
-
-固定スポーンでの scripted 動作確認は、以前の 1 試行で位置誤差 0.0 mm、ヨー角誤差 0.0 deg だった。合成データで学習した ACT は、閉ループが例外なく動作し、整列は完了しなかった。その位置誤差はこの環境で再測定していないため、数値は記載しない。
-
-### 5.2 初期配置のランダム化
-
-5.1 のオラクル実測は、固定スポーンではなく初期平面位置とヨー角をランダム化した 20 試行である。同じプロトコルを学習済み ACT に適用するコマンドは用意してある。実行結果は未計測である。照明変動は実機カメラ接続後に評価する。
-
-## 6. 失敗分析と改善ループ
-
-### 6.1 失敗モードの分類と対策
-
-シミュレーション環境構築およびポリシー開発の過程で確認された主な失敗モードと対策を以下にまとめる。
-
-| 失敗モード | 発生状況 | 主たる原因 | 講じた対策 |
+| 系 | アーム 5 軸 | グリッパ | 箱ヨー / 評価ヨー |
 | --- | --- | --- | --- |
-| 把持失敗 | 初期 scripted ポリシー実行時に常時発生 | 手先（End Effector）が直方体に到達していない、または指先モデルの拘束不足 | 逆運動学（IK）の調整、接触判定の安定化、摩擦係数の引き上げ |
-| 配置後の接触干渉 | 修正前の試行で高頻度に発生 | 目標枠への配置直後にアームの退避軌道が直方体と干渉 | 配置完了後の姿勢維持ステップの追加、および初期位置（Home）方向への退避軌道の変更 |
-| 合成モデルによる未整列 | 合成データモデル実行時に発生 | 訓練データがランダムなダミー軌道であり、整列タスクの分布を含まない | オラクルによる教示収集と再学習。ACT 側の成功率は未計測 |
-| チャンク先頭だけの採用 | 視覚ノイズや予測誤差がある閉ループで想定される | 毎ステップ最新チャンクの第 0 要素だけを使うと、重なる予測が入れ替わる | Temporal Ensembling。定量効果は本評価の後に記録する |
-| 機材未着・通信途絶 | 開発初期の境界条件 | 実機機材の調達遅延およびシリアル通信エラーの可能性 | Plan B（シミュレーション代替）の定義、および udev・通信ドライランの先行実装 |
+| MuJoCo sim / `contract.yaml` | **ラジアン** | **ラジアン**（6 次元目） | sim の `box_yaw` はラジアン。`metrics.json` のヨー誤差は **度** |
+| 実機 LeRobot SO-101（典型） | **度** | **0–100**（開度パーセント） | 実機評価時は度で揃える |
 
-### 6.2 RobOps に基づく改善サイクル
+契約のグリッパ可動域は `[-0.1745, 1.7453]` rad。0–100 への線形写像は `gripper_rad_to_percent` / `gripper_percent_to_rad`（`port_pick_align/units.py`）。実データ学習前に実機ログの単位を確認し、必要なら契約ラジアンへ揃える。
 
-失敗の検知からモデル改善までの運用ループを次のように定めている。評価指標で失敗が検知された場合、バリデータによって記録データの時刻同期やフレーム欠落の有無を確認し、問題がなければ追加エピソードの収集またはデータ拡張を実施する。その後 ACT モデルを再学習し、MuJoCo または ROS 2 モック環境で定量評価を再実行する。契約ファイル（`contract.yaml`）の定義を変更せずに各コンポーネントが追従する設計とすることで、再学習と検証の試行コストを低減している。
+### 2.4 実機ハードウェア（準備状況）
 
-Phase 1.5 では、このループを実機の前にシミュレータ内で閉じる。ダミー軌道の ACT はタスクの分布を含まないため整列しない。対策は、成功する scripted 軌道から画像と関節目標を集め、そのデータで ACT を学習し、推論時には過去チャンクの重なりを指数重み `w_i = exp(-m i)` で平均することである。`i = 0` は最も古い予測で、`m` の既定値は 0.01 である。重みの向きとフラグの有無は単体テストで確認した。
+設計対象は SO-ARM101（Feetech STS3215）＋ Top/Wrist カメラ。配置・機材一覧は [`docs/hardware.md`](../docs/hardware.md)。
 
-オラクル自体は、ランダム初期配置の 20 試行で整列成功率 1.0、平均位置誤差 0.0 mm だった。学習と ACT の 20 試行評価は未計測である。整列成功率 85% 以上、位置誤差 25 mm 未満は、このループの目標仕様であり、現時点の ACT の測定値ではない。チェックポイントが無い状態でベンチマークスクリプトを起動すると終了コード 1 になり、指標ファイルは作られない。
+| 項目 | 状態 | 出典 |
+| --- | --- | --- |
+| SO-101 Leader / Follower | キャリブレーション済み、leader→follower テレオペ動作（オーナー報告 2026-10-17） | TODO: 証拠リンク（動画／ログ）を所有者が添付 |
+| 制御周期 | 約 60 Hz（同上） | TODO: 同上 |
+| カメラ | セットアップ中（C920 上カメラ、手首カメラ） | [`docs/hardware.md`](../docs/hardware.md) |
+| 次工程 | `lerobot-record` → 学習 → `lerobot-rollout` | 未着手 |
 
-## 7. 実現場への展開構想（実用性）
+---
 
-本システムを実際の造船所や港湾ヤードへ展開する場合、防塵・防滴構造の確保、船体動揺への追従、無線通信途絶時のフェールセーフ、ならびに非常停止や速度制限などの安全規格適合が重要な課題となる。本リポジトリの設計価値は、現場データそのものの取得に先立ち、通信契約、品質検証ゲート、再現可能な評価環境をあらかじめ規格化した点にある。この枠組みにより、運用拠点や収集データが増加した場合でも、データおよびモデルの品質差分を CI パイプライン上で継続的に検知できる。港湾コンテナターミナルにおけるスプレッダの位置合わせ作業に対しても、本モックで実証した目標枠への精密整列と誤差監視の仕組みを直接応用可能である。
+## 3. データパイプラインと品質管理（RobOps / 技術力）／手法（データ）
+
+### 3.1 収集
+
+1. MuJoCo 上で `ScriptedPickAlignPolicy` をロールアウトし、画像＋関節目標を LeRobotDataset として保存（`scripts/collect_sim_dataset.py`）。
+2. 初期箱の平面位置・ヨーをランダム化し、整列成功エピソードのみ採録する（[`docs/dataset.md`](../docs/dataset.md)）。
+3. `validate_episode` により同期ずれ・フレーム間隔・関節可動域・静止を検査する。
+4. 教示軌道は反復改善済み（運搬中ヨー合わせ、パッド近傍の閉じた approach+place、開いた静止解放など。Issue #39/#41/#45 系）。
+
+post50 ランは `scripts/run_pipeline.sh` 経由の収集・学習・評価である（チェックポイントディレクトリ `sim_act_post50`）。
+
+### 3.2 品質ゲート
+
+| 検証項目 | 閾値（契約） |
+| --- | --- |
+| 時刻同期 | 33 ms 超を検出 |
+| フレーム欠落 | 50 ms 超間隔を検出 |
+| スキーマ | `contract.yaml` との一致 |
+| 公式収集フラグ | 50〜100 epi、640×480、260 step 等（[`docs/dataset.md`](../docs/dataset.md)） |
+
+---
+
+## 4. モデル選定と学習（技術力）／手法（ACT・TE）
+
+### 4.1 ACT 設定
+
+| 項目 | 設定 |
+| --- | --- |
+| モデル | ACT（Action Chunking with Transformers） |
+| 視覚バックボーン | ResNet18 |
+| chunk_size | 30 |
+| アクション次元 | 6（関節＋グリッパ） |
+| 学習プリセット | `--preset sim`（閉ループ整列で `best_model.pt` を選択、TE 最良を `best_model_te.pt` に別保存） |
+| デバイス | MPS（Mac M4 系） |
+| 早期終了 | `--min-steps`（既定 3000）以降、`(整列率, −平均位置誤差)` の辞書式進捗（PR #50） |
+
+### 4.2 Temporal Ensembling
+
+閉ループでは毎ステップ最新チャンクを出し、過去予測との指数重み平均で指令を平滑化する（係数の既定は 0.01、評価時は `n_action_steps=1`）。チャンク先頭だけを採用する実行と比べ、重複予測の入れ替わりを抑え、運搬〜解放の連続性を保ちやすい。
+
+### 4.3 評価プロトコルの監査性（PR #52）
+
+post50 で多くの失敗 ckpt が同一誤差（平均 205.4 mm 等）を示したため、ランダム化不良が疑われた。Issue #51 によると、seed=1000・50 エピソードの検証でランダム化自体は有効であり、同一数値は把持失敗時の「初期位置→パッド距離」が同一シード列で一致したためと説明されている。
+
+PR #52 以降、エピソードごとに `initial_box_xy` / `initial_box_yaw` / `seed` を `metrics.json` に記録できる。post50 当初の評価 JSON には初期 XY が無いため、散布図作成時は同一 seed で `env.reset` して spawn XY を再構成した（第 5.6 節・図 4）。
+
+### 4.4 学習曲線
+
+post50 の `training_metrics.json` から生成した学習曲線を図 2 に示す（入力は [`docs/figures/manifest.json`](../docs/figures/manifest.json) の `training_metrics`）。
+
+![図2. post50 学習曲線（train_loss / val_l1）](../docs/figures/training_loss_curve.png)
+
+---
+
+## 5. 定量評価と動作検証（実用性）／実験と結果
+
+> 本節の ACT 数値は **Plan B（MuJoCo）** 上の結果である。正本は下表の JSON パス。
+
+### 5.1 post50: TE 対 chunk30（主結果）
+
+条件: `checkpoints/sim_act_post50`、seed 0、各 20 エピソード、最大 260 ステップ、初期配置ランダム。  
+一覧: [`docs/results/post50_official_summary.json`](../docs/results/post50_official_summary.json)。
+
+| Checkpoint | Mode | Align | Mean pos (mm) | Median (mm) | Range (mm) | Mean \|yaw\| (deg) | Grasp | 正本 JSON |
+| --- | --- | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| **`best_model_te`** | **TE** | **1.000** | **18.081** | **18.955** | **14.579–20.190** | **11.830** | **1.000** | [`eval_sim_act_post50_best_model_te_te.json`](../docs/results/eval_sim_act_post50_best_model_te_te.json) |
+| `best_model` | chunk30 | 0.000 | 39.157 | 39.097 | 38.921–39.439 | 36.711 | 1.000 | [`eval_sim_act_post50_best_model_chunk30.json`](../docs/results/eval_sim_act_post50_best_model_chunk30.json) |
+
+表示値は `post50_official_summary.json` の公式セル（丸め）。mean / yaw は各 JSON の `summary`、median・range は同ファイルの公式セルおよびエピソード配列から算出した値と一致する。
+
+**読み取り:**
+
+- DoD を満たす組み合わせは **`best_model_te` × TE**（整列 100%、平均 18.081 mm < 25 mm、平均 \|ヨー\| 11.830 deg < 15 deg）。
+- `best_model` × chunk30 は整列 0、平均 39.157 mm で DoD 未達。
+- 選択メトリクス（chunk 向け / TE 向け）と実行モードを揃えないと成績が大きく崩れる。
+
+位置誤差の分布比較:
+
+![図3. TE と chunk30 の位置誤差ヒストグラム](../docs/figures/position_error_histogram.png)
+
+### 5.2 DoD 判定表（post50・TE）
+
+| 指標 | DoD | `best_model_te` × TE | 判定 |
+| --- | --- | ---: | --- |
+| 整列成功率 | ≥ 85% | 1.000（20/20） | 達成 |
+| 平均位置誤差 | < 25 mm | 18.081 mm | 達成 |
+| 平均絶対ヨー誤差 | < 15 deg（docs/results 参考） | 11.830 deg | 達成 |
+| 把持成功率（参考） | ≥ 90% | 1.000 | 達成 |
+
+### 5.3 独立再検証（seed=1000、50 エピソード・TE）
+
+正本: [`docs/results/eval_sim_act_post50_seed1000_te.json`](../docs/results/eval_sim_act_post50_seed1000_te.json)（`post50_official_summary.json` の `seed1000_te_verification.measured`、`match_within_tol: true`）。
+
+| 項目 | 実測値 |
+| --- | ---: |
+| seed / エピソード数 | 1000 / 50 |
+| 整列成功率 | 1.000 |
+| 平均位置誤差 (mm) | 18.283 |
+| 中央値 (mm) | 18.961 |
+| 位置誤差レンジ (mm) | 14.320–20.038 |
+| 平均絶対ヨー誤差 (deg) | 11.665 |
+| 把持成功率 | 1.000 |
+
+依頼文の「100%、平均 18.28 mm、範囲 14.3–20.0 mm」は上記 JSON と tol 内で一致した（[`docs/results/README.md`](../docs/results/README.md)）。不一致時は JSON を正とする。
+
+### 5.4 scripted オラクル（参考ベースライン）
+
+出典: [`docs/results/scripted_random_20.json`](../docs/results/scripted_random_20.json)。  
+20 エピソード・初期配置ランダム・CPU。整列 1.0、平均位置誤差 0.0 mm、`thresholds_met=true`。ACT の結果ではない。
+
+### 5.5 公式ベンチマーク成果物
+
+| 成果物 | 役割 |
+| --- | --- |
+| [`post50_official_summary.json`](../docs/results/post50_official_summary.json) | 公式セル一覧と seed=1000 検証状態 |
+| [`eval_sim_act_post50_best_model_te_te.json`](../docs/results/eval_sim_act_post50_best_model_te_te.json) | DoD 主結果（TE・20 epi） |
+| [`eval_sim_act_post50_best_model_chunk30.json`](../docs/results/eval_sim_act_post50_best_model_chunk30.json) | chunk30 比較（20 epi） |
+| [`eval_sim_act_post50_seed1000_te.json`](../docs/results/eval_sim_act_post50_seed1000_te.json) | 独立再検証（TE・50 epi） |
+
+### 5.6 初期箱 XY 散布図と代表ロールアウト
+
+初期箱 XY 散布図（図 4）は TE 評価の最終誤差を色・成否で示す。元の post50 TE `metrics.json` には `initial_box_xy` が無かったため、**同一 seed で `env.reset` して spawn XY のみ再構成**したうえでプロットした（誤差・成否は元 JSON）。出典: [`docs/figures/manifest.json`](../docs/figures/manifest.json) の notes（`backfill_initial_box_xy: true`）。
+
+![図4. 初期箱 XY 散布（TE、初期 XY は seed から再構成）](../docs/figures/initial_box_xy_scatter.png)
+
+代表ロールアウト動画（`best_model_te` × TE）: [`docs/figures/sim_rollout_representative.mp4`](../docs/figures/sim_rollout_representative.mp4)
+
+---
+
+## 6. 考察・失敗分析と改善ループ
+
+### 6.1 なぜ TE が chunk 実行を上回るか（post50）
+
+1. **実行ホライズンと教示の整合:** TE は毎ステップ再計画＋平滑化により、接近〜解放のタイミングずれを吸収しやすい。chunk30 は 30 歩分を固定実行するため、開指令や運搬途中の視覚誤差が残るとパッド到達前に停滞しやすい（平均約 39 mm 帯に固まる）。
+2. **チェックポイント選択の分離:** `best_model_te` は TE 閉ループで選ばれた重みである。**学習時の選択メトリクスと評価時の実行モードを一致させることが必須**である。
+3. **過去のスナップ偽陽性（PR #46）:** 解放時に箱をパッド中心へテレポートしていた時期があり、TE「整列 100%・誤差 0.0 mm」が過大評価だった。スナップ廃止後の post50 TE は平均 18.081 mm と、閾値内だが非ゼロの現実的な誤差になっている。
+
+### 6.2 主な失敗モードと対策履歴
+
+| 失敗モード | 対策 | 関連 |
+| --- | --- | --- |
+| 把持遷移の学習不足 | グリッパ損失重み・遷移オーバーサンプル | PR #33/#34 |
+| 運搬不足・早期解放 | 教示の approach+place 延長、パッド近傍ゲート | Issue #39/#41/#45 |
+| TE 誤差 0 の偽陽性 | 解放スナップ廃止、最終箱 XY ログ | PR #46 |
+| 早期終了が整列 0% で停滞 | 辞書式進捗と `--min-steps` | PR #50 |
+| 同一誤差の見え方 | 初期姿勢・seed を per-episode 記録 | PR #52 / Issue #51 |
+
+### 6.3 限界
+
+- 達成はシミュレーションかつ TE モードに依存。chunk30 単体では DoD 未達。
+- 実機分布（照明、カメラ外部、摩擦）へのギャップは未評価。単位変換手順は [`docs/units.md`](../docs/units.md) に確定済みだが、実機ログでの突合はこれからである。
+- 散布図の初期 XY は seed からの再構成であり、評価当時にログされた座標そのものではない（誤差は元 JSON）。
+
+---
+
+## 7. 実現場への展開構想（実用性）／実機への展開
+
+### 7.1 現状
+
+| 項目 | 内容 | 確認 |
+| --- | --- | --- |
+| アーム | 実 SO-101 をキャリブレーション済み、leader→follower テレオペ可（2026-10-17 オーナー報告） | TODO: 証拠リンクを添付 |
+| 周期 | 約 60 Hz | TODO: 同上 |
+| カメラ | セットアップ中（配置は hardware.md に準拠予定） | 進行中 |
+| 単位 | sim/契約は rad、実機は deg + グリッパ 0–100（[`docs/units.md`](../docs/units.md)） | 文書化済み |
+| 次 | 実デモを `lerobot-record` → 学習 → `lerobot-rollout` | 未着手 |
+
+### 7.2 Plan B（シミュレーション縮退）
+
+実機が締切までに安定しない場合は [`docs/plan_b.md`](../docs/plan_b.md) に従い、MuJoCo 評価動画と RobOps（変換・バリデータ・CI）の検証性で提出要件を満たす。本稿第 5 章の post50 TE 結果と [`sim_rollout_representative.mp4`](../docs/figures/sim_rollout_representative.mp4) がその中核エビデンスである。切り替え判定日の目安は 2026-10-23（plan_b.md）。
+
+### 7.3 産業展開の構想
+
+防塵・防滴、動揺追従、通信途絶時フェールセーフ、安全規格適合が現場展開の論点である。本リポジトリの価値は、現場データ取得前に契約・品質ゲート・再現可能な評価を規格化した点にある。
+
+---
 
 ## 8. 成果発表動画の構成設計（表現力）
 
 ### 8.1 提出仕様
 
-| 項目 | 要件仕様 |
+| 項目 | 要件 |
 | --- | --- |
-| 動画タイトル | `PAI最終課題_yohei1126` |
-| 動画時間 | 1 分以上 3 分以内（目標時間: 約 2 分 30 秒） |
-| 公開設定 | 限定公開（必須）または全体公開（推奨） |
-| 再生速度 | 実機およびシミュレーションの作業区間は 2 倍速再生を適用。動画内テロップおよび概要欄にその旨を明記 |
+| タイトル | `PAI最終課題_yohei1126` |
+| 長さ | 1〜3 分 |
+| 公開 | 限定公開以上 |
 
-### 8.2 画面構成とタイムライン
+### 8.2 タイムライン案
 
-| 時間帯 | 説明項目 | 表示内容 |
+| 時間 | 内容 |
+| --- | --- |
+| 0–15 s | 課題と DoD |
+| 15–60 s | RobOps（契約、CI、バリデータ、単位系） |
+| 60–120 s | MuJoCo で ACT（TE）の把持〜整列。[`sim_rollout_representative.mp4`](../docs/figures/sim_rollout_representative.mp4) を素材に使用可 |
+| 120 s–終了 | 第 5 章の表（TE vs chunk、seed=1000 検証）と DoD 達成の明示。実機があればテレオペを短く |
+
+テロップ例: chunk_size=30、TE（n_action_steps=1）、閾値 25 mm / 15 deg、post50 TE align=1.000 / mean=18.081 mm。
+
+**TODO:** YouTube 提出用の最終成果動画（1〜3 分）を撮影・公開する。
+
+---
+
+## 9. 今後の課題
+
+1. **chunk30 の底上げ:** TE 依存を減らし、選択メトリクスと実行を chunk でも DoD 達成できるようにする。
+2. **実機デモ:** カメラ完成後にテレオペ教示を収集し、[`docs/units.md`](../docs/units.md) の変換で契約ラジアンへ揃えて学習・評価する。
+3. **成果動画:** 提出仕様の YouTube 動画を完成させる。
+4. **PDF 化（DoD ⑤）:** `./scripts/build_report_pdf.sh yohei1126` で提出 PDF を生成する。
+
+---
+
+## 付録 A. 図表一覧
+
+| ID | 内容 | パス / 状態 |
 | --- | --- | --- |
-| 0–15 秒 | 課題設定と背景 | 港湾・海事現場の課題と、卓上モックによるタスク定義の提示 |
-| 15–60 秒 | システム構成と RobOps | 契約ファイル、CI、品質バリデータの機能、Rerun による動作可視化 |
-| 60–120 秒 | タスク実行の様子 | オラクルの把持から整列まで。ACT の動画は `outputs/eval_sim_act/sim_rollout.mp4` ができた後に同じ区間へ入れる |
-| 120 秒–終了 | 定量評価と改善ループ | オラクルの実測（位置誤差 0.0 mm、20 試行）と、ACT が未計測であることの明示。測定後は `metrics.json` の値に差し替える |
+| 表1 | DoD ①–⑤ 判定 | 第 1.3 節 |
+| 表2 | post50 TE vs chunk30 | 第 5.1 節（JSON 正本） |
+| 表3 | seed=1000・50 epi 再検証 | 第 5.3 節 |
+| 表4 | 失敗モードと対策 | 第 6.2 節 |
+| 図2 | 学習曲線 | [`docs/figures/training_loss_curve.png`](../docs/figures/training_loss_curve.png) |
+| 図3 | 位置誤差ヒストグラム | [`docs/figures/position_error_histogram.png`](../docs/figures/position_error_histogram.png) |
+| 図4 | 初期箱 XY 散布（XY は seed 再構成） | [`docs/figures/initial_box_xy_scatter.png`](../docs/figures/initial_box_xy_scatter.png) |
+| 動画 | TE 代表ロールアウト | [`docs/figures/sim_rollout_representative.mp4`](../docs/figures/sim_rollout_representative.mp4) |
+| 配置図 | 作業エリア | [`docs/images/so101_layout_guide.png`](../docs/images/so101_layout_guide.png) |
+| 実機写真 | 60 Hz テレオペ証拠 | TODO（所有者提供） |
 
-動画内のテロップでは、ApproximateTimeSynchronizer による時刻同期、データ品質閾値（33 ms / 50 ms）、ACT のチャンクサイズ（30）、ならびに目標整列閾値（25 mm / 15 deg）の技術仕様を明示する。
+## 付録 B. 残 TODO（所有者）
 
-改善後の実演として使う映像は、Temporal Ensembling を有効にした ACT の `outputs/eval_sim_act/sim_rollout.mp4` である。このファイルは本評価スクリプトが書く。本資料の作成時点では未生成である。未生成のあいだは、オラクルのロールアウトを示し、ACT の成功率が未計測であることをテロップに書く。測定後の動画では、`metrics.json` の整列成功率、位置誤差、ヨー角誤差をそのまま表示する。目標仕様の 85% や 25 mm を、測定前に実績として表示しない。
+- [ ] 実機 60 Hz テレオペの証拠リンク（動画・ログ）を添付する
+- [ ] 成果発表動画（YouTube、タイトル `PAI最終課題_yohei1126`）を公開する
+- [ ] 最終 PDF（DoD ⑤）を `./scripts/build_report_pdf.sh yohei1126` で生成し、個人情報チェックを行う（[`report/README.md`](README.md)）
 
+---
+
+## 改訂履歴（原稿）
+
+| 日付 | 内容 |
+| --- | --- |
+| 2026-10-18 | 初稿。post50（PR #34）と PR #52 / Issue #51 / DoD（Issue #23）を反映 |
+| 2026-10-18 | `docs/results` ピン留め JSON・`docs/units.md`・`docs/figures` を反映。解消済み TODO / pending 表現を削除 |
