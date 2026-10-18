@@ -35,7 +35,7 @@ def _load(path: Path) -> dict[str, Any]:
 def _summary(data: dict[str, Any]) -> dict[str, Any]:
     summary = data.get("summary")
     if not isinstance(summary, dict):
-        raise ValueError(f"{data.get('status')!r}: missing summary object")
+        raise TypeError(f"{data.get('status')!r}: missing summary object")
     return summary
 
 
@@ -54,7 +54,9 @@ def _approx_equal(got: float, expect: float, *, tol: float) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--metrics", type=Path, required=True, help="Path to metrics.json")
+    parser.add_argument(
+        "--metrics", type=Path, required=True, help="Path to metrics.json"
+    )
     parser.add_argument("--expect-seed", type=int, default=None)
     parser.add_argument("--expect-episodes", type=int, default=None)
     parser.add_argument("--expect-align", type=float, default=None)
@@ -62,7 +64,9 @@ def main() -> int:
     parser.add_argument("--expect-mean-yaw-deg", type=float, default=None)
     parser.add_argument("--expect-pos-min-mm", type=float, default=None)
     parser.add_argument("--expect-pos-max-mm", type=float, default=None)
-    parser.add_argument("--tol", type=float, default=0.05, help="Absolute tolerance for floats")
+    parser.add_argument(
+        "--tol", type=float, default=0.05, help="Absolute tolerance for floats"
+    )
     parser.add_argument(
         "--pin",
         type=Path,
@@ -184,7 +188,9 @@ def main() -> int:
 
     if args.pin is not None:
         if diffs and not args.allow_mismatch_pin:
-            print("Refusing to --pin while expects disagree (pass --allow-mismatch-pin).")
+            print(
+                "Refusing to --pin while expects disagree (pass --allow-mismatch-pin)."
+            )
             return 1
         args.pin.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(args.metrics, args.pin)
