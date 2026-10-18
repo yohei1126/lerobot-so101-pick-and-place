@@ -1,0 +1,25 @@
+{
+  "status": "pending",
+  "run": "post50",
+  "reason": "No seed=1000 / 50-episode TE metrics.json is present in this repository. Claimed narrative numbers below are NOT verified. When a local JSON exists, run scripts/verify_eval_metrics.py — if values disagree, the JSON wins.",
+  "policy": "checkpoint",
+  "checkpoint": "checkpoints/sim_act_post50/best_model_te.pt",
+  "episodes": 50,
+  "max_steps": 260,
+  "seed": 1000,
+  "randomize_box": true,
+  "temporal_ensemble": true,
+  "temporal_ensemble_coeff": 0.01,
+  "n_action_steps": 1,
+  "claimed_unverified": {
+    "align_success_rate": 1.0,
+    "mean_position_error_mm": 18.28,
+    "position_error_mm_min": 14.3,
+    "position_error_mm_max": 20.0,
+    "success_rate_percent": 100.0,
+    "source_note": "Narrative from Issue #55 / report draft TODO; not found as committed JSON or PR #52 artifact."
+  },
+  "summary": null,
+  "samples": null,
+  "pin_command": "python scripts/verify_eval_metrics.py --metrics PATH/TO/metrics.json --expect-seed 1000 --expect-episodes 50 --expect-align 1.0 --expect-mean-pos-mm 18.28 --expect-pos-min-mm 14.3 --expect-pos-max-mm 20.0 --pin docs/results/eval_sim_act_post50_seed1000_te.json"
+}

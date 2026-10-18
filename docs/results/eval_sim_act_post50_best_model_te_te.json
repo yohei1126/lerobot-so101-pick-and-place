@@ -1,0 +1,48 @@
+{
+  "status": "measured",
+  "run": "post50",
+  "policy": "checkpoint",
+  "checkpoint": "checkpoints/sim_act_post50/best_model_te.pt",
+  "episodes": 20,
+  "max_steps": 260,
+  "seed": null,
+  "randomize_box": true,
+  "temporal_ensemble": true,
+  "temporal_ensemble_coeff": 0.01,
+  "n_action_steps": 1,
+  "device": "mps",
+  "used_for_dod": true,
+  "provenance": {
+    "source": "https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103",
+    "source_label": "PR #34 post50 table row best_model_te × TE",
+    "samples_included": false,
+    "yaw_included": false,
+    "note": "Aggregates only. mean_abs_yaw_error_deg is null until the owner pins a local metrics.json that contains samples or summary yaw."
+  },
+  "thresholds": {
+    "align_success_rate_min": 0.85,
+    "grasp_success_rate_min": 0.9,
+    "mean_position_error_mm_max": 25.0,
+    "mean_abs_yaw_error_deg_max": 15.0
+  },
+  "thresholds_met": true,
+  "thresholds_met_note": "thresholds_met is true for align/grasp/mean position from the PR table. Yaw was not published in that comment, so yaw is not part of this boolean.",
+  "summary": {
+    "n_samples": 20,
+    "mean_position_error_mm": 18.1,
+    "median_position_error_mm": 19.0,
+    "std_position_error_mm": null,
+    "mean_abs_yaw_error_deg": null,
+    "median_abs_yaw_error_deg": null,
+    "std_abs_yaw_error_deg": null,
+    "grasp_success_rate": 1.0,
+    "n_grasp_success": 20,
+    "align_success_rate": 1.0,
+    "n_align_success": 20,
+    "holding_at_end_rate": null,
+    "n_holding_at_end": null,
+    "released_on_pad_rate": null,
+    "n_released_on_pad": null
+  },
+  "samples": null
+}

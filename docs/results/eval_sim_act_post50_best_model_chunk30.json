@@ -1,0 +1,47 @@
+{
+  "status": "measured",
+  "run": "post50",
+  "policy": "checkpoint",
+  "checkpoint": "checkpoints/sim_act_post50/best_model.pt",
+  "episodes": 20,
+  "max_steps": 260,
+  "seed": null,
+  "randomize_box": true,
+  "temporal_ensemble": false,
+  "temporal_ensemble_coeff": null,
+  "n_action_steps": 30,
+  "device": "mps",
+  "used_for_dod": false,
+  "provenance": {
+    "source": "https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103",
+    "source_label": "PR #34 post50 table row best_model × chunk30",
+    "samples_included": false,
+    "yaw_included": false,
+    "note": "Comparison baseline for the report (DoD not claimed for this cell). Yaw null until local metrics.json is pinned."
+  },
+  "thresholds": {
+    "align_success_rate_min": 0.85,
+    "grasp_success_rate_min": 0.9,
+    "mean_position_error_mm_max": 25.0,
+    "mean_abs_yaw_error_deg_max": 15.0
+  },
+  "thresholds_met": false,
+  "summary": {
+    "n_samples": 20,
+    "mean_position_error_mm": 39.2,
+    "median_position_error_mm": 39.1,
+    "std_position_error_mm": null,
+    "mean_abs_yaw_error_deg": null,
+    "median_abs_yaw_error_deg": null,
+    "std_abs_yaw_error_deg": null,
+    "grasp_success_rate": 1.0,
+    "n_grasp_success": 20,
+    "align_success_rate": 0.0,
+    "n_align_success": 0,
+    "holding_at_end_rate": null,
+    "n_holding_at_end": null,
+    "released_on_pad_rate": null,
+    "n_released_on_pad": null
+  },
+  "samples": null
+}
