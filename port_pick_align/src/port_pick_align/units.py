@@ -33,27 +33,27 @@ GRIPPER_OPEN_THRESH_RAD = 0.90
 def rad_to_deg(rad: float | np.ndarray) -> float | np.ndarray:
     """Convert radians to degrees (scalar or ndarray)."""
     if isinstance(rad, np.ndarray):
-        return np.degrees(rad)
+        return np.asarray(np.degrees(rad), dtype=np.float64)
     return float(math.degrees(float(rad)))
 
 
 def deg_to_rad(deg: float | np.ndarray) -> float | np.ndarray:
     """Convert degrees to radians (scalar or ndarray)."""
     if isinstance(deg, np.ndarray):
-        return np.radians(deg)
+        return np.asarray(np.radians(deg), dtype=np.float64)
     return float(math.radians(float(deg)))
 
 
 def joints_rad_to_deg(joints_rad: Sequence[float] | np.ndarray) -> np.ndarray:
     """Convert a 6-D joint vector from radians to degrees (all channels)."""
     arr = np.asarray(joints_rad, dtype=np.float64).reshape(-1)
-    return np.degrees(arr)
+    return np.asarray(np.degrees(arr), dtype=np.float64)
 
 
 def joints_deg_to_rad(joints_deg: Sequence[float] | np.ndarray) -> np.ndarray:
     """Convert a 6-D joint vector from degrees to radians (all channels)."""
     arr = np.asarray(joints_deg, dtype=np.float64).reshape(-1)
-    return np.radians(arr)
+    return np.asarray(np.radians(arr), dtype=np.float64)
 
 
 def gripper_rad_to_percent(
