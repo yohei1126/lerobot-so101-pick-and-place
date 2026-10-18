@@ -2,17 +2,51 @@
 
 本ディレクトリは、実測した評価ログと、未実行のプロトコルを分けて置く。`status` が `pending` のファイルは測定値を持たない。`summary` が null の項目を、達成値としてレポートや表に転記しない。
 
-## 未実行: 学習済み ACT
+## 公式: post50 ACT（DoD 主結果）
 
-`eval_sim_act.pending.json` は Task 7.4 の本評価がまだ無いことを示す。本学習で `checkpoints/sim_act/best_model.pt` を得た後、次を実行する。達成判定用の成果物は Git 管理外の `outputs/eval_sim_act/`（`n_action_steps=30`、Temporal Ensembling なし）に書かれる。Temporal Ensembling は `outputs/eval_sim_act_te/` の別指標である。
+出典: [PR #34 の post50 パイプライン結果コメント](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103)。セル JSON はローカル `metrics.json` を `scripts/verify_eval_metrics.py --pin` で固定した実測コピーである。
+
+| ファイル | 内容 |
+| --- | --- |
+| [`post50_official_summary.json`](post50_official_summary.json) | 公式セル一覧と seed=1000 検証の状態 |
+| [`eval_sim_act_post50_best_model_te_te.json`](eval_sim_act_post50_best_model_te_te.json) | **`best_model_te` × TE**（seed 0・20 epi）: align 1.000、mean 18.1 mm、median 19.0 mm、yaw 11.8 deg、grasp 1.000（DoD 達成）。元: `results/post50/eval/best_model_te/te/metrics.json` |
+| [`eval_sim_act_post50_best_model_chunk30.json`](eval_sim_act_post50_best_model_chunk30.json) | **`best_model` × chunk30**（seed 0・20 epi）: align 0.000、mean 39.2 mm、median 39.1 mm、yaw 36.7 deg、grasp 1.000（比較用・DoD 未達）。元: `results/post50/eval/best_model/chunk30/metrics.json` |
+| [`eval_sim_act_post50_seed1000_te.json`](eval_sim_act_post50_seed1000_te.json) | seed=1000・50 epi TE 検証: align 1.000、mean 18.28 mm、min/max 14.3–20.0 mm、yaw 11.7 deg（依頼値と tol 内一致）。元: `results/post50_verify/best_model_te/te/metrics.json` |
+
+各ピン留めファイルはエピソード配列と `mean_abs_yaw_error_deg` を含む。表示用の丸めは上表 / `post50_official_summary.json`、転記の正本は各 JSON の `summary` である。
+
+### seed=1000 検証
+
+依頼文の「成功率 100%、平均 18.28 mm、範囲 14.3–20.0 mm」は、上記 `eval_sim_act_post50_seed1000_te.json` で突合済みである（`scripts/verify_eval_metrics.py`、tol 0.05、一致）。
 
 ```bash
-DEVICE=mps ./scripts/run_phase15_benchmark.sh
+python scripts/verify_eval_metrics.py \
+  --metrics results/post50_verify/best_model_te/te/metrics.json \
+  --expect-seed 1000 --expect-episodes 50 \
+  --expect-align 1.0 --expect-mean-pos-mm 18.28 \
+  --expect-pos-min-mm 14.3 --expect-pos-max-mm 20.0 \
+  --pin docs/results/eval_sim_act_post50_seed1000_te.json
 ```
 
-MPS が無い環境では `DEVICE=cpu` とできる。その実行が 20 エピソード未満、または `training_metrics.json` の `below_recommended_steps` が true の重みを使った場合は、提出用の達成値にしない。
+不一致時は **JSON の値を正**とし、スクリプトが DIFF を表示する（必要なら `--allow-mismatch-pin`）。
 
-達成条件は、整列成功率 85% 以上、把持成功率 90% 以上、平均平面位置誤差 25 mm 未満、平均絶対ヨー角誤差 15 deg 未満である。`metrics.json` の `thresholds_met` はこの条件の成否を示す。
+### ローカル metrics のピン留め（公式セルの差し替え）
+
+```bash
+python scripts/verify_eval_metrics.py \
+  --metrics results/post50/eval/best_model_te/te/metrics.json \
+  --pin docs/results/eval_sim_act_post50_best_model_te_te.json
+
+python scripts/verify_eval_metrics.py \
+  --metrics results/post50/eval/best_model/chunk30/metrics.json \
+  --pin docs/results/eval_sim_act_post50_best_model_chunk30.json
+```
+
+`docs/results/` は `.gitignore` の `results/` にマッチするため、新規 JSON は `git add -f` が必要である。
+
+## 未実行プレースホルダ
+
+[`eval_sim_act.pending.json`](eval_sim_act.pending.json) は、既定パス `checkpoints/sim_act/best_model.pt` 向けの旧プロトコル案内である。post50 の公式数値は上記 post50 ファイルを使う。
 
 ## 実測: scripted オラクル
 
@@ -28,11 +62,24 @@ python scripts/run_sim_eval.py --policy scripted --episodes 20 --max-steps 260 \
   --output-dir outputs/eval_scripted_random
 ```
 
-モック（現在姿勢の繰り返し。学習ベースラインではない）:
+学習済み ACT（post50 TE / chunk30）:
 
 ```bash
-python scripts/run_sim_eval.py --policy mock --episodes 20 --max-steps 260 \
-  --randomize-box --no-save-video --output-dir outputs/eval_mock_random
+# TE（DoD 主結果）
+python scripts/run_sim_eval.py --policy checkpoint \
+  --checkpoint checkpoints/sim_act_post50/best_model_te.pt \
+  --episodes 20 --max-steps 260 --randomize-box --device mps \
+  --temporal-ensemble --temporal-ensemble-coeff 0.01 \
+  --output-dir outputs/eval_sim_act_te
+
+# chunk30（比較）
+python scripts/run_sim_eval.py --policy checkpoint \
+  --checkpoint checkpoints/sim_act_post50/best_model.pt \
+  --episodes 20 --max-steps 260 --randomize-box --device mps \
+  --no-temporal-ensemble --n-action-steps 30 \
+  --output-dir outputs/eval_sim_act_chunk30
 ```
+
+単位（rad / deg / グリッパ 0–100）は [`docs/units.md`](../units.md) を参照する。
 
 いずれのログも、実行して `status` が `measured` になったファイルだけを数値の根拠にする。
