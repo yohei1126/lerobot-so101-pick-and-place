@@ -3,10 +3,15 @@
   "run": "post50",
   "provenance": {
     "source": "https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103",
-    "source_label": "PR #34 pipeline results comment (post50 table)",
+    "source_label": "PR #34 pipeline results comment (post50 table), superseded by local metrics.json pins",
     "checkpoint_dir_local": "checkpoints/sim_act_post50",
-    "raw_metrics_layout_local": "eval/<checkpoint>/<chunk30|te>/metrics.json",
-    "note": "Aggregate numbers transcribed from the official post50 PR comment. Per-episode samples and mean_abs_yaw_error_deg were not in that comment and are not invented here. Replace cell files by copying local metrics.json when available."
+    "raw_metrics_layout_local": "results/post50/eval/<checkpoint>/<chunk30|te>/metrics.json",
+    "pinned_from": {
+      "best_model_te_te": "results/post50/eval/best_model_te/te/metrics.json",
+      "best_model_chunk30": "results/post50/eval/best_model/chunk30/metrics.json",
+      "seed1000_te": "results/post50_verify/best_model_te/te/metrics.json"
+    },
+    "note": "Cell JSON files are full local metrics.json copies (samples + mean_abs_yaw_error_deg). Aggregates in official_cells are rounded display values; the pinned files are authoritative."
   },
   "protocol": {
     "episodes_per_cell": 20,
@@ -27,9 +32,14 @@
       "checkpoint": "best_model_te",
       "mode": "TE",
       "metrics_file": "eval_sim_act_post50_best_model_te_te.json",
+      "seed": 0,
+      "episodes": 20,
       "align_success_rate": 1.0,
-      "mean_position_error_mm": 18.1,
-      "median_position_error_mm": 19.0,
+      "mean_position_error_mm": 18.081,
+      "median_position_error_mm": 18.955,
+      "position_error_mm_min": 14.579,
+      "position_error_mm_max": 20.19,
+      "mean_abs_yaw_error_deg": 11.83,
       "grasp_success_rate": 1.0,
       "used_for_dod": true
     },
@@ -37,15 +47,22 @@
       "checkpoint": "best_model",
       "mode": "chunk30",
       "metrics_file": "eval_sim_act_post50_best_model_chunk30.json",
+      "seed": 0,
+      "episodes": 20,
       "align_success_rate": 0.0,
-      "mean_position_error_mm": 39.2,
-      "median_position_error_mm": 39.1,
+      "mean_position_error_mm": 39.157,
+      "median_position_error_mm": 39.097,
+      "position_error_mm_min": 38.921,
+      "position_error_mm_max": 39.439,
+      "mean_abs_yaw_error_deg": 36.711,
       "grasp_success_rate": 1.0,
       "used_for_dod": false
     }
   ],
   "seed1000_te_verification": {
-    "metrics_file": "eval_sim_act_post50_seed1000_te.pending.json",
+    "metrics_file": "eval_sim_act_post50_seed1000_te.json",
+    "source_metrics": "results/post50_verify/best_model_te/te/metrics.json",
+    "status": "verified",
     "claimed": {
       "seed": 1000,
       "episodes": 50,
@@ -54,7 +71,18 @@
       "position_error_mm_min": 14.3,
       "position_error_mm_max": 20.0
     },
-    "status": "unverified_no_json",
+    "measured": {
+      "seed": 1000,
+      "episodes": 50,
+      "align_success_rate": 1.0,
+      "mean_position_error_mm": 18.283,
+      "median_position_error_mm": 18.961,
+      "position_error_mm_min": 14.32,
+      "position_error_mm_max": 20.038,
+      "mean_abs_yaw_error_deg": 11.665,
+      "grasp_success_rate": 1.0
+    },
+    "match_within_tol": true,
     "rule": "If a local metrics.json disagrees with the claimed numbers, the JSON wins."
   }
 }

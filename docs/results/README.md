@@ -4,24 +4,24 @@
 
 ## 公式: post50 ACT（DoD 主結果）
 
-出典: [PR #34 の post50 パイプライン結果コメント](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103)。
+出典: [PR #34 の post50 パイプライン結果コメント](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103)。セル JSON はローカル `metrics.json` を `scripts/verify_eval_metrics.py --pin` で固定した実測コピーである。
 
 | ファイル | 内容 |
 | --- | --- |
 | [`post50_official_summary.json`](post50_official_summary.json) | 公式セル一覧と seed=1000 検証の状態 |
-| [`eval_sim_act_post50_best_model_te_te.json`](eval_sim_act_post50_best_model_te_te.json) | **`best_model_te` × TE**: align 1.000、mean 18.1 mm、median 19.0 mm、grasp 1.000（DoD 達成） |
-| [`eval_sim_act_post50_best_model_chunk30.json`](eval_sim_act_post50_best_model_chunk30.json) | **`best_model` × chunk30**: align 0.000、mean 39.2 mm、median 39.1 mm、grasp 1.000（比較用・DoD 未達） |
-| [`eval_sim_act_post50_seed1000_te.pending.json`](eval_sim_act_post50_seed1000_te.pending.json) | seed=1000・50 epi TE の**未突合**プレースホルダ |
+| [`eval_sim_act_post50_best_model_te_te.json`](eval_sim_act_post50_best_model_te_te.json) | **`best_model_te` × TE**（seed 0・20 epi）: align 1.000、mean 18.1 mm、median 19.0 mm、yaw 11.8 deg、grasp 1.000（DoD 達成）。元: `results/post50/eval/best_model_te/te/metrics.json` |
+| [`eval_sim_act_post50_best_model_chunk30.json`](eval_sim_act_post50_best_model_chunk30.json) | **`best_model` × chunk30**（seed 0・20 epi）: align 0.000、mean 39.2 mm、median 39.1 mm、yaw 36.7 deg、grasp 1.000（比較用・DoD 未達）。元: `results/post50/eval/best_model/chunk30/metrics.json` |
+| [`eval_sim_act_post50_seed1000_te.json`](eval_sim_act_post50_seed1000_te.json) | seed=1000・50 epi TE 検証: align 1.000、mean 18.28 mm、min/max 14.3–20.0 mm、yaw 11.7 deg（依頼値と tol 内一致）。元: `results/post50_verify/best_model_te/te/metrics.json` |
 
-コミット時点では PR コメントの集計値のみを固定している。エピソード配列と `mean_abs_yaw_error_deg` はローカル `metrics.json` が無いため **null / 未収録**である（数値の捏造はしない）。ヨーは現行の `scripts/run_sim_eval.py` が `summarize()` 経由で算出・表示する。
+各ピン留めファイルはエピソード配列と `mean_abs_yaw_error_deg` を含む。表示用の丸めは上表 / `post50_official_summary.json`、転記の正本は各 JSON の `summary` である。
 
-### seed=1000 検証の扱い
+### seed=1000 検証
 
-依頼文の「成功率 100%、平均 18.28 mm、範囲 14.3–20.0 mm」は、リポジトリ内に対応 JSON が無いため **未検証**である。所有者がローカル JSON を用意したら:
+依頼文の「成功率 100%、平均 18.28 mm、範囲 14.3–20.0 mm」は、上記 `eval_sim_act_post50_seed1000_te.json` で突合済みである（`scripts/verify_eval_metrics.py`、tol 0.05、一致）。
 
 ```bash
 python scripts/verify_eval_metrics.py \
-  --metrics /path/to/metrics.json \
+  --metrics results/post50_verify/best_model_te/te/metrics.json \
   --expect-seed 1000 --expect-episodes 50 \
   --expect-align 1.0 --expect-mean-pos-mm 18.28 \
   --expect-pos-min-mm 14.3 --expect-pos-max-mm 20.0 \
@@ -34,13 +34,15 @@ python scripts/verify_eval_metrics.py \
 
 ```bash
 python scripts/verify_eval_metrics.py \
-  --metrics eval/best_model_te/te/metrics.json \
+  --metrics results/post50/eval/best_model_te/te/metrics.json \
   --pin docs/results/eval_sim_act_post50_best_model_te_te.json
 
 python scripts/verify_eval_metrics.py \
-  --metrics eval/best_model/chunk30/metrics.json \
+  --metrics results/post50/eval/best_model/chunk30/metrics.json \
   --pin docs/results/eval_sim_act_post50_best_model_chunk30.json
 ```
+
+`docs/results/` は `.gitignore` の `results/` にマッチするため、新規 JSON は `git add -f` が必要である。
 
 ## 未実行プレースホルダ
 
