@@ -1,0 +1,24 @@
+{
+  "output_dir": "docs/figures",
+  "status": "post50_local",
+  "written": [
+    "training_loss_curve: docs/figures/training_loss_curve.png",
+    "position_error_histogram: docs/figures/position_error_histogram.png",
+    "initial_box_xy_scatter: docs/figures/initial_box_xy_scatter.png",
+    "sim_rollout_representative: docs/figures/sim_rollout_representative.mp4"
+  ],
+  "skipped": [],
+  "failed": [],
+  "notes": [
+    "initial_box_xy backfilled from env.reset for scatter (results/post50/eval/best_model_te/te/metrics.json -> docs/figures/_enriched_scatter_metrics.json)"
+  ],
+  "inputs": {
+    "training_metrics": "checkpoints/sim_act_post50/training_metrics.json",
+    "te_metrics": "results/post50/eval/best_model_te/te/metrics.json",
+    "chunk30_metrics": "results/post50/eval/best_model/chunk30/metrics.json",
+    "scatter_metrics": "docs/figures/_enriched_scatter_metrics.json",
+    "checkpoint": "checkpoints/sim_act_post50/best_model_te.pt",
+    "video_policy": "checkpoint",
+    "backfill_initial_box_xy": true
+  }
+}

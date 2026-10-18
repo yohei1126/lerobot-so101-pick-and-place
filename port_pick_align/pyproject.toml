@@ -39,6 +39,9 @@ dev = [
   "mypy>=1.13",
   "types-PyYAML>=6.0",
 ]
+report = [
+  "matplotlib>=3.8",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

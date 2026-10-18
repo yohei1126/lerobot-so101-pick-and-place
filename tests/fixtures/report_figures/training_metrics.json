@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "steps": 100,
+  "best_train_loss": 0.08,
+  "history": [
+    {"step": 1, "train_loss": 0.42, "val_l1": 0.35, "lr": 0.0001},
+    {"step": 20, "train_loss": 0.28, "val_l1": 0.22, "lr": 9.5e-05},
+    {"step": 40, "train_loss": 0.18, "val_l1": 0.15, "lr": 8.5e-05},
+    {"step": 60, "train_loss": 0.12, "val_l1": 0.11, "lr": 7.0e-05},
+    {"step": 80, "train_loss": 0.09, "val_l1": 0.09, "lr": 5.5e-05},
+    {"step": 100, "train_loss": 0.08, "val_l1": 0.085, "lr": 4.0e-05}
+  ]
+}

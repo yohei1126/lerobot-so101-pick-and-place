@@ -12,6 +12,7 @@
 | [evaluation.md](evaluation.md) | 平面位置誤差・ヨー角誤差・成功率の集計モジュール（`eval_alignment`）API 仕様 |
 | [units.md](units.md) | sim/契約のラジアンと実機 LeRobot の度・グリッパ 0–100 の換算 |
 | [results/README.md](results/README.md) | 閉ループ評価の実測ログと未計測プレースホルダ（post50 公式含む） |
+| [figures/README.md](figures/README.md) | レポート図表の再生成（学習曲線・ヒストグラム・初期XY・ロールアウト） |
 | [e2e.md](e2e.md) | データ収集から推論までを結合して実行するエンドツーエンドパイプライン試験 |
 | [hardware.md](hardware.md) | SO-ARM101 および Feetech サーボモータの Linux udev 設定、接続準備ドライラン、シミュレーション準拠の作業エリア配置、購入済み機材 |
 | [ci.md](ci.md) | GitHub Actions CI ワークフローの構成とローカルでの静的解析・テスト実行手順 |
