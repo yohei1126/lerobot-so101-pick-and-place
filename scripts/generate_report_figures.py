@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import subprocess
 import sys
 from pathlib import Path
@@ -89,7 +90,7 @@ def plot_training_loss(metrics_path: Path, out_path: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
     ax.plot(steps, train_loss, color="#1f4e79", linewidth=1.6, label="train_loss")
-    if any(v == v for v in val_l1):  # not all NaN
+    if any(not math.isnan(v) for v in val_l1):
         ax.plot(steps, val_l1, color="#c45c26", linewidth=1.4, label="val_l1")
     ax.set_xlabel("step")
     ax.set_ylabel("loss")
@@ -111,7 +112,9 @@ def plot_position_error_histogram(
     te = _samples(_load_json(te_path))
     chunk = _samples(_load_json(chunk30_path))
     te_pos = [float(s["position_error_mm"]) for s in te if "position_error_mm" in s]
-    chunk_pos = [float(s["position_error_mm"]) for s in chunk if "position_error_mm" in s]
+    chunk_pos = [
+        float(s["position_error_mm"]) for s in chunk if "position_error_mm" in s
+    ]
     if not te_pos and not chunk_pos:
         raise ValueError(
             "both metrics files lack samples[].position_error_mm "
@@ -322,18 +325,29 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.use_fixtures:
-        args.training_metrics = args.training_metrics or (FIXTURES / "training_metrics.json")
+        args.training_metrics = args.training_metrics or (
+            FIXTURES / "training_metrics.json"
+        )
         args.te_metrics = args.te_metrics or (FIXTURES / "metrics_te.json")
-        args.chunk30_metrics = args.chunk30_metrics or (FIXTURES / "metrics_chunk30.json")
+        args.chunk30_metrics = args.chunk30_metrics or (
+            FIXTURES / "metrics_chunk30.json"
+        )
         args.scatter_metrics = args.scatter_metrics or (FIXTURES / "metrics_te.json")
 
     # Sensible defaults pointing at docs/results (may lack samples).
     if args.te_metrics is None:
-        candidate = REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_te_te.json"
+        candidate = (
+            REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_te_te.json"
+        )
         if candidate.is_file():
             args.te_metrics = candidate
     if args.chunk30_metrics is None:
-        candidate = REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_chunk30.json"
+        candidate = (
+            REPO_ROOT
+            / "docs"
+            / "results"
+            / "eval_sim_act_post50_best_model_chunk30.json"
+        )
         if candidate.is_file():
             args.chunk30_metrics = candidate
     if args.scatter_metrics is None:
@@ -358,7 +372,7 @@ def main() -> int:
             fn()
             written.append(f"{label}: {path}")
             print(f"OK  {label} -> {path}")
-        except Exception as exc:  # noqa: BLE001 — report and continue unless --strict
+        except Exception as exc:
             msg = f"{label}: {exc}"
             skipped.append(msg)
             failed.append(msg)
@@ -384,10 +398,14 @@ def main() -> int:
         try_step(
             "position_error_histogram",
             dest,
-            lambda: plot_position_error_histogram(args.te_metrics, args.chunk30_metrics, dest),
+            lambda: plot_position_error_histogram(
+                args.te_metrics, args.chunk30_metrics, dest
+            ),
         )
     else:
-        skipped.append("position_error_histogram: pass --te-metrics and --chunk30-metrics")
+        skipped.append(
+            "position_error_histogram: pass --te-metrics and --chunk30-metrics"
+        )
 
     if args.scatter_metrics is not None:
         dest = out / "initial_box_xy_scatter.png"
@@ -424,10 +442,16 @@ def main() -> int:
         "skipped": skipped,
         "failed": failed,
         "inputs": {
-            "training_metrics": str(args.training_metrics) if args.training_metrics else None,
+            "training_metrics": str(args.training_metrics)
+            if args.training_metrics
+            else None,
             "te_metrics": str(args.te_metrics) if args.te_metrics else None,
-            "chunk30_metrics": str(args.chunk30_metrics) if args.chunk30_metrics else None,
-            "scatter_metrics": str(args.scatter_metrics) if args.scatter_metrics else None,
+            "chunk30_metrics": str(args.chunk30_metrics)
+            if args.chunk30_metrics
+            else None,
+            "scatter_metrics": str(args.scatter_metrics)
+            if args.scatter_metrics
+            else None,
             "checkpoint": str(args.checkpoint) if args.checkpoint else None,
             "video_policy": args.video_policy,
         },
