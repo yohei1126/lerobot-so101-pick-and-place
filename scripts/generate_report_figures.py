@@ -98,7 +98,10 @@ def backfill_initial_box_xy(metrics_path: Path, out_path: Path) -> Path:
             _obs, info = env.reset(
                 seed=seed, options=box_reset_options(randomize_box=randomize)
             )
-            xy = [float(v) for v in np.asarray(info["box_xy"], dtype=np.float64).reshape(2)]
+            xy = [
+                float(v)
+                for v in np.asarray(info["box_xy"], dtype=np.float64).reshape(2)
+            ]
             yaw = float(info["box_yaw"])
             new_row = dict(row)
             new_row["seed"] = seed
@@ -210,7 +213,9 @@ def plot_position_error_histogram(
     te = _samples(_load_json(te_path))
     chunk = _samples(_load_json(chunk30_path))
     te_pos = [float(s["position_error_mm"]) for s in te if "position_error_mm" in s]
-    chunk_pos = [float(s["position_error_mm"]) for s in chunk if "position_error_mm" in s]
+    chunk_pos = [
+        float(s["position_error_mm"]) for s in chunk if "position_error_mm" in s
+    ]
     if not te_pos and not chunk_pos:
         raise ValueError(
             "both metrics files lack samples[].position_error_mm "
@@ -435,26 +440,48 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.use_fixtures:
-        args.training_metrics = args.training_metrics or (FIXTURES / "training_metrics.json")
+        args.training_metrics = args.training_metrics or (
+            FIXTURES / "training_metrics.json"
+        )
         args.te_metrics = args.te_metrics or (FIXTURES / "metrics_te.json")
-        args.chunk30_metrics = args.chunk30_metrics or (FIXTURES / "metrics_chunk30.json")
+        args.chunk30_metrics = args.chunk30_metrics or (
+            FIXTURES / "metrics_chunk30.json"
+        )
         args.scatter_metrics = args.scatter_metrics or (FIXTURES / "metrics_te.json")
 
     # Sensible defaults: local post50 eval layout, then docs/results pins.
     if args.te_metrics is None:
         for candidate in (
-            REPO_ROOT / "results" / "post50" / "eval" / "best_model_te" / "te" / "metrics.json",
+            REPO_ROOT
+            / "results"
+            / "post50"
+            / "eval"
+            / "best_model_te"
+            / "te"
+            / "metrics.json",
             REPO_ROOT / "eval" / "best_model_te" / "te" / "metrics.json",
-            REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_te_te.json",
+            REPO_ROOT
+            / "docs"
+            / "results"
+            / "eval_sim_act_post50_best_model_te_te.json",
         ):
             if candidate.is_file():
                 args.te_metrics = candidate
                 break
     if args.chunk30_metrics is None:
         for candidate in (
-            REPO_ROOT / "results" / "post50" / "eval" / "best_model" / "chunk30" / "metrics.json",
+            REPO_ROOT
+            / "results"
+            / "post50"
+            / "eval"
+            / "best_model"
+            / "chunk30"
+            / "metrics.json",
             REPO_ROOT / "eval" / "best_model" / "chunk30" / "metrics.json",
-            REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_chunk30.json",
+            REPO_ROOT
+            / "docs"
+            / "results"
+            / "eval_sim_act_post50_best_model_chunk30.json",
         ):
             if candidate.is_file():
                 args.chunk30_metrics = candidate
@@ -526,10 +553,14 @@ def main() -> int:
         try_step(
             "position_error_histogram",
             dest,
-            lambda: plot_position_error_histogram(args.te_metrics, args.chunk30_metrics, dest),
+            lambda: plot_position_error_histogram(
+                args.te_metrics, args.chunk30_metrics, dest
+            ),
         )
     else:
-        skipped.append("position_error_histogram: pass --te-metrics and --chunk30-metrics")
+        skipped.append(
+            "position_error_histogram: pass --te-metrics and --chunk30-metrics"
+        )
 
     if args.scatter_metrics is not None:
         dest = out / "initial_box_xy_scatter.png"
@@ -569,10 +600,16 @@ def main() -> int:
         "failed": failed,
         "notes": notes,
         "inputs": {
-            "training_metrics": str(args.training_metrics) if args.training_metrics else None,
+            "training_metrics": str(args.training_metrics)
+            if args.training_metrics
+            else None,
             "te_metrics": str(args.te_metrics) if args.te_metrics else None,
-            "chunk30_metrics": str(args.chunk30_metrics) if args.chunk30_metrics else None,
-            "scatter_metrics": str(args.scatter_metrics) if args.scatter_metrics else None,
+            "chunk30_metrics": str(args.chunk30_metrics)
+            if args.chunk30_metrics
+            else None,
+            "scatter_metrics": str(args.scatter_metrics)
+            if args.scatter_metrics
+            else None,
             "checkpoint": str(args.checkpoint) if args.checkpoint else None,
             "video_policy": args.video_policy,
             "backfill_initial_box_xy": bool(args.backfill_initial_box_xy),
