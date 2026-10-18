@@ -1,0 +1,19 @@
+{
+  "output_dir": "/workspace/docs/figures",
+  "written": [
+    "training_loss_curve: /workspace/docs/figures/training_loss_curve.png",
+    "position_error_histogram: /workspace/docs/figures/position_error_histogram.png",
+    "initial_box_xy_scatter: /workspace/docs/figures/initial_box_xy_scatter.png",
+    "sim_rollout_representative: /workspace/docs/figures/sim_rollout_representative.mp4"
+  ],
+  "skipped": [],
+  "failed": [],
+  "inputs": {
+    "training_metrics": "/workspace/tests/fixtures/report_figures/training_metrics.json",
+    "te_metrics": "/workspace/tests/fixtures/report_figures/metrics_te.json",
+    "chunk30_metrics": "/workspace/tests/fixtures/report_figures/metrics_chunk30.json",
+    "scatter_metrics": "/workspace/tests/fixtures/report_figures/metrics_te.json",
+    "checkpoint": null,
+    "video_policy": "scripted"
+  }
+}

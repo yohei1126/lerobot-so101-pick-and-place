@@ -1,0 +1,82 @@
+{
+  "status": "measured",
+  "policy": "checkpoint",
+  "episodes": 8,
+  "seed": 0,
+  "temporal_ensemble": false,
+  "n_action_steps": 30,
+  "summary": {
+    "n_samples": 8,
+    "mean_position_error_mm": 41.0,
+    "median_position_error_mm": 39.5,
+    "mean_abs_yaw_error_deg": 8.0,
+    "align_success_rate": 0.0,
+    "grasp_success_rate": 1.0
+  },
+  "samples": [
+    {
+      "position_error_mm": 35.0,
+      "yaw_error_deg": 6.0,
+      "grasp_success": true,
+      "seed": 0,
+      "initial_box_xy": [0.26, -0.06],
+      "align_success": false
+    },
+    {
+      "position_error_mm": 38.0,
+      "yaw_error_deg": -8.0,
+      "grasp_success": true,
+      "seed": 1,
+      "initial_box_xy": [0.30, -0.10],
+      "align_success": false
+    },
+    {
+      "position_error_mm": 42.0,
+      "yaw_error_deg": 10.0,
+      "grasp_success": true,
+      "seed": 2,
+      "initial_box_xy": [0.24, -0.09],
+      "align_success": false
+    },
+    {
+      "position_error_mm": 39.0,
+      "yaw_error_deg": -5.0,
+      "grasp_success": true,
+      "seed": 3,
+      "initial_box_xy": [0.32, -0.05],
+      "align_success": false
+    },
+    {
+      "position_error_mm": 45.0,
+      "yaw_error_deg": 12.0,
+      "grasp_success": true,
+      "seed": 4,
+      "initial_box_xy": [0.28, -0.11],
+      "align_success": false
+    },
+    {
+      "position_error_mm": 40.0,
+      "yaw_error_deg": 7.0,
+      "grasp_success": true,
+      "seed": 5,
+      "initial_box_xy": [0.25, -0.07],
+      "align_success": false
+    },
+    {
+      "position_error_mm": 48.0,
+      "yaw_error_deg": -9.0,
+      "grasp_success": true,
+      "seed": 6,
+      "initial_box_xy": [0.29, -0.08],
+      "align_success": false
+    },
+    {
+      "position_error_mm": 41.0,
+      "yaw_error_deg": 4.0,
+      "grasp_success": true,
+      "seed": 7,
+      "initial_box_xy": [0.31, -0.12],
+      "align_success": false
+    }
+  ]
+}
