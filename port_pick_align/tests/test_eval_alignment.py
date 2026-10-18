@@ -28,7 +28,9 @@ def test_empty_summary_keys() -> None:
     assert summary["released_on_pad_rate"] == 0.0
     assert summary["align_success_rate"] == 0.0
     assert "mean_position_error_mm" in summary
+    assert "median_position_error_mm" in summary
     assert "mean_abs_yaw_error_deg" in summary
+    assert "median_abs_yaw_error_deg" in summary
 
 
 @pytest.mark.unit
@@ -43,7 +45,9 @@ def test_summarize_success_rate_and_means() -> None:
     assert summary["n_grasp_success"] == 2
     assert summary["grasp_success_rate"] == pytest.approx(2 / 3)
     assert summary["mean_position_error_mm"] == pytest.approx(20.0)
+    assert summary["median_position_error_mm"] == pytest.approx(20.0)
     assert summary["mean_abs_yaw_error_deg"] == pytest.approx(10.0)
+    assert summary["median_abs_yaw_error_deg"] == pytest.approx(10.0)
     assert summary["std_position_error_mm"] == pytest.approx(10.0)
     # 10mm/5deg and 20mm/15deg and 30mm/10deg with defaults 25mm/15deg → 2 align
     assert summary["n_align_success"] == 2

@@ -443,6 +443,15 @@ def main(argv: list[str] | None = None) -> int:
     metrics_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {metrics_path}")
     print(json.dumps(summary, indent=2))
+    print(
+        "aggregate: "
+        f"align={summary['align_success_rate']:.3f} "
+        f"grasp={summary['grasp_success_rate']:.3f} "
+        f"mean_pos_mm={summary['mean_position_error_mm']:.1f} "
+        f"median_pos_mm={summary['median_position_error_mm']:.1f} "
+        f"mean_abs_yaw_deg={summary['mean_abs_yaw_error_deg']:.2f} "
+        f"median_abs_yaw_deg={summary['median_abs_yaw_error_deg']:.2f}"
+    )
     print(f"thresholds_met={met}")
 
     if frames:

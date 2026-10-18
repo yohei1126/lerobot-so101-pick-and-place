@@ -1,0 +1,573 @@
+{
+  "status": "measured",
+  "policy": "checkpoint",
+  "episodes": 20,
+  "max_steps": 260,
+  "seed": 0,
+  "randomize_box": true,
+  "temporal_ensemble": true,
+  "temporal_ensemble_coeff": 0.01,
+  "n_action_steps": 1,
+  "device": "mps",
+  "checkpoint": "/Users/yoheionishi/work/utokyo-ai-courses/utokyo-physical-ai-applied1-final-assignment/checkpoints/sim_act_post50/best_model_te.pt",
+  "thresholds": {
+    "align_success_rate_min": 0.85,
+    "grasp_success_rate_min": 0.9,
+    "mean_position_error_mm_max": 25.0,
+    "mean_abs_yaw_error_deg_max": 15.0
+  },
+  "thresholds_met": true,
+  "summary": {
+    "n_samples": 20,
+    "mean_position_error_mm": 18.080695803842033,
+    "std_position_error_mm": 1.8181704979782587,
+    "mean_abs_yaw_error_deg": 11.829617212669673,
+    "std_abs_yaw_error_deg": 1.4456894103947195,
+    "grasp_success_rate": 1.0,
+    "n_grasp_success": 20,
+    "holding_at_end_rate": 0.2,
+    "n_holding_at_end": 4,
+    "released_on_pad_rate": 0.8,
+    "n_released_on_pad": 16,
+    "align_success_rate": 1.0,
+    "n_align_success": 20
+  },
+  "samples": [
+    {
+      "position_error_mm": 14.686559925319349,
+      "yaw_error_deg": 14.249786651472352,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.33832442274501023,
+        0.11109068250634413
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 255,
+          "grip_cmd": 0.9145318865776062,
+          "box_x": 0.33338710897910273,
+          "box_y": 0.11031302120117722,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.23085297954956,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 14.748926527407052,
+      "yaw_error_deg": 13.892712919533128,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.3378151766133895,
+        0.11168971042935555
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 255,
+          "grip_cmd": 0.9012567400932312,
+          "box_x": 0.3336513042784329,
+          "box_y": 0.1107175217124337,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 18.800113163370177,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 19.16186054001441,
+      "yaw_error_deg": 10.408412270977223,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.33341967594209004,
+        0.11039428537329708
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 258,
+          "grip_cmd": 0.9216731786727905,
+          "box_x": 0.3325884012572566,
+          "box_y": 0.1106910538248681,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.74386612773208,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 19.08393593777164,
+      "yaw_error_deg": 10.49928278570262,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.33345721438697346,
+        0.11048512453899607
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 258,
+          "grip_cmd": 0.9198417663574219,
+          "box_x": 0.3326410802854616,
+          "box_y": 0.11073920620421598,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.67471462013672,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 19.100652328202038,
+      "yaw_error_deg": 10.04331332569265,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.3333186960574856,
+        0.11069575268276341
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 255,
+          "grip_cmd": 0.9135860204696655,
+          "box_x": 0.3324950643172596,
+          "box_y": 0.11112726312764731,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.625193829944298,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 19.799793416306276,
+      "yaw_error_deg": 11.339488322567167,
+      "grasp_success": true,
+      "holding_at_end": true,
+      "released_on_pad": false,
+      "final_box_xy": [
+        0.33271303489410065,
+        0.11034636561932117
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 0
+    },
+    {
+      "position_error_mm": 19.70936458161077,
+      "yaw_error_deg": 12.041523128120179,
+      "grasp_success": true,
+      "holding_at_end": true,
+      "released_on_pad": false,
+      "final_box_xy": [
+        0.332819607466874,
+        0.11034116132143401
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 0
+    },
+    {
+      "position_error_mm": 18.843434343123008,
+      "yaw_error_deg": 10.757662418914046,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.33357197755868534,
+        0.11076988101315859
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 258,
+          "grip_cmd": 0.913149893283844,
+          "box_x": 0.33278507740480473,
+          "box_y": 0.11094675440851812,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.450316596350046,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 17.52936151908728,
+      "yaw_error_deg": 12.563489159835099,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.3349218707874044,
+        0.11105972401348095
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 259,
+          "grip_cmd": 0.9191949963569641,
+          "box_x": 0.3330971948401745,
+          "box_y": 0.11059852902701144,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.341470438593035,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 18.302519450852508,
+      "yaw_error_deg": 11.371900124960062,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.3338585958227221,
+        0.11137229523948632
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 259,
+          "grip_cmd": 0.9151138663291931,
+          "box_x": 0.3329496843461295,
+          "box_y": 0.11082268803067423,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.363272421751216,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 19.34887365741987,
+      "yaw_error_deg": 10.219363463591035,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.33331441784414073,
+        0.11020355881297356
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 258,
+          "grip_cmd": 0.9273708462715149,
+          "box_x": 0.3324486850285554,
+          "box_y": 0.11053528009734834,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.940651445288967,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 20.189707382199327,
+      "yaw_error_deg": 10.758405975757277,
+      "grasp_success": true,
+      "holding_at_end": true,
+      "released_on_pad": false,
+      "final_box_xy": [
+        0.3323817840842696,
+        0.11013984015720135
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 0
+    },
+    {
+      "position_error_mm": 16.705093545674334,
+      "yaw_error_deg": 13.623160162983117,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.33592709451689523,
+        0.11099925105153295
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 256,
+          "grip_cmd": 0.9023628830909729,
+          "box_x": 0.33357334714147213,
+          "box_y": 0.11081931908904791,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 18.818071796103368,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 19.066650858196272,
+      "yaw_error_deg": 10.505319018584258,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.33345187015024935,
+        0.11052917250583937
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 258,
+          "grip_cmd": 0.9182193875312805,
+          "box_x": 0.33264910828652616,
+          "box_y": 0.11080454296670032,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.63695173146674,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 19.42491123324325,
+      "yaw_error_deg": 10.406929252598287,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.333244252053223,
+        0.11017289019276476
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 259,
+          "grip_cmd": 0.9390226602554321,
+          "box_x": 0.3323466983261952,
+          "box_y": 0.11016880771524463,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 20.206221856799274,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 17.284702239550793,
+      "yaw_error_deg": 12.67949973721034,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.3349628893948696,
+        0.11147672385998152
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 259,
+          "grip_cmd": 0.9090311527252197,
+          "box_x": 0.33328162863289745,
+          "box_y": 0.11093020916780637,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.02012215807504,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 14.578776760187287,
+      "yaw_error_deg": 13.979027461960241,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.3382078033597069,
+        0.11142767066544701
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 255,
+          "grip_cmd": 0.9109272360801697,
+          "box_x": 0.33346751064616653,
+          "box_y": 0.11041389144927309,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 19.11064314409475,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 20.14421059413247,
+      "yaw_error_deg": 10.930143516708906,
+      "grasp_success": true,
+      "holding_at_end": true,
+      "released_on_pad": false,
+      "final_box_xy": [
+        0.3324707789227422,
+        0.11007449603872024
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 0
+    },
+    {
+      "position_error_mm": 16.936078307014878,
+      "yaw_error_deg": 13.164324806388363,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.33541027619529223,
+        0.11139937748045618
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 258,
+          "grip_cmd": 0.9017013311386108,
+          "box_x": 0.33349553736138093,
+          "box_y": 0.111034469698983,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 18.78238591255184,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    },
+    {
+      "position_error_mm": 16.968502929527837,
+      "yaw_error_deg": 13.158599749837117,
+      "grasp_success": true,
+      "holding_at_end": false,
+      "released_on_pad": true,
+      "final_box_xy": [
+        0.335409726775444,
+        0.11133662774075823
+      ],
+      "pad_xy": [
+        0.35,
+        0.12
+      ],
+      "open_while_holding": [
+        {
+          "step": 258,
+          "grip_cmd": 0.9034903049468994,
+          "box_x": 0.333462768966696,
+          "box_y": 0.11097868070765127,
+          "pad_x": 0.35,
+          "pad_y": 0.12,
+          "box_pad_dist_mm": 18.837839898018427,
+          "inside_release_gate": true
+        }
+      ],
+      "n_open_outside_gate": 0,
+      "n_open_inside_gate": 1
+    }
+  ]
+}

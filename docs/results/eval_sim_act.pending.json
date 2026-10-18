@@ -1,6 +1,11 @@
 {
   "status": "pending",
-  "reason": "The full ACT checkpoint from MPS training is not in this environment. Null summary fields are not measurements. Do not copy them into the report as results.",
+  "reason": "Default Phase 1.5 path checkpoints/sim_act/best_model.pt is not pinned here. For the official post50 DoD numbers use post50_official_summary.json and the eval_sim_act_post50_*.json files in this directory. Null summary fields are not measurements.",
+  "see_also": [
+    "post50_official_summary.json",
+    "eval_sim_act_post50_best_model_te_te.json",
+    "eval_sim_act_post50_best_model_chunk30.json"
+  ],
   "protocol": {
     "episodes": 20,
     "max_steps": 260,
