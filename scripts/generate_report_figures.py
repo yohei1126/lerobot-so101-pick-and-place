@@ -30,6 +30,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -64,6 +66,103 @@ def _samples(data: dict[str, Any]) -> list[dict[str, Any]]:
     return [row for row in raw if isinstance(row, dict)]
 
 
+def backfill_initial_box_xy(metrics_path: Path, out_path: Path) -> Path:
+    """Write a copy of metrics with initial_box_xy from env.reset(seed+ep).
+
+    Older post50 eval JSONs omit ``initial_box_xy`` even though the closed-loop
+    protocol used ``randomize_box`` with ``seed + episode``. Reconstructing via
+    MuJoCo reset alone (no policy) recovers the authentic spawn XY for scatter
+    plots without inventing position-error numbers.
+    """
+    import numpy as np
+    from port_pick_align.simulation.env import PickAlignSimEnv, box_reset_options
+
+    data = _load_json(metrics_path)
+    samples = _samples(data)
+    if not samples:
+        raise ValueError(f"no samples in {metrics_path}")
+    if all(
+        isinstance(row.get("initial_box_xy"), (list, tuple))
+        and len(row["initial_box_xy"]) >= 2
+        for row in samples
+    ):
+        return metrics_path
+
+    base_seed = int(data.get("seed") or 0)
+    randomize = bool(data.get("randomize_box", True))
+    env = PickAlignSimEnv(render_cameras=False)
+    try:
+        enriched: list[dict[str, Any]] = []
+        for ep, row in enumerate(samples):
+            seed = int(row.get("seed", base_seed + ep))
+            _obs, info = env.reset(
+                seed=seed, options=box_reset_options(randomize_box=randomize)
+            )
+            xy = [float(v) for v in np.asarray(info["box_xy"], dtype=np.float64).reshape(2)]
+            yaw = float(info["box_yaw"])
+            new_row = dict(row)
+            new_row["seed"] = seed
+            new_row["initial_box_xy"] = xy
+            new_row["initial_box_yaw"] = yaw
+            new_row["initial_box_xy_source"] = "env_reset_backfill"
+            enriched.append(new_row)
+    finally:
+        close = getattr(env, "close", None)
+        if callable(close):
+            close()
+
+    out = dict(data)
+    out["samples"] = enriched
+    out["initial_box_xy_backfill"] = {
+        "source_metrics": str(metrics_path),
+        "method": "PickAlignSimEnv.reset(seed=base+ep, randomize_box)",
+        "note": "Spawn XY reconstructed to match post50 eval protocol; errors unchanged.",
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
+    print(f"backfilled initial_box_xy -> {out_path}")
+    return out_path
+
+
+def _maybe_compress_video(path: Path, *, max_mb: float = 15.0) -> None:
+    """Downscale/re-encode with ffmpeg if the rollout video exceeds max_mb."""
+    if not path.is_file():
+        return
+    size_mb = path.stat().st_size / (1024 * 1024)
+    if size_mb <= max_mb:
+        print(f"video size OK: {size_mb:.2f} MB")
+        return
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        print(
+            f"WARNING: video is {size_mb:.2f} MB (>{max_mb}) but ffmpeg not found; leaving as-is",
+            file=sys.stderr,
+        )
+        return
+    tmp = path.with_suffix(".compressed.mp4")
+    cmd = [
+        ffmpeg,
+        "-y",
+        "-i",
+        str(path),
+        "-vf",
+        "scale=640:-2",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-crf",
+        "28",
+        "-an",
+        str(tmp),
+    ]
+    print("compressing video:", " ".join(cmd))
+    subprocess.run(cmd, check=True)
+    tmp.replace(path)
+    new_mb = path.stat().st_size / (1024 * 1024)
+    print(f"compressed video: {size_mb:.2f} MB -> {new_mb:.2f} MB")
+
+
 def plot_training_loss(metrics_path: Path, out_path: Path) -> None:
     plt = _require_matplotlib()
     data = _load_json(metrics_path)
@@ -89,7 +188,7 @@ def plot_training_loss(metrics_path: Path, out_path: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
     ax.plot(steps, train_loss, color="#1f4e79", linewidth=1.6, label="train_loss")
-    if any(v == v for v in val_l1):  # not all NaN
+    if any(not math.isnan(v) for v in val_l1):
         ax.plot(steps, val_l1, color="#c45c26", linewidth=1.4, label="val_l1")
     ax.set_xlabel("step")
     ax.set_ylabel("loss")
@@ -319,6 +418,20 @@ def main() -> int:
         action="store_true",
         help="Exit non-zero if any requested artifact cannot be produced",
     )
+    parser.add_argument(
+        "--backfill-initial-box-xy",
+        action="store_true",
+        help=(
+            "If scatter metrics lack initial_box_xy, reconstruct spawn XY via "
+            "PickAlignSimEnv.reset(seed+ep) matching the eval protocol"
+        ),
+    )
+    parser.add_argument(
+        "--max-video-mb",
+        type=float,
+        default=15.0,
+        help="Compress rollout MP4 with ffmpeg if larger than this (MB)",
+    )
     args = parser.parse_args()
 
     if args.use_fixtures:
@@ -327,15 +440,25 @@ def main() -> int:
         args.chunk30_metrics = args.chunk30_metrics or (FIXTURES / "metrics_chunk30.json")
         args.scatter_metrics = args.scatter_metrics or (FIXTURES / "metrics_te.json")
 
-    # Sensible defaults pointing at docs/results (may lack samples).
+    # Sensible defaults: local post50 eval layout, then docs/results pins.
     if args.te_metrics is None:
-        candidate = REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_te_te.json"
-        if candidate.is_file():
-            args.te_metrics = candidate
+        for candidate in (
+            REPO_ROOT / "results" / "post50" / "eval" / "best_model_te" / "te" / "metrics.json",
+            REPO_ROOT / "eval" / "best_model_te" / "te" / "metrics.json",
+            REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_te_te.json",
+        ):
+            if candidate.is_file():
+                args.te_metrics = candidate
+                break
     if args.chunk30_metrics is None:
-        candidate = REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_chunk30.json"
-        if candidate.is_file():
-            args.chunk30_metrics = candidate
+        for candidate in (
+            REPO_ROOT / "results" / "post50" / "eval" / "best_model" / "chunk30" / "metrics.json",
+            REPO_ROOT / "eval" / "best_model" / "chunk30" / "metrics.json",
+            REPO_ROOT / "docs" / "results" / "eval_sim_act_post50_best_model_chunk30.json",
+        ):
+            if candidate.is_file():
+                args.chunk30_metrics = candidate
+                break
     if args.scatter_metrics is None:
         args.scatter_metrics = args.te_metrics
     if args.training_metrics is None:
@@ -352,13 +475,32 @@ def main() -> int:
     written: list[str] = []
     skipped: list[str] = []
     failed: list[str] = []
+    notes: list[str] = []
+
+    if args.backfill_initial_box_xy and args.scatter_metrics is not None:
+        try:
+            enriched = out / "_enriched_scatter_metrics.json"
+            new_path = backfill_initial_box_xy(args.scatter_metrics, enriched)
+            if new_path != args.scatter_metrics:
+                notes.append(
+                    f"initial_box_xy backfilled from env.reset for scatter "
+                    f"({args.scatter_metrics} -> {new_path})"
+                )
+            args.scatter_metrics = new_path
+        except Exception as exc:
+            msg = f"initial_box_xy backfill failed: {exc}"
+            skipped.append(msg)
+            failed.append(msg)
+            print(f"SKIP {msg}", file=sys.stderr)
+            if args.strict:
+                raise
 
     def try_step(label: str, path: Path, fn) -> None:
         try:
             fn()
             written.append(f"{label}: {path}")
             print(f"OK  {label} -> {path}")
-        except Exception as exc:  # noqa: BLE001 — report and continue unless --strict
+        except Exception as exc:
             msg = f"{label}: {exc}"
             skipped.append(msg)
             failed.append(msg)
@@ -401,10 +543,9 @@ def main() -> int:
 
     if not args.skip_video:
         dest = out / "sim_rollout_representative.mp4"
-        try_step(
-            "sim_rollout_representative",
-            dest,
-            lambda: write_rollout_video(
+
+        def _video() -> None:
+            write_rollout_video(
                 out_path=dest,
                 policy=args.video_policy,
                 checkpoint=args.checkpoint,
@@ -413,16 +554,20 @@ def main() -> int:
                 seed=args.video_seed,
                 max_steps=args.video_max_steps,
                 video_mode=args.video_mode,
-            ),
-        )
+            )
+            _maybe_compress_video(dest, max_mb=float(args.max_video_mb))
+
+        try_step("sim_rollout_representative", dest, _video)
     else:
         skipped.append("sim_rollout_representative: --skip-video")
 
     manifest = {
         "output_dir": str(out),
+        "status": "post50_local" if not args.use_fixtures else "fixture_smoke",
         "written": written,
         "skipped": skipped,
         "failed": failed,
+        "notes": notes,
         "inputs": {
             "training_metrics": str(args.training_metrics) if args.training_metrics else None,
             "te_metrics": str(args.te_metrics) if args.te_metrics else None,
@@ -430,6 +575,7 @@ def main() -> int:
             "scatter_metrics": str(args.scatter_metrics) if args.scatter_metrics else None,
             "checkpoint": str(args.checkpoint) if args.checkpoint else None,
             "video_policy": args.video_policy,
+            "backfill_initial_box_xy": bool(args.backfill_initial_box_xy),
         },
     }
     manifest_path = out / "manifest.json"
