@@ -2,7 +2,7 @@
 
 本手順は、WowRobo 組立済み SO-101（Leader / Follower）を Mac 上の LeRobot 0.6.1 で駆動し、テレオペ・カメラ付き収録まで確認するための実務手順である。機材一覧・作業エリアの寸法は [hardware.md](hardware.md) を正とする。一次情報は [SO-101](https://huggingface.co/docs/lerobot/so101)、[Cameras](https://huggingface.co/docs/lerobot/cameras)、[実機での模倣学習](https://huggingface.co/docs/lerobot/il_robots) である。
 
-2026-10-17/18 の bring-up、および **2026-10-18 夜の実機検証**（UGREEN ハブ経由の接続・両カメラ同時配信・60 Hz テレオペ・`lerobot-record` 試行）を反映している。
+2026-10-17/18 の bring-up、および **2026-10-18 夜の実機検証**（UGREEN ハブ経由の接続・両カメラ同時配信・60 Hz テレオペ・`lerobot-record` 2 回成功、23:48–23:50 SGT 含む）を反映している。
 
 ## 前提と環境
 
@@ -53,7 +53,7 @@ pip install 'lerobot[dataset,viz]==0.6.1'
 | 物体 | スポンジ（およそ 5×4×4 cm） |
 | 開始エリア | 8×8 cm、中心 (28, −8) cm |
 | ゴールパッド | 8×6 cm（色紙・フェルト等をテープ固定）、中心 (35, +12) cm、長辺を x に平行。カメラポールから離れた側に置く |
-| 上カメラ（C920） | VIJIM LS08 アーム上、USB-A 経由ハブ。スポンジ開始位置・紙・グリッパが画角に入ること（初回試行ではグリッパが画外・スポンジが端だったため再配置） |
+| 上カメラ（C920） | VIJIM LS08 アーム上、USB-A 経由ハブ。スポンジ・紙・グリッパ作業域が画角に入ること（trial3 先頭でもグリッパ画外 → 少し下げて後ろへ／下向きに傾ける） |
 | 手首カメラ | キット同梱（USB2.0_CAM1 / Sonix 05a3:9230）。Follower 固定顎側・グリッパモーター下に取付。ケーブルに余裕を持たせてテープ固定 |
 
 ## USB とポート識別
@@ -179,9 +179,17 @@ Rerun ビューアは表示のみで保存しない。`$PORT_*` を使う場合�
 
 ## デモ収録（`lerobot-record`）
 
-2026-10-18 試行: 2 episodes × 25 s、30 fps、各 750 frames、slow-loop 警告なし、約 15 MB、ローカルのみ。
+2026-10-18 試行（2 回とも成功）:
+
+| 試行 | 結果 |
+| --- | --- |
+| 1 回目 | 2 epi × 25 s、各 750 frames @ 30 fps、約 15 MB、slow-loop 警告なし |
+| 2 回目（23:48–23:50 SGT） | 同様に 2 epi × 25 s、合計 1500 frames、約 17 MB。slow-loop / OpenCV カメラエラーなし |
+
+コマンドは共通。`--dataset.root=$HOME/work/lerobot-hw/datasets/<name>`（絶対パス。`~` 不可）。**既存 root の再利用は失敗するので、実行ごとに新しいデータセット名を付ける。**
 
 ```bash
+# 例: <name> を実行ごとに変える（so101_pick_sponge_trial2 など）
 lerobot-record \
   --robot.type=so101_follower \
   --robot.port=$PORT_FOLLOWER \
@@ -198,16 +206,19 @@ lerobot-record \
   --dataset.fps=30 \
   --dataset.no_stamp=true \
   --dataset.push_to_hub=false \
-  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_trial \
+  --dataset.root=$HOME/work/lerobot-hw/datasets/<name> \
   --display_data=true
 ```
 
 注意:
 
-- `--dataset.root=` の直後に `~` を書くと展開されない。**絶対パスまたは `$HOME` を使う。**
-- pynput が無いとキーボード操作は無効で、タイマー駆動の収録になる（問題なし）。
+- `--dataset.root=` の直後に `~` を書くと展開されない。**絶対パスまたは `$HOME` を使う。** 既存ディレクトリを指定すると失敗する。
+- **フォアグラウンドの対話ターミナルで実行する。** エージェントシェルから `nohup` でバックグラウンド起動すると、親シェル終了後に最初のカメラ接続直後で落ちる（ログに rerun の `h2 protocol error` のみ、Python traceback なし）。バックグラウンドが必要な場合は `start_new_session=True` や `setsid` でセッションを切り離す。
+- 対話ターミナルが無い／pynput が無いとキーボード（Right / Left / Esc）は無効で、タイマー駆動のみになる。音声キュー（`Recording episode N` / `Reset the environment` / `Stop recording`）に従う（Mac のサウンドを ON）。
+- ハングした実行はシリアルポートを占有したまま残ることがある。再実行前に `pkill -f lerobot-record` し、`lsof` で両 `/dev/tty.usbmodem*` が空いていることを確認。余った Rerun ウィンドウも閉じる。
 - dataset v3.0 ではカメラごとに動画が連結され、`videos/observation.images.<cam>/chunk-000/file-000.mp4` に格納される。
-- 本格収録前に top カメラ画角（スポンジ開始位置・紙・グリッパ）を確認する。
+- 画角（trial3 先頭フレーム確認）: wrist はスポンジ・紙・グリッパが写る。**top（C920）はスポンジと紙のみでグリッパが画外。** 本格収録前に C920 を少し下げて後ろへずらすか、下向きに傾けてグリッパ作業域を入れる。
+- `objc: Class AVFFrameReceiver is implemented in both ... cv2 ... and /opt/homebrew ... ffmpeg` は無害な警告（このログが出ても収録は成功する）。
 
 ## シャットダウン
 
@@ -253,7 +264,10 @@ lerobot-rollout \
 | `not authorized to capture video` | macOS のカメラ許可 → ターミナル再起動 → `lerobot-find-cameras opencv` |
 | `--display_data` で rerun エラー | `pip install 'lerobot[viz]==0.6.1'` |
 | `lerobot-record` の import エラー | `pip install 'lerobot[dataset]==0.6.1'` |
-| `--dataset.root=~/...` が失敗 | `~` は展開されない。`$HOME` または絶対パスを使う |
+| `--dataset.root=~/...` が失敗 | `~` は展開されない。`$HOME` または絶対パスを使う。既存 root は使わず新しい `<name>` にする |
+| `lerobot-record` が数秒で死ぬ（`h2 protocol error` のみ） | 親シェル終了による切断。フォアグラウンド対話ターミナルで実行するか、`setsid` / `start_new_session=True` で切り離す |
+| 再実行時にポート busy | `pkill -f lerobot-record` → `lsof` で両 usbmodem が空いていることを確認。Rerun ウィンドウを閉じる |
+| `AVFFrameReceiver is implemented in both ...` | 無害。収録成功時も出ることがある |
 | 赤 LED が DC 未接続でも点灯 | USB 給電によるもので正常。駆動には正しい DC アダプタが必要 |
 | Follower がカメラスタンドに当たる | ポールを基部から約 35 cm 以上離す。紙はポール反対側。テープで印 |
 
