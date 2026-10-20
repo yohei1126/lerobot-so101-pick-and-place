@@ -261,10 +261,32 @@ lerobot-record \
 sim チェックポイントを実機へ直接載せない。sim ポリシーは関節が**ラジアン**、実機 Follower は本体関節が**度**・グリッパが **0–100** であり、入出力契約が一致しない。
 
 1. **デモ収録の本格化:** 画角・レイアウト固定後にエピソード数を増やす（上記試行コマンドを拡充）
-2. **学習:** `lerobot-train` で ACT、`--policy.device=mps`
-3. **評価:** `lerobot-rollout`（0.6.1 ではポリシー実行は record ではなく rollout）。最初は `--robot.max_relative_target` を小さめにし、低速・短時間で行う
+2. **学習:** `lerobot-train` で ACT、`--policy.device=mps`（実機データ）。sim データは `python -m port_pick_align.training.train_act --preset sim`
+3. **Phase 2-2（sim→実機）:** 単位変換ラッパーで dry-run → 低速 live。手順は **[sim_to_real_act.md](sim_to_real_act.md)**
+4. **実機学習ポリシーの評価:** `lerobot-rollout`（0.6.1 ではポリシー実行は record ではなく rollout）。最初は `--robot.max_relative_target` を小さめにし、低速・短時間で行う
 
-評価例:
+### Phase 2-2 クイックリンク（詳細は sim_to_real_act.md）
+
+```bash
+# Dry-run（モータ非駆動）— 必ず先にこれ
+python -m port_pick_align.deploy.run_sim_policy_on_real \
+  --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
+  --port "$PORT_FOLLOWER" \
+  --dry-run \
+  --device mps \
+  --episode-time-s 20
+
+# Live（12V スイッチに手を置く。初回は max-delta を小さめに）
+python -m port_pick_align.deploy.run_sim_policy_on_real \
+  --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
+  --port "$PORT_FOLLOWER" \
+  --device mps \
+  --episode-time-s 20 \
+  --max-delta-deg 3 \
+  --robot-max-relative-target 3
+```
+
+### 実機学習ポリシーの評価例（単位変換不要）
 
 ```bash
 lerobot-rollout \
@@ -304,6 +326,8 @@ lerobot-rollout \
 ## 参照
 
 - [hardware.md](hardware.md) — 購入機材・作業エリア寸法
+- [sim_to_real_act.md](sim_to_real_act.md) — Phase 2-2: sim ACT → 実機 Follower（変換ラッパー）
+- [units.md](units.md) — ラジアン / 度 / グリッパ 0–100
 - [plan_b.md](plan_b.md) — 実機障害時の縮退
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)

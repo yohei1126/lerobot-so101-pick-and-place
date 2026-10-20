@@ -13,11 +13,13 @@
 
 ## 契約のグリッパ可動域
 
-`contract.yaml` の `joint_limits.gripper` は `[-0.1745, 1.7453]` rad（コメント上およそ −10° .. 100°）である。LeRobot 風の 0–100 への線形写像は:
+`contract.yaml` の `joint_limits.gripper` は `[-0.1745, 1.7453]` rad（コメント上およそ −10° .. 100°）である。本モジュールの「開度パーセント」線形写像は:
 
-- `0` ↔ `−0.1745` rad
-- `100` ↔ `1.7453` rad
+- `0` ↔ `−0.1745` rad（より閉じた側）
+- `100` ↔ `1.7453` rad（より開いた側）
 - 実装: `gripper_rad_to_percent` / `gripper_percent_to_rad`
+
+**注意（実機デプロイ）:** LeRobot 0.6.1 の SO follower では、離散グリッパ指令の符号から **高い `gripper.pos` = より閉じる**（0≈開、100≈閉）と読むのが妥当である。sim→実機ラッパー（[sim_to_real_act.md](sim_to_real_act.md)）は既定でその極性を使い、`--no-gripper-closed-is-high` で本モジュールの開度パーセント意味に切り替えられる。キャリブ結果で逆に見える場合は dry-run で確認すること。
 
 ## シミュレータ内の慣例（0–100 ではない）
 
