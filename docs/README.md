@@ -12,6 +12,7 @@
 | [simulation.md](simulation.md) | MuJoCo シミュレータによる閉ループ制御評価、対話型ビューアおよび動画出力 |
 | [evaluation.md](evaluation.md) | 平面位置誤差・ヨー角誤差・成功率の集計モジュール（`eval_alignment`）API 仕様 |
 | [units.md](units.md) | sim/契約のラジアンと実機 LeRobot の度・グリッパ 0–100 の換算 |
+| [sim_to_real_act.md](sim_to_real_act.md) | Phase 2-2: sim 学習 ACT を実機 SO-101 で dry-run / 低速 live |
 | [results/README.md](results/README.md) | 閉ループ評価の実測ログと未計測プレースホルダ（post50 公式含む） |
 | [figures/README.md](figures/README.md) | レポート図表の再生成（学習曲線・ヒストグラム・初期XY・ロールアウト） |
 | [e2e.md](e2e.md) | データ収集から推論までを結合して実行するエンドツーエンドパイプライン試験 |
