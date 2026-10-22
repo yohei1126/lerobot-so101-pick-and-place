@@ -63,10 +63,10 @@ LeRobot の実行引数には、検出されたパス（例: `/dev/tty.usbmodem5
 
 ```bash
 sudo cp deploy/udev/99-feetech-so101.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-# 実行ユーザを dialout グループへ追加（シリアルポートへのアクセス権限付与）
-sudo usermod -aG dialout "$USER"
+# ルール反映（権限は MODE=0660 / GROUP=dialout）
+sudo udevadm control --reload-rules && sudo udevadm trigger
+# dialout グループ必須（未所属なら追加後、一度ログアウト→再ログイン）
+sudo usermod -aG dialout $USER
 # 再ログイン後に固定シンボリックリンクの生成を確認
 ls -l /dev/ttyUSB_so101_*
 ```
