@@ -1,0 +1,32 @@
+# Weekly + PR dependency vulnerability scanning via Google's official
+# osv-scanner-action reusable workflows. SARIF upload is enabled by default.
+name: OSV-Scanner
+
+on:
+  schedule:
+    # Wednesday 00:00 UTC == Wednesday 08:00 SGT
+    - cron: "0 0 * * 3"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  scan-scheduled:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  scan-pr:
+    if: github.event_name == 'pull_request'
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
