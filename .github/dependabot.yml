@@ -1,0 +1,55 @@
+# Weekly dependency updates (Wednesdays). Covers every package ecosystem
+# present in this repository: pip manifests and GitHub Actions.
+version: 2
+updates:
+  # Host Python package (pyproject.toml)
+  - package-ecosystem: pip
+    directory: /port_pick_align
+    schedule:
+      interval: weekly
+      day: wednesday
+    open-pull-requests-limit: 5
+    groups:
+      pip-port-pick-align-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Docker image Python pins (requirements.txt)
+  - package-ecosystem: pip
+    directory: /docker
+    schedule:
+      interval: weekly
+      day: wednesday
+    open-pull-requests-limit: 5
+    groups:
+      pip-docker-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # ROS 2 ament package (setup.py)
+  - package-ecosystem: pip
+    directory: /ros2_ws/src/pai_final_pkg
+    schedule:
+      interval: weekly
+      day: wednesday
+    open-pull-requests-limit: 5
+    groups:
+      pip-pai-final-pkg-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions used in .github/workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: wednesday
+    open-pull-requests-limit: 5
+    groups:
+      github-actions-minor-patch:
+        update-types:
+          - minor
+          - patch
