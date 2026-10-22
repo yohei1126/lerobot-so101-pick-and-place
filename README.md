@@ -15,7 +15,7 @@
 | ROS 2 / Rerun | [docs/ros2_inference.md](docs/ros2_inference.md) | ROS 2 推論ノードの実行と Rerun による軌道可視化 |
 | シミュレーション | [docs/simulation.md](docs/simulation.md) | MuJoCo 環境を用いた閉ループ制御と評価 |
 | 評価指標 | [docs/evaluation.md](docs/evaluation.md) | 位置・姿勢誤差の集計 API 仕様 |
-| 結合テスト・機材 | [docs/e2e.md](docs/e2e.md) · [docs/hardware.md](docs/hardware.md) · [docs/real_robot_bringup.md](docs/real_robot_bringup.md) · [docs/sim_to_real_act.md](docs/sim_to_real_act.md) | エンドツーエンド結合試験、機材一覧、実機 bring-up、sim→実機 ACT |
+| 結合テスト・機材 | [docs/e2e.md](docs/e2e.md) · [docs/hardware.md](docs/hardware.md) · [docs/real_robot_bringup.md](docs/real_robot_bringup.md) · [docs/real_dataset_so101_pick_sponge_main_20261023.md](docs/real_dataset_so101_pick_sponge_main_20261023.md) · [docs/sim_to_real_act.md](docs/sim_to_real_act.md) | エンドツーエンド結合試験、機材一覧、実機 bring-up・収録、clean28 データセット要約、sim→実機 ACT |
 | 継続的インテグレーション | [docs/ci.md](docs/ci.md) | GitHub Actions およびローカルテストの実行 |
 | 提出仕様 | [docs/submission.md](docs/submission.md) · [report/](report/) | 成果物要件と提出用レポート原稿 |
 | 縮退運用（Plan B） | [docs/plan_b.md](docs/plan_b.md) | 実機障害時におけるシミュレーション代替運用 |

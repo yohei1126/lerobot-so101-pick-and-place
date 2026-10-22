@@ -8,6 +8,7 @@
 | [dataset.md](dataset.md) | テスト用 rosbag2 の生成、合成データ作成、MuJoCo 教示データ収集、LeRobotDataset 形式への変換および品質検証 |
 | [training.md](training.md) | ACT モデルの訓練、重みチェックポイントの保存、および推論疎通確認 |
 | [act_so101_trial_smoke_20261019.md](act_so101_trial_smoke_20261019.md) | 実機 trial3 データセットでの ACT スモーク学習結果（2026-10-19、事実記録） |
+| [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.md) | 実機 pick-sponge main（clean28）データセット要約と夜間 ACT 学習メモ（2026-10-23、事実記録） |
 | [ros2_inference.md](ros2_inference.md) | ROS 2 Humble ノード構成、モック推論パイプライン、Rerun 可視化連携 |
 | [simulation.md](simulation.md) | MuJoCo シミュレータによる閉ループ制御評価、対話型ビューアおよび動画出力 |
 | [evaluation.md](evaluation.md) | 平面位置誤差・ヨー角誤差・成功率の集計モジュール（`eval_alignment`）API 仕様 |
@@ -17,7 +18,7 @@
 | [figures/README.md](figures/README.md) | レポート図表の再生成（学習曲線・ヒストグラム・初期XY・ロールアウト） |
 | [e2e.md](e2e.md) | データ収集から推論までを結合して実行するエンドツーエンドパイプライン試験 |
 | [hardware.md](hardware.md) | SO-ARM101 および Feetech サーボモータの Linux udev 設定、接続準備ドライラン、シミュレーション準拠の作業エリア配置、購入済み機材 |
-| [real_robot_bringup.md](real_robot_bringup.md) | Mac / LeRobot 0.6.1 による SO-101 Leader/Follower の実機 bring-up（ポート識別、キャリブレーション、テレオペ、カメラ） |
+| [real_robot_bringup.md](real_robot_bringup.md) | Mac / LeRobot 0.6.1 による SO-101 Leader/Follower の実機 bring-up・テーブル配置・デモ収録（`scripts/record_real_so101.sh`） |
 | [ci.md](ci.md) | GitHub Actions CI ワークフローの構成とローカルでの静的解析・テスト実行手順 |
 | [submission.md](submission.md) | OmniCampus 提出物仕様（PDF レポート、GitHub、YouTube 動画）および点検リスト |
 | [plan_b.md](plan_b.md) | 実機障害時におけるシミュレーションおよび公開データを活用した縮退運用手順 |
