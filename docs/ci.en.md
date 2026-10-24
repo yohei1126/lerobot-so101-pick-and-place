@@ -1,8 +1,8 @@
 # Continuous integration (CI) and local verification
 
-This document describes the GitHub Actions CI workflow and how to reproduce the same checks locally.
+CI runs Ruff, mypy, and pytest in GitHub Actions. The same commands work in the host virtualenv.
 
-## Local verification commands
+## Local Ruff / mypy / pytest
 
 In the host Python virtualenv, run static analysis (Ruff, mypy) and the test suite (pytest) in order:
 

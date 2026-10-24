@@ -1,8 +1,8 @@
 # 関節・グリッパの単位（sim / 契約 / 実機 LeRobot）
 
-コード上の Single Source of Truth は [`port_pick_align/units.py`](../port_pick_align/src/port_pick_align/units.py) と [`configs/contract.yaml`](../configs/contract.yaml) である。本ページはレポート転記用の確定記述である（`docs/hardware.md` は変更しない）。
+コード上の Single Source of Truth は [`port_pick_align/units.py`](../port_pick_align/src/port_pick_align/units.py) と [`configs/contract.yaml`](../configs/contract.yaml) である。レポートへ単位を転記するときはこの表を正とする（`docs/hardware.md` は変更しない）。
 
-## 結論
+## sim / 契約 / 実機の単位対応
 
 | 系 | アーム 5 軸 | グリッパ | 箱ヨー / 評価ヨー |
 | --- | --- | --- | --- |

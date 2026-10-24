@@ -47,7 +47,7 @@ export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071   # lerobot-find-port の結�
 
 Ctrl-C / SIGTERM でループを中断する。非常時は Follower の **12V を抜く**。
 
-## 手順概要（dry-run → live）
+## dry-run から live までの順序
 
 1. Bring-up 済み（ポート・キャリブ・カメラ index）を確認する。
 2. **offline-check**（任意・ロボット不要）: データセットフレーム vs 予測の MAE。
@@ -128,11 +128,11 @@ macOS 向け。`caffeinate` + `start_new_session` で離脱する。
 | top / wrist index | 1 / 0 |
 | タスク | `Pick up the yellow sponge and place it on the white paper` |
 
-収録スクリプト本体は #75 で追加済み。本ドキュメントでは重複させない。
+収録手順は [real_robot_bringup.md](real_robot_bringup.ja.md) / `scripts/record_real_so101.sh`（#75）に置く。
 
 ## 参照
 
 - [real_robot_bringup.md](real_robot_bringup.ja.md)
-- [sim_to_real_act.md](sim_to_real_act.ja.md) — sim ACT のみ（本手順とは別系統）
+- [sim_to_real_act.md](sim_to_real_act.ja.md): sim ACT のみ（本手順とは別系統）
 - [units.md](units.ja.md)
 - 実装: `port_pick_align.deploy.real_common` / `act_real` / `smolvla_real`

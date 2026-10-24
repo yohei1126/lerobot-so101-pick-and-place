@@ -309,7 +309,7 @@ lerobot-record \
 
 ## Next steps
 
-Do not load a sim checkpoint onto the real robot directly. Sim policies use **radians** for joints; the real Follower uses **degrees** for body joints and **0–100** for the gripper — the I/O contracts do not match.
+Do not load a sim checkpoint onto the real robot directly. Sim policies use **radians** for joints; the real Follower uses **degrees** for body joints and **0–100** for the gripper: the I/O contracts do not match.
 
 1. Demo recording → clean-set creation ([real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md))
 2. Train ACT on real data: `python -m port_pick_align.training.train_act` ([training.md](training.en.md)). Run on MPS. For sim data use `train_act --preset sim`
@@ -319,7 +319,7 @@ Do not load a sim checkpoint onto the real robot directly. Sim policies use **ra
 ### Phase 2-2 quick links (details in sim_to_real_act.md)
 
 ```bash
-# Dry-run (motors not driven) — always do this first
+# Dry-run (motors not driven); always do this first
 python -m port_pick_align.deploy.run_sim_policy_on_real \
   --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
   --port "$PORT_FOLLOWER" \
@@ -342,7 +342,7 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
 Details, safety settings, and recommended live flags: **[real_robot_deploy.md](real_robot_deploy.en.md)**.
 
 ```bash
-# ACT (real train_act checkpoint, no unit conversion) — default is dry-run
+# ACT (real train_act checkpoint, no unit conversion); default is dry-run
 ./scripts/run_act_real.sh --device mps --episode-time-s 15
 # First live example
 ./scripts/run_act_real.sh --live --device mps \
@@ -391,13 +391,13 @@ lerobot-rollout \
 
 ## References
 
-- [hardware.md](hardware.en.md) — purchased equipment and work-area dimensions
-- [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md) — clean28 dataset summary
-- [sim_to_real_act.md](sim_to_real_act.en.md) — Phase 2-2: sim ACT → real Follower (conversion wrapper)
-- [real_robot_deploy.md](real_robot_deploy.en.md) — real-trained ACT / SmolVLA dry-run → live
-- [units.md](units.en.md) — radians / degrees / gripper 0–100
-- [training.md](training.en.md) — ACT training
-- [plan_b.md](plan_b.en.md) — fallback when real hardware is blocked
+- [hardware.md](hardware.en.md): purchased equipment and work-area dimensions
+- [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md): clean28 dataset summary
+- [sim_to_real_act.md](sim_to_real_act.en.md): Phase 2-2: sim ACT → real Follower (conversion wrapper)
+- [real_robot_deploy.md](real_robot_deploy.en.md): real-trained ACT / SmolVLA dry-run → live
+- [units.md](units.en.md): radians / degrees / gripper 0–100
+- [training.md](training.en.md): ACT training
+- [plan_b.md](plan_b.en.md): fallback when real hardware is blocked
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)
 - [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots)

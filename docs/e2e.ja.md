@@ -1,6 +1,6 @@
 # エンドツーエンド（E2E）パイプライン結合試験
 
-本手順書は、データ収集、フォーマット変換・品質検証、ACT モデル推論、および ROS 2 / Rerun による可視化の各工程を連続して実行し、システム全体の疎通性を検証するための手順を定める。実機接続前の機材準備手順については [hardware.md](hardware.ja.md) を参照する。
+bag 記録 → 変換・品質検証 → ACT 推論 → ROS 2 / Rerun モック連携を連続実行して疎通を確認する。実機接続前の機材準備は [hardware.md](hardware.ja.md) を参照する。
 
 ## 前提条件と環境要件
 
@@ -22,7 +22,7 @@
 3. ホスト環境: 学習済みチェックポイントを用いた推論スモークテスト（`--infer-only`）を実行する。
 4. Docker 環境: `mock_inference.launch.py` を起動し、モック推論ノードと Rerun ノード間のトピック送受信を検証する。
 
-## 個別機能の実行手順
+## 単体 bag 変換・結合テスト・checkpoint 推論
 
 ### 1. 単体 bag ファイルの変換
 
@@ -38,7 +38,7 @@ python scripts/convert_bag.py \
 (cd port_pick_align && pytest -m integration tests/test_e2e_bag_to_infer.py -q)
 ```
 
-### 3. ホスト ROS 2 環境におけるチェックポイント推論
+### 3. ホスト ROS 2 でのチェックポイント推論
 
 ```bash
 ros2 run pai_final_pkg act_policy_node --ros-args \
@@ -46,7 +46,7 @@ ros2 run pai_final_pkg act_policy_node --ros-args \
   -p checkpoint_path:=/workspace/checkpoints/synthetic_act/best_model.pt
 ```
 
-## 実機接続前のドライラン準備
+## Feetech extra と udev の事前準備
 
 ```bash
 pip install -e "port_pick_align/[training,feetech,dev]"

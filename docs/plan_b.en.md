@@ -11,7 +11,7 @@ Real robot available? ──yes──▶ Plan A (real grasp/align + execution vi
                       └──no──▶ Plan B (simulation / public data + RobOps verification)
 ```
 
-## Plan B components
+## Alternate paths, RobOps proof, and report chapters
 
 ### 1. Task execution environment and data path
 
@@ -45,8 +45,8 @@ Even without a real robot, verify that the software pipeline runs against the co
 Per course policy, hardware trouble or failed runs can still be evaluated if you document root-cause analysis, operational reflections, and technical discussion:
 
 - Chapter 5: replace quantitative eval with simulation or public-data results, and state clearly that this is Plan B degraded verification.
-- Chapter 6: organize hardware delay/failure status, why the alternate method was chosen, and what was learned, from a technical view.
-- Chapter 8: in the presentation video, combine simulation footage with RobOps (Rerun trajectory views, CI logs).
+- Chapter 6: organize hardware delay/failure status, why the alternate method was chosen, and what was learned technically.
+- Chapter 8: combine simulation footage with RobOps (Rerun trajectory views, CI logs) in the presentation video.
 
 Report draft template: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.en.md)
 

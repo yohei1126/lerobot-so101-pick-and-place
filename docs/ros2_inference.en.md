@@ -1,6 +1,6 @@
 # ROS 2 inference nodes and Rerun visualization
 
-This document covers running and integrating the sensor mock, inference node, and Rerun visualization node under ROS 2 Humble.
+Run the sensor mock, inference node, and Rerun visualizer under ROS 2 Humble.
 
 ## Mock inference pipeline in Docker (no PyTorch)
 

@@ -62,7 +62,7 @@ caffeinate -dimsu python -X faulthandler -m port_pick_align.training.train_act \
   2>&1 | tee "$LOG"
 ```
 
-### Results (from `training_metrics.json`)
+### `training_metrics.json` losses and val L1
 
 | Field | Value |
 | --- | --- |
@@ -92,6 +92,6 @@ Artifacts (outside git; large `.pt` not copied into the course repo):
 | Question | Fact |
 | --- | --- |
 | Previous data usable for training? | **Format yes** (all three are valid LeRobot v3). **Motion quality:** use **trial3** (and trial2 epi0 if merging later). **Skip trial1** for learning (static actions). trial2 is complete on disk; epi1 is static. |
-| Smoke train succeeded? | **Yes** — data loaded on MPS, train loss fell from ~113 → ~44 over 200 steps, val L1 improved slightly. |
+| Smoke train succeeded? | **Yes**: data loaded on MPS, train loss fell from ~113 → ~44 over 200 steps, val L1 improved slightly. |
 | Tuesday blockers | Need **more successful pick episodes** (2 epi is pipeline-only). Prefer degrees-aware training/deploy path or convert to contract radians before mixing with sim. Ensure record `root` is an absolute existing path (tilde expand + pre-create `meta/` avoided the first trial failure). |
 | Recommended next step | **Collect more episodes** (dozens+) of successful sponge picks with motion in every episode; then a longer ACT train (1000+ steps, `arch=full`) on the combined set. Do not treat this 200-step smoke as a deployable policy. |

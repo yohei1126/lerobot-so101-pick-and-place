@@ -1,6 +1,6 @@
 # ACT Model Training and Inference Smoke Procedure
 
-This document covers training ACT (Action Chunking with Transformers) with the LeRobot framework, saving checkpoints, and smoke-testing inference. Run on a host Python 3.12+ virtual environment (aligned with LeRobot 0.6.x requirements).
+Train ACT (Action Chunking with Transformers) with LeRobot, save checkpoints, and smoke-test inference on a host Python 3.12+ virtual environment (aligned with LeRobot 0.6.x requirements).
 
 ## Device selection
 
@@ -46,7 +46,7 @@ python -m port_pick_align.training.train_act \
 
 `--preset sim` selects checkpoints by closed-loop alignment rate. Execution uses `n_action_steps=30` (no Temporal Ensembling); default validation episode count is 10 (change to 10–20 with `--closed-loop-val-episodes`). Progress and best weights use lexicographic comparison of `(align_rate, -mean_position_error)` (when both align rates are 0%, prefer smaller error). At the same interval, Temporal Ensembling align rate and position error are logged as separate metrics, and the best TE weights are saved to `best_model_te.pt` under the same criterion. TE does not affect `best_model.pt` selection, but improvement on either chunk30 or TE resets the early-stop counter. Disable with `--closed-loop-te-episodes 0`. Every 500 steps a `step_XXXXX.pt` is kept; after `--min-steps` (default 3000), early stop triggers if neither closed-loop selection nor TE improves for 10 pulses (change with `--checkpoint-interval` / `--early-stop-patience` / `--min-steps`; patience 0 turns it off). Cosine decay floor is 10% of peak LR.
 
-Gripper loss weight stays at 5. On the pad pose, closed place and open release share the same arm target, so L1 leans toward a conditional mean of the gripper dimension. Raising the weight does not move that mean. The release threshold 0.90 is also unchanged—intermediate commands drop the box mid-carry. The simulator does not release on an open command until near the pad (within 10 cm), and does not snap to pad center on release (final box XY / yaw are evaluated as-is). On the demonstration side, place an open static release after a closed approach+place longer than `n_action_steps=30`.
+Gripper loss weight stays at 5. On the pad pose, closed place and open release share the same arm target, so L1 leans toward a conditional mean of the gripper dimension. Raising the weight does not move that mean. The release threshold 0.90 is also unchanged: intermediate commands drop the box mid-carry. The simulator does not release on an open command until near the pad (within 10 cm), and does not snap to pad center on release (final box XY / yaw are evaluated as-is). On the demonstration side, place an open static release after a closed approach+place longer than `n_action_steps=30`.
 
 If memory is tight, lower `--batch-size`. CPU loop-check example (not a substitute for full training):
 
@@ -66,7 +66,7 @@ Demonstration trajectories changed. During carry (lift / carry / place), box yaw
 
 ## Recollect and retrain after Issue #41
 
-Demonstrations gained a closed `approach` (descent from above the pad) longer than the chunk length. `data/sim_expert/lerobot_post39` lacks this segment. Recollect before training. Retraining without recollect tends to keep early release before the pad and stalled carries. The near-pad release gate is a simulator-side change, so it also affects evaluation of older weights, but learning approach requires new demos.
+Demonstrations gained a closed `approach` (descent from above the pad) longer than the chunk length. `data/sim_expert/lerobot_post39` lacks this segment. Recollect before training. Retraining without recollect tends to keep early release before the pad and stalled carries. The near-pad release gate is a simulator-side change, so it also affects evaluation of older weights. Learning approach requires new demos.
 
 ## Recollect and retrain after Issue #45
 

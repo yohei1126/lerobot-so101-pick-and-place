@@ -8,10 +8,10 @@
 
 フォロワーアームが卓上の小さな物体を把持し、目標姿勢（平面位置 + ヨー）へ整列・配置します。パイプラインは次のとおりです。
 
-1. **Sim** — MuJoCo 卓上環境、スクリプト教示収集、ACT 閉ループ評価  
-2. **Data** — rosbag2 / 合成 / LeRobotDataset 変換と品質検証  
-3. **Train** — sim または実機デモでの ACT（および利用可能な SmolVLA スクリプト）  
-4. **Real** — SO-101 Leader/Follower の bring-up、テレオペ収録、カメラ、単位変換付き sim→実機および実機学習ポリシーのデプロイランナー  
+1. **Sim**: MuJoCo 卓上環境、スクリプト教示収集、ACT 閉ループ評価  
+2. **Data**: rosbag2 / 合成 / LeRobotDataset 変換と品質検証  
+3. **Train**: sim または実機デモでの ACT（および利用可能な SmolVLA スクリプト）  
+4. **Real**: SO-101 Leader/Follower の bring-up、テレオペ収録、カメラ、単位変換付き sim→実機および実機学習ポリシーのデプロイランナー  
 
 想定ハードウェアは **SO-101**（Feetech STS3215）と上カメラ・手首カメラです（詳細は docs）。
 
@@ -32,7 +32,7 @@ pip install -e "port_pick_align/[simulation,training,dev]"
 ./scripts/run_pipeline.sh --smoke --device cpu
 ```
 
-実機 bring-up、udev、sim→実機 ACT の手順は `docs/` を参照してください。モータ指令の前に必ず dry-run を行ってください。
+実機 bring-up、収録、udev、sim→実機 ACT、および実機学習 ACT/SmolVLA のデプロイ手順は `docs/` を参照してください。モータ指令の前に必ず dry-run を行ってください。
 
 ## ドキュメント
 
@@ -65,8 +65,8 @@ pip install -e "port_pick_align/[simulation,training,dev]"
 
 ## モデル
 
-- **ACT** — sim 閉ループ評価および実機トライアルの主模倣方策（`port_pick_align` の学習エントリ）  
-- **SmolVLA** — ツリー内にある場合の学習 / 実機ランナースクリプト（`scripts/` および deploy 系 docs）
+- **ACT**: sim 閉ループ評価および実機トライアルの主模倣方策（`port_pick_align` の学習エントリ）  
+- **SmolVLA**: 学習 / 実機ランナースクリプト（`scripts/train_smolvla.sh`、`scripts/run_smolvla_real.sh`、deploy 系 docs）
 
 ## ライセンス
 
