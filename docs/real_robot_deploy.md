@@ -118,8 +118,8 @@ macOS 向け。`caffeinate` + `start_new_session` で離脱する。
 
 ## 収録スクリプトとの整合
 
-ポート・カメラ index・タスク文は bring-up および収録スクリプト
-`scripts/record_real_so101.sh`（PR #75）と本デプロイ既定を一致させる:
+ポート・カメラ index・タスク文は [scripts/record_real_so101.sh](../scripts/record_real_so101.sh)
+および [real_robot_bringup.md](real_robot_bringup.md) と本デプロイ既定を一致させる:
 
 | 項目 | 値 |
 | --- | --- |
@@ -128,7 +128,7 @@ macOS 向け。`caffeinate` + `start_new_session` で離脱する。
 | top / wrist index | 1 / 0 |
 | タスク | `Pick up the yellow sponge and place it on the white paper` |
 
-収録スクリプト本体は本 PR では追加しない（重複防止）。
+収録スクリプト本体は #75 で追加済み。本ドキュメントでは重複させない。
 
 ## 参照
 
