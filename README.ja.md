@@ -54,7 +54,6 @@ pip install -e "port_pick_align/[simulation,training,dev]"
 .
 ├── configs/contract.yaml   # トピック・テンソル形状・モデル入出力（SSOT）
 ├── docs/                   # バイリンガル手順書（*.en.md / *.ja.md）
-├── report/                 # レポート原稿（バイリンガル）
 ├── scripts/                # bag・変換・E2E・sim 評価・パイプライン
 ├── deploy/udev/            # Linux udev 例
 ├── port_pick_align/        # Python パッケージ（dataset / ACT / MuJoCo / deploy）

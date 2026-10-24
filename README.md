@@ -54,7 +54,6 @@ Full list: see the docs index in each language.
 .
 ├── configs/contract.yaml   # topics, tensor shapes, model I/O (SSOT)
 ├── docs/                   # bilingual procedures (*.en.md / *.ja.md)
-├── report/                 # optional report drafts (bilingual)
 ├── scripts/                # bag, convert, E2E, sim eval, pipeline, real runners
 ├── deploy/udev/            # Linux udev examples
 ├── port_pick_align/        # Python package (dataset, ACT, MuJoCo, deploy)
