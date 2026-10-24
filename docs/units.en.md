@@ -1,8 +1,8 @@
 # Joint and gripper units (sim / contract / real LeRobot)
 
-The code-level single source of truth is [`port_pick_align/units.py`](../port_pick_align/src/port_pick_align/units.py) and [`configs/contract.yaml`](../configs/contract.yaml). This page is the canonical wording for report transfer (`docs/hardware.md` is not modified).
+The code-level single source of truth is [`port_pick_align/units.py`](../port_pick_align/src/port_pick_align/units.py) and [`configs/contract.yaml`](../configs/contract.yaml). Use this wording when transferring units into the report (`docs/hardware.md` is not modified).
 
-## Summary
+## Unit table (sim / contract / real)
 
 | System | Arm 5 axes | Gripper | Box yaw / evaluation yaw |
 | --- | --- | --- | --- |

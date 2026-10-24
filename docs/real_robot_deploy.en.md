@@ -128,11 +128,11 @@ Keep ports, camera indices, and task string consistent across [scripts/record_re
 | top / wrist index | 1 / 0 |
 | Task | `Pick up the yellow sponge and place it on the white paper` |
 
-The recording script itself was added in #75. This document does not duplicate it.
+Recording steps stay in [real_robot_bringup.md](real_robot_bringup.en.md) / `scripts/record_real_so101.sh` (#75).
 
 ## References
 
 - [real_robot_bringup.md](real_robot_bringup.en.md)
-- [sim_to_real_act.md](sim_to_real_act.en.md) — sim ACT only (separate from this procedure)
+- [sim_to_real_act.md](sim_to_real_act.en.md): sim ACT only (separate from this procedure)
 - [units.md](units.en.md)
 - Implementation: `port_pick_align.deploy.real_common` / `act_real` / `smolvla_real`

@@ -1,6 +1,6 @@
 # Dataset management (rosbag2 / synthetic data / LeRobotDataset)
 
-This document covers generating contract-compliant test rosbag2 files, creating synthetic data for pipeline smoke tests, collecting MuJoCo oracle demonstrations, and converting rosbag2 to LeRobotDataset with quality validation.
+Generate contract-compliant test rosbag2, synthetic smoke data, MuJoCo oracle demos, and convert rosbag2 to LeRobotDataset with quality checks.
 
 ## Generating the test rosbag2 (`sample_bag`)
 
@@ -31,11 +31,17 @@ python scripts/generate_synthetic_dataset.py
 
 The dataset is written to `data/synthetic/lerobot/` (not tracked by Git).
 
-## Collecting MuJoCo oracle demonstrations
+## MuJoCo oracle collection: length, phases, and gates
 
-Roll out `ScriptedPickAlignPolicy` on `PickAlignSimEnv` and write a contract-compliant LeRobotDataset to `data/sim_expert/lerobot/`. Each episode randomizes the box’s initial planar pose and yaw, then records joint targets and dual-camera images at 30 Hz from grasp through alignment. The scripted trajectory is 260 steps long. During lift, carry, approach, and place, wrist roll moves so the held box yaw matches the pad yaw. Near the pad, a closed approach of 32 steps (at least one chunk length) descends; at pad height, a closed place of 8 steps is followed by an open stationary release of 48 steps. If closed and open share the same arm pose half and half, the conditional mean of the gripper command falls below the release threshold 0.90. The simulator does not release on an open command until the pad neighborhood (within 10 cm). Observation images come from the simulator as BGR (640×480). To match training pixel order with closed-loop inference `images_bgr_to_batch` (BGR→RGB), the dataset stores RGB. This trajectory is not in earlier collections; recollect before training.
+Roll out `ScriptedPickAlignPolicy` on `PickAlignSimEnv` and write a contract-compliant LeRobotDataset to `data/sim_expert/lerobot/`. Each episode randomizes the box’s initial planar pose and yaw, then records joint targets and dual-camera images at 30 Hz from grasp through alignment. The scripted trajectory is 260 steps long.
 
-For each recorded episode, run `validate_episode` (sync skew, frame interval, joint limits, stillness) and apply the same joint limits to recorded actions. Episodes that fail validation or fail alignment are not kept. Trial logs go to `data/sim_expert/validation_report.json`. The dataset and logs are not Git-tracked. `official_collection` is true only when episode count is 50–100 inclusive, resolution is contract 640×480, step count is 260, and both initial-pose randomization and required alignment success are satisfied.
+During lift, carry, approach, and place, wrist roll moves so the held box yaw matches the pad yaw. Near the pad, a closed approach of 32 steps (at least one chunk length) descends; at pad height, a closed place of 8 steps is followed by an open stationary release of 48 steps. If closed and open share the same arm pose half and half, the conditional mean of the gripper command falls below the release threshold 0.90. The simulator does not release on an open command until the pad neighborhood (within 10 cm).
+
+Observation images come from the simulator as BGR (640×480). To match training pixel order with closed-loop inference `images_bgr_to_batch` (BGR→RGB), the dataset stores RGB. This trajectory is not in earlier collections; recollect before training.
+
+For each recorded episode, run `validate_episode` (sync skew, frame interval, joint limits, stillness) and apply the same joint limits to recorded actions. Episodes that fail validation or fail alignment are not kept. Trial logs go to `data/sim_expert/validation_report.json`. The dataset and logs are not Git-tracked.
+
+`official_collection` is true only when episode count is 50–100 inclusive, resolution is contract 640×480, step count is 260, and both initial-pose randomization and required alignment success are satisfied.
 
 ```bash
 source .venv/bin/activate

@@ -43,7 +43,7 @@ ln -sfn "$(python -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR")
 
 操作方法: マウスのドラッグ操作で視点回転、スクロールでズームを行う。ウィンドウを閉じると終了する。
 
-### 2. Rerun による多峰性データ可視化
+### 2. Rerun によるマルチモーダル可視化
 
 仮想環境内の `rerun` バイナリが実行可能パスに含まれていることを前提とする。
 
@@ -59,7 +59,7 @@ python scripts/run_sim_eval.py --policy scripted --save-video --no-rerun
 open outputs/eval/sim_rollout.mp4   # macOS 環境での再生確認
 ```
 
-## 閉ループ評価の実行手順
+## ポリシー種別ごとの閉ループ評価コマンド
 
 ポリシーの種別や実行環境に応じて、以下のコマンドを実行する。
 

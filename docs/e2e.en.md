@@ -1,6 +1,6 @@
 # End-to-end (E2E) pipeline integration test
 
-This procedure runs data collection, format conversion and quality validation, ACT inference, and ROS 2 / Rerun visualization in sequence to verify system-wide connectivity. For equipment prep before connecting the real robot, see [hardware.md](hardware.en.md).
+Run bag record → convert/validate → ACT inference → ROS 2 / Rerun mock wiring in sequence. For equipment prep before connecting the real robot, see [hardware.md](hardware.en.md).
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ Stages:
 3. Host: inference smoke test with a trained checkpoint (`--infer-only`).
 4. Docker: launch `mock_inference.launch.py` and verify topic I/O between the mock inference node and the Rerun node.
 
-## Individual steps
+## Single bag convert, integration test, checkpoint infer
 
 ### 1. Convert a single bag file
 
@@ -46,7 +46,7 @@ ros2 run pai_final_pkg act_policy_node --ros-args \
   -p checkpoint_path:=/workspace/checkpoints/synthetic_act/best_model.pt
 ```
 
-## Dry-run prep before connecting the real robot
+## Feetech extra and udev prep
 
 ```bash
 pip install -e "port_pick_align/[training,feetech,dev]"

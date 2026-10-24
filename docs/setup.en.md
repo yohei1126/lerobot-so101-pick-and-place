@@ -1,6 +1,6 @@
 # Development environment setup
 
-This repository separates responsibilities clearly between a Docker environment that includes the ROS 2 runtime and a host Python virtual environment used for model training and simulation.
+Docker owns the ROS 2 runtime (bags, mock inference, Rerun). The host Python virtualenv owns training, dataset conversion, Feetech I/O, and MuJoCo.
 
 ## Runtime responsibility split
 

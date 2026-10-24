@@ -35,7 +35,7 @@ pip install -e "port_pick_align/[training,feetech]"
 
 Adapt paths to your machine. In docs prefer `$HOME` over `~`.
 
-## Step 1 — Dry-run (required)
+## Step 1: Dry-run (required)
 
 Read observations and print converted actions only. **Do not send motor commands.**
 
@@ -63,7 +63,7 @@ Confirm:
 - Arm angles roughly within ±110°, gripper in 0–100
 - If jumps appear, suspect pose, cameras, or polarity (`--no-gripper-closed-is-high` is a last resort)
 
-## Step 2 — Live (slow, short)
+## Step 2: Live (slow, short)
 
 1. Follower in a safe pose. No obstacles. Camera stand ≥ ~35 cm from the base.
 2. **Keep a hand on the 12V power switch.** Kill power immediately on anything abnormal.

@@ -1,6 +1,6 @@
 # Documentation index
 
-Technical docs in this directory cover environment setup, the data pipeline, training, inference, simulation, and submission artifacts.
+Start with setup, then dataset → training → simulation; use hardware and bring-up when moving to the arm.
 
 | Document | Scope |
 | --- | --- |

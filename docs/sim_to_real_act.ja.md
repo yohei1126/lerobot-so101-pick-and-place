@@ -35,7 +35,7 @@ pip install -e "port_pick_align/[training,feetech]"
 
 パスは環境に合わせて読み替える。ドキュメントでは `~` ではなく `$HOME` を使う。
 
-## Step 1 — Dry-run（必須）
+## Step 1: Dry-run（必須）
 
 観測を読み、変換後アクションを表示するだけ。**モータ指令は送らない。**
 
@@ -63,7 +63,7 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
 - アーム角がおおむね ±110° 程度、グリッパが 0–100
 - 急変があれば姿勢・カメラ・極性を疑う（`--no-gripper-closed-is-high` は最終手段）
 
-## Step 2 — Live（低速・短時間）
+## Step 2: Live（低速・短時間）
 
 1. Follower を安全姿勢。障害物なし。カメラスタンドは基部から約 35 cm 以上。
 2. **12V 電源スイッチに手を置く。** 異常なら即オフ。

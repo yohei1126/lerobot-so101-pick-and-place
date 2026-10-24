@@ -8,10 +8,10 @@ Open-source toolkit for **SO-101** arm **pick-and-place** with [LeRobot](https:/
 
 The follower arm picks a small tabletop object and places it onto a target pose (planar position + yaw). The stack covers:
 
-1. **Sim** — MuJoCo tabletop env, scripted expert collection, closed-loop ACT eval  
-2. **Data** — rosbag2 / synthetic / LeRobotDataset conversion and quality checks  
-3. **Train** — ACT (and SmolVLA scripts where available) on sim or real demos  
-4. **Real** — SO-101 Leader/Follower bring-up, teleop recording, cameras, unit-aware sim→real and real-trained policy deploy runners  
+1. **Sim**: MuJoCo tabletop env, scripted expert collection, closed-loop ACT eval  
+2. **Data**: rosbag2 / synthetic / LeRobotDataset conversion and quality checks  
+3. **Train**: ACT (and SmolVLA scripts where available) on sim or real demos  
+4. **Real**: SO-101 Leader/Follower bring-up, teleop recording, cameras, unit-aware sim→real and real-trained policy deploy runners  
 
 Hardware target: **SO-101** (Feetech STS3215) with top + wrist cameras (see docs).
 
@@ -32,7 +32,7 @@ pip install -e "port_pick_align/[simulation,training,dev]"
 ./scripts/run_pipeline.sh --smoke --device cpu
 ```
 
-Real-robot bring-up, recording, udev, sim→real ACT, and real-trained ACT/SmolVLA deploy steps live under `docs/` (linked below). Prefer dry-run before live motor commands.
+Real-robot bring-up, recording, udev, sim→real ACT, and real-trained ACT/SmolVLA deploy steps are under `docs/` (linked below). Prefer dry-run before live motor commands.
 
 ## Documentation
 
@@ -65,8 +65,8 @@ Full list: see the docs index in each language.
 
 ## Models
 
-- **ACT** — primary imitation policy for sim closed-loop eval and real trials (`port_pick_align` training entrypoints).  
-- **SmolVLA** — fine-tune / real-runner scripts (`scripts/train_smolvla.sh`, `scripts/run_smolvla_real.sh`, deploy docs).
+- **ACT**: primary imitation policy for sim closed-loop eval and real trials (`port_pick_align` training entrypoints).  
+- **SmolVLA**: fine-tune / real-runner scripts (`scripts/train_smolvla.sh`, `scripts/run_smolvla_real.sh`, deploy docs).
 
 ## License
 

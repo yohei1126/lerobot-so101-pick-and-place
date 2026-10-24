@@ -1,6 +1,6 @@
 # Submission requirements and checklist
 
-This document summarizes OmniCampus submission form and YouTube video requirements for the University of Tokyo “Physical AI Applied Course 1” final assignment, plus pre-submission checks. The authoritative course spec follows the L07 overview materials in the course repository.
+OmniCampus needs a PDF report, a public GitHub URL, and a 1–3 minute YouTube task video for the University of Tokyo “Physical AI Applied Course 1” final assignment. Deadline: 2026-11-02 10:00 JST. The authoritative course spec follows the L07 overview materials in the course repository.
 
 ## Schedule
 
@@ -11,7 +11,7 @@ This document summarizes OmniCampus submission form and YouTube video requiremen
 
 ## OmniCampus requirements
 
-### 1. Results report (PDF)
+### 1. PDF report (filename and build)
 
 - Filename: `説明資料_PAI最終課題_yohei1126.pdf`
 - Report source: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.en.md)

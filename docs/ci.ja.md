@@ -1,10 +1,10 @@
 # 継続的インテグレーション（CI）仕様およびローカル検証手順
 
-本資料では、GitHub Actions 上で自動実行される CI ワークフローの構成と、同一の検証をローカル環境で再現するための手順を解説する。
+GitHub Actions では Ruff・mypy・pytest が走る。同じ検査はホスト Python 仮想環境でも再現できる。
 
-## ローカル環境での検証コマンド
+## ローカルでの Ruff / mypy / pytest
 
-ホスト側の Python 仮想環境において、静的解析ツール（Ruff, mypy）およびテストスイート（pytest）を順次実行する。
+ホスト側の Python 仮想環境で、静的解析ツール（Ruff, mypy）およびテストスイート（pytest）を順次実行する。
 
 ```bash
 source .venv/bin/activate

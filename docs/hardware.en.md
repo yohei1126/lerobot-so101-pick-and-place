@@ -1,6 +1,6 @@
 # SO-ARM101 / Feetech STS3215 Dry-Run Procedure
 
-This document defines the pre-work needed before connecting a real arm: confirm official specs, set up udev rules on Linux, and resolve Python dependencies. It also defines a work-area layout that matches the simple simulation coordinate frame, and lists purchased equipment. Before wiring and power-on, do not drive the hardware physically; limit checks to software connectivity.
+Before wiring and power-on: confirm official specs, set Linux udev rules, resolve Python dependencies, match the sim work-area layout, and list purchased gear. Limit checks to software connectivity; do not drive motors yet.
 
 ## Official specs and reference docs
 

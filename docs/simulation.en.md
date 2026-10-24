@@ -1,4 +1,4 @@
-# Closed-Loop Evaluation with MuJoCo Simulation
+# Closed-loop evaluation with MuJoCo simulation
 
 Before real-robot operation, use a tabletop manipulation simulator to closed-loop verify the ACT inference pipeline and alignment accuracy.
 

@@ -1,8 +1,8 @@
 # Alignment evaluation API (`eval_alignment`)
 
-This document specifies the evaluation module that records and aggregates planar position error (mm), yaw error (deg), and task success rate for the box grasp-and-precise-alignment task.
+`eval_alignment` records and aggregates planar position error (mm), yaw error (deg), and task success rate for the box grasp-and-precise-alignment task.
 
-## Running tests
+## `test_eval_alignment` tests
 
 In the host virtualenv, run the evaluation module unit tests:
 

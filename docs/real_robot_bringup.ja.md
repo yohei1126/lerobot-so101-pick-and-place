@@ -319,7 +319,7 @@ sim チェックポイントを実機へ直接載せない。sim ポリシーは
 ### Phase 2-2 クイックリンク（詳細は sim_to_real_act.md）
 
 ```bash
-# Dry-run（モータ非駆動）— 必ず先にこれ
+# Dry-run（モータ非駆動）; 必ず先にこれ
 python -m port_pick_align.deploy.run_sim_policy_on_real \
   --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
   --port "$PORT_FOLLOWER" \
@@ -342,7 +342,7 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
 詳細・安全設定・推奨 live フラグは **[real_robot_deploy.md](real_robot_deploy.ja.md)**。
 
 ```bash
-# ACT（実機 train_act チェックポイント、単位変換なし）— 既定は dry-run
+# ACT（実機 train_act チェックポイント、単位変換なし）; 既定は dry-run
 ./scripts/run_act_real.sh --device mps --episode-time-s 15
 # 初回 live 例
 ./scripts/run_act_real.sh --live --device mps \
@@ -391,13 +391,13 @@ lerobot-rollout \
 
 ## 参照
 
-- [hardware.md](hardware.ja.md) — 購入機材・作業エリア寸法
-- [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md) — clean28 データセット要約
-- [sim_to_real_act.md](sim_to_real_act.ja.md) — Phase 2-2: sim ACT → 実機 Follower（変換ラッパー）
-- [real_robot_deploy.md](real_robot_deploy.ja.md) — 実機学習 ACT / SmolVLA の dry-run → live
-- [units.md](units.ja.md) — ラジアン / 度 / グリッパ 0–100
-- [training.md](training.ja.md) — ACT 学習
-- [plan_b.md](plan_b.ja.md) — 実機障害時の縮退
+- [hardware.md](hardware.ja.md): 購入機材・作業エリア寸法
+- [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md): clean28 データセット要約
+- [sim_to_real_act.md](sim_to_real_act.ja.md): Phase 2-2: sim ACT → 実機 Follower（変換ラッパー）
+- [real_robot_deploy.md](real_robot_deploy.ja.md): 実機学習 ACT / SmolVLA の dry-run → live
+- [units.md](units.ja.md): ラジアン / 度 / グリッパ 0–100
+- [training.md](training.ja.md): ACT 学習
+- [plan_b.md](plan_b.ja.md): 実機障害時の縮退
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)
 - [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots)

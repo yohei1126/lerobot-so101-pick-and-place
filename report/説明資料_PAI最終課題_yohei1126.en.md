@@ -1,13 +1,13 @@
 <!-- markdownlint-disable MD013 MD024 MD060 -->
 
-# Physical AI Applied 1 Final Assignment — Explanatory Report
+# Physical AI Applied 1 Final Assignment: Explanatory Report
 
 **OmniCampus account name:** `yohei1126`
 
 > Note: Do not include personally identifying information such as real name, affiliation, or email address.  
 > This manuscript is for the submission PDF (DoD ⑤). Remaining TODOs are real-robot evidence links, the results video, and the final PDF only (Appendix B). Produce the PDF with `./scripts/build_report_pdf.sh yohei1126`.
 
-## 0. Scope of this document and citation policy
+## 0. Sources of truth (JSON, units, figures)
 
 - Canonical quantitative values are the JSON files pinned under `docs/results/` ([`docs/results/README.md`](../docs/results/README.en.md), [`post50_official_summary.json`](../docs/results/post50_official_summary.json)). Display rounding follows the summary file; transcription evidence is each cell JSON’s `summary` and episode arrays.
 - Units follow [`docs/units.md`](../docs/units.en.md) (and `port_pick_align/units.py`).
@@ -18,9 +18,9 @@
 
 ## 1. Problem setting and social context (creativity) / Problem and goals (DoD)
 
-### 1.1 Background and problem
+### 1.1 Problem
 
-In shipbuilding, maritime, and port operations, shortages of skilled workers and repetitive work in hazardous spaces demand urgent response. Aligning containers or parts pallets looks simple visually, but pose tolerances are tight and rework after failure is costly. This assignment compresses “grasp and precisely align into a frame” into a tabletop rectangular mock, so the RobOps loop of data collection, learning, and evaluation can be reproduced safely.
+The assignment is tabletop grasp-and-align: place a rectangular box so planar position error ≤ 25 mm and yaw error ≤ 15 deg, with a reproducible RobOps loop (collect → train → eval). The mock stands in for tight-tolerance alignment work where skilled labor is scarce and rework after failure is costly (for example shipbuilding, maritime, and port sites).
 
 ### 1.2 Task definition
 
@@ -52,11 +52,11 @@ The reference grasp-success threshold (≥ 90%) is in [`docs/results/README.md`]
 
 ### 1.4 Differentiation from the official sample
 
-This repo unifies (1) contract SSOT via `configs/contract.yaml`, (2) rosbag2→LeRobot conversion and quality validators, (3) GitHub Actions CI, (4) ROS 2 inference mock and Rerun, and (5) MuJoCo closed-loop evaluation in one repository. The differentiation is structuring port-style alignment as a tabletop mock and organizing RobOps from quality checks through retraining.
+This repo puts (1) contract SSOT via `configs/contract.yaml`, (2) rosbag2→LeRobot conversion and quality validators, (3) GitHub Actions CI, (4) ROS 2 inference mock and Rerun, and (5) MuJoCo closed-loop evaluation in one tree, with port-style alignment as the tabletop task and RobOps from quality checks through retraining.
 
 ---
 
-## 2. System architecture (technical skill) / Environment
+## 2. Stack: MuJoCo, ACT, contract SSOT (technical skill) / Environment
 
 ### 2.1 Simulation environment
 
@@ -165,7 +165,7 @@ Figure 2 shows learning curves generated from post50 `training_metrics.json` (in
 
 ---
 
-## 5. Quantitative evaluation and behavior checks (practicality) / Experiments and results
+## 5. post50 TE vs chunk30 measured results (practicality)
 
 > ACT numbers in this section are **Plan B (MuJoCo)** results. Canonical sources are the JSON paths in the tables below.
 
@@ -181,10 +181,8 @@ Index: [`docs/results/post50_official_summary.json`](../docs/results/post50_offi
 
 Displayed values are official cells (rounded) from `post50_official_summary.json`. mean / yaw match each JSON’s `summary`; median and range match values from those official cells and episode arrays.
 
-**Takeaways:**
-
 - The combination that meets DoD is **`best_model_te` × TE** (align 100%, mean 18.081 mm < 25 mm, mean \|yaw\| 11.830 deg < 15 deg).
-- `best_model` × chunk30 has align 0 and mean 39.157 mm — DoD not met.
+- `best_model` × chunk30 has align 0 and mean 39.157 mm: DoD not met.
 - Misaligning selection metrics (chunk-oriented / TE-oriented) with execution mode collapses scores.
 
 Position-error distribution comparison:
@@ -282,13 +280,13 @@ Representative rollout video (`best_model_te` × TE): [`docs/figures/sim_rollout
 
 If the real robot is not stable by the deadline, follow [`docs/plan_b.md`](../docs/plan_b.en.md) and meet submission requirements via MuJoCo eval video plus RobOps (convert · validator · CI) auditability. Chapter 5 post50 TE results and [`sim_rollout_representative.mp4`](../docs/figures/sim_rollout_representative.mp4) are the core evidence. Switch-decision date guideline: 2026-10-23 (plan_b.md).
 
-### 7.3 Industrial deployment concept
+### 7.3 What carries to field use
 
-Dust/water resistance, motion tracking, fail-safe on comms loss, and safety-standards compliance are field-deployment topics. This repository’s value is standardizing contract, quality gates, and reproducible evaluation before on-site data collection.
+Dust/water resistance, motion tracking, fail-safe on comms loss, and safety-standards compliance remain open field topics. Before on-site data, this repo standardizes the contract, quality gates, and reproducible eval.
 
 ---
 
-## 8. Results-video outline (presentation)
+## 8. YouTube video outline (1–3 min)
 
 ### 8.1 Submission spec
 
@@ -313,7 +311,7 @@ Caption example: chunk_size=30, TE (n_action_steps=1), thresholds 25 mm / 15 deg
 
 ---
 
-## 9. Future work
+## 9. Remaining work (chunk30, real robot, PDF)
 
 1. **Raise chunk30:** Reduce TE dependence so selection metrics and execution can meet DoD in chunk mode too.
 2. **Real-robot demo:** After cameras are ready, collect teleop demos, convert to contract radians per [`docs/units.md`](../docs/units.en.md), then train and evaluate.
