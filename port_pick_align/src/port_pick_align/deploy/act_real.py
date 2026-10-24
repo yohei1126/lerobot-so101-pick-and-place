@@ -17,6 +17,7 @@ import argparse
 import os
 import time
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
@@ -60,6 +61,41 @@ def predict_chunk(policy, top, wrist, state, device) -> np.ndarray:
     if out.ndim == 3:
         out = out[0]
     return np.asarray(out.float().cpu().numpy(), dtype=np.float32)
+
+
+class TemporalEnsembler:
+    """ACT-style exponential temporal ensemble (Zhao et al.).
+
+    Query a fresh action chunk every control step. Age previous chunks by one,
+    then return the weighted average of all pending predictions for *now*
+    with weights ``exp(-k * age)`` (age 0 = newest).
+    """
+
+    def __init__(self, k: float = 0.01):
+        if k < 0:
+            raise ValueError(f"temporal ensemble k must be >= 0, got {k}")
+        self.k = float(k)
+        self._chunks: list[np.ndarray] = []
+
+    def reset(self) -> None:
+        self._chunks.clear()
+
+    def step(self, chunk: np.ndarray) -> np.ndarray:
+        chunk = np.asarray(chunk, dtype=np.float32)
+        if chunk.ndim != 2:
+            raise ValueError(f"expected chunk (T, A), got shape {chunk.shape}")
+        aged = [prev[1:] for prev in self._chunks if prev.shape[0] > 1]
+        aged.append(chunk)
+        # Keep at most one prediction per horizon slot.
+        self._chunks = aged[-chunk.shape[0] :]
+        actions = np.stack([c[0] for c in self._chunks], axis=0)
+        # history is oldest→newest; age of newest is 0
+        n = actions.shape[0]
+        ages = np.arange(n - 1, -1, -1, dtype=np.float64)
+        weights = np.exp(-self.k * ages)
+        weights = weights / weights.sum()
+        blended = (actions * weights[:, None]).sum(axis=0)
+        return cast(np.ndarray, np.asarray(blended, dtype=np.float32))
 
 
 def offline_check(policy, chunk, device, dataset: Path, n_frames: int):
@@ -140,7 +176,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--n-action-steps",
         type=int,
         default=10,
-        help="execute N steps of each chunk before replanning",
+        help="execute N steps of each chunk before replanning (ignored if --temporal-ensemble)",
+    )
+    ap.add_argument(
+        "--temporal-ensemble",
+        action="store_true",
+        help=(
+            "ACT exponential temporal ensembling: query the policy every control step "
+            "and average overlapping chunk predictions (default k=0.01)."
+        ),
+    )
+    ap.add_argument(
+        "--temporal-ensemble-k",
+        type=float,
+        default=0.01,
+        help="exp(-k * age) coefficient for --temporal-ensemble (default 0.01)",
     )
     ap.add_argument("--offline-check", action="store_true", help="dataset check only, no robot")
     ap.add_argument("--offline-frames", type=int, default=24)
@@ -155,21 +205,39 @@ def main(argv: list[str] | None = None) -> None:
     if args.offline_check:
         offline_check(policy, chunk, args.device, args.dataset, args.offline_frames)
         return
-    n_exec = max(1, min(args.n_action_steps, chunk))
-    st = {"chunk": None, "i": 0}
 
-    def reset():
-        st["chunk"], st["i"] = None, 0
+    if args.temporal_ensemble:
+        ensembler = TemporalEnsembler(k=float(args.temporal_ensemble_k))
+        print(
+            f"[act] temporal_ensemble ON k={ensembler.k} (query every step)",
+            flush=True,
+        )
 
-    def step(obs, state):
-        replan = st["chunk"] is None or st["i"] >= n_exec
-        if replan:
-            st["chunk"] = predict_chunk(policy, obs["top"], obs["wrist"], state, args.device)
-            st["i"] = 0
-        a = st["chunk"][st["i"]]
-        info = f"chunk_i={st['i']}{' REPLAN' if replan else ''}"
-        st["i"] += 1
-        return a, info
+        def reset():
+            ensembler.reset()
+
+        def step(obs, state):
+            pred = predict_chunk(policy, obs["top"], obs["wrist"], state, args.device)
+            a = ensembler.step(pred)
+            info = f"te_n={len(ensembler._chunks)}"
+            return a, info
+
+    else:
+        n_exec = max(1, min(args.n_action_steps, chunk))
+        st = {"chunk": None, "i": 0}
+
+        def reset():
+            st["chunk"], st["i"] = None, 0
+
+        def step(obs, state):
+            replan = st["chunk"] is None or st["i"] >= n_exec
+            if replan:
+                st["chunk"] = predict_chunk(policy, obs["top"], obs["wrist"], state, args.device)
+                st["i"] = 0
+            a = st["chunk"][st["i"]]
+            info = f"chunk_i={st['i']}{' REPLAN' if replan else ''}"
+            st["i"] += 1
+            return a, info
 
     raise SystemExit(rc.run_loop(args, "act", step, reset))
 

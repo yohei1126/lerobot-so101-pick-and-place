@@ -3,10 +3,21 @@
 # Default = DRY-RUN (reads robot+cameras, never sends actions, no torque writes).
 # Pass --live to move the arm. Other flags are forwarded (see --help).
 #
+# Useful flags:
+#   --live / --dry-run
+#   --n-action-steps 10          (default 10; ignored with --temporal-ensemble)
+#   --temporal-ensemble          ACT exp. ensemble, query every step (k=0.01)
+#   --temporal-ensemble-k 0.01
+#   --save-video / --no-save-video
+#       Default: video ON for --live, OFF for dry-run
+#   --checkpoint PATH
+#
 # Env (optional):
 #   LEROBOT_HW_ROOT   hardware workspace (default: $HOME/work/lerobot-hw)
 #   PORT_FOLLOWER     serial port override
 #   ACT_REAL_CHECKPOINT / ACT_REAL_DATASET
+#
+# Protocol: docs/real_eval_protocol.ja.md
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HW="${LEROBOT_HW_ROOT:-$HOME/work/lerobot-hw}"
