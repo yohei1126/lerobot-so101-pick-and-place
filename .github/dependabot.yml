@@ -14,6 +14,20 @@ updates:
         update-types:
           - minor
           - patch
+    # lerobot 0.6.1 caps torch>=2.7,<2.12 (and related); remove when lerobot supports newer torch
+    ignore:
+      - dependency-name: torch
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      - dependency-name: torchvision
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      - dependency-name: torchcodec
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
 
   # Docker image Python pins (requirements.txt)
   - package-ecosystem: pip
@@ -27,6 +41,20 @@ updates:
         update-types:
           - minor
           - patch
+    # lerobot 0.6.1 caps torch>=2.7,<2.12 (and related); remove when lerobot supports newer torch
+    ignore:
+      - dependency-name: torch
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      - dependency-name: torchvision
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      - dependency-name: torchcodec
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
 
   # ROS 2 ament package (setup.py)
   - package-ecosystem: pip
@@ -40,6 +68,20 @@ updates:
         update-types:
           - minor
           - patch
+    # lerobot 0.6.1 caps torch>=2.7,<2.12 (and related); remove when lerobot supports newer torch
+    ignore:
+      - dependency-name: torch
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      - dependency-name: torchvision
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      - dependency-name: torchcodec
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
 
   # GitHub Actions used in .github/workflows
   - package-ecosystem: github-actions
