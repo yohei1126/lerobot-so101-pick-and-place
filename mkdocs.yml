@@ -71,7 +71,6 @@ plugins:
             Real Robot Deploy: 実機デプロイ
             Sim to Real ACT: sim→実機 ACT
             CI: CI
-            Submission: 提出
             Plan B: Plan B
             Results: 結果
             Figures: 図表
@@ -119,7 +118,6 @@ nav:
   - Real Robot Deploy: real_robot_deploy.md
   - Sim to Real ACT: sim_to_real_act.md
   - CI: ci.md
-  - Submission: submission.md
   - Plan B: plan_b.md
   - Results: results/README.md
   - Figures: figures/README.md

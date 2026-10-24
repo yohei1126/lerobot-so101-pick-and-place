@@ -52,6 +52,6 @@ python scripts/run_sim_eval.py --policy scripted --save-video --no-rerun
 
 ## 関連文書
 
-- 成果物提出の全体要件: [submission.md](submission.ja.md)
+- 成果物提出の全体要件: [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.ja.md)
 - 整列精度の評価 API 仕様: [evaluation.md](evaluation.ja.md)
 
