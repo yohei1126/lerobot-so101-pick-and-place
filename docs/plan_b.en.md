@@ -52,5 +52,5 @@ Report draft: [PhysicalAI-Applied1-202609 in utokyo-ai-courses](https://github.c
 
 ## Related docs
 
-- Overall submission requirements: [submission.md](submission.en.md)
+- Overall submission requirements: [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.en.md)
 - Alignment evaluation API: [evaluation.md](evaluation.en.md)

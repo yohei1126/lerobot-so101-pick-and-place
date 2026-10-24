@@ -21,5 +21,5 @@ Start with setup, then dataset → training → simulation; use hardware and bri
 | [real_robot_bringup.md](real_robot_bringup.en.md) | Mac / LeRobot 0.6.1 SO-101 Leader/Follower bring-up, table layout, demo recording (`scripts/record_real_so101.sh`) |
 | [real_robot_deploy.md](real_robot_deploy.en.md) | Real-trained ACT / SmolVLA dry-run → live (no unit conversion; safety clamps) |
 | [ci.md](ci.en.md) | GitHub Actions CI and local lint/test |
-| [submission.md](submission.en.md) | OmniCampus deliverables (PDF report, GitHub, YouTube) and checklist |
+| [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.en.md) | OmniCampus deliverables (PDF report, GitHub, YouTube) and checklist |
 | [plan_b.md](plan_b.en.md) | Degraded operation with simulation and public data when hardware fails |
