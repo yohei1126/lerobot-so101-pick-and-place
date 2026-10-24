@@ -263,7 +263,7 @@ sim チェックポイントを実機へ直接載せない。sim ポリシーは
 1. **デモ収録の本格化:** 画角・レイアウト固定後にエピソード数を増やす（上記試行コマンドを拡充）
 2. **学習:** `lerobot-train` で ACT、`--policy.device=mps`（実機データ）。sim データは `python -m port_pick_align.training.train_act --preset sim`
 3. **Phase 2-2（sim→実機）:** 単位変換ラッパーで dry-run → 低速 live。手順は **[sim_to_real_act.md](sim_to_real_act.md)**
-4. **実機学習ポリシーの評価:** `lerobot-rollout`（0.6.1 ではポリシー実行は record ではなく rollout）。最初は `--robot.max_relative_target` を小さめにし、低速・短時間で行う
+4. **実機学習ポリシー（ACT / SmolVLA）:** 単位変換不要。dry-run → live は **[real_robot_deploy.md](real_robot_deploy.md)**（`scripts/run_act_real.sh` / `scripts/run_smolvla_real.sh`）。代替として `lerobot-rollout` も可。初回は `--max-relative-target` / `--max-delta-deg` を小さめに、低速・短時間で行う
 
 ### Phase 2-2 クイックリンク（詳細は sim_to_real_act.md）
 
@@ -286,7 +286,22 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
   --robot-max-relative-target 3
 ```
 
-### 実機学習ポリシーの評価例（単位変換不要）
+### 実機学習ポリシー（推奨: リポジトリのランナー）
+
+詳細・安全設定・推奨 live フラグは **[real_robot_deploy.md](real_robot_deploy.md)**。
+
+```bash
+# ACT（実機 train_act チェックポイント、単位変換なし）— 既定は dry-run
+./scripts/run_act_real.sh --device mps --episode-time-s 15
+# 初回 live 例
+./scripts/run_act_real.sh --live --device mps \
+  --max-delta-deg 2 --max-delta-gripper 3 --n-action-steps 10 --episode-time-s 15
+
+# SmolVLA fine-tune
+./scripts/run_smolvla_real.sh --live --device mps --n-action-steps 25 --episode-time-s 15
+```
+
+### 代替: lerobot-rollout（単位変換不要）
 
 ```bash
 lerobot-rollout \
@@ -327,6 +342,7 @@ lerobot-rollout \
 
 - [hardware.md](hardware.md) — 購入機材・作業エリア寸法
 - [sim_to_real_act.md](sim_to_real_act.md) — Phase 2-2: sim ACT → 実機 Follower（変換ラッパー）
+- [real_robot_deploy.md](real_robot_deploy.md) — 実機学習 ACT / SmolVLA の dry-run → live
 - [units.md](units.md) — ラジアン / 度 / グリッパ 0–100
 - [plan_b.md](plan_b.md) — 実機障害時の縮退
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
