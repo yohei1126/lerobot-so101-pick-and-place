@@ -309,10 +309,63 @@ lerobot-record \
 
 ## 次のステップ
 
+sim チェックポイントを実機へ直接載せない。sim ポリシーは関節が**ラジアン**、実機 Follower は本体関節が**度**・グリッパが **0–100** であり、入出力契約が一致しない。
+
 1. デモ収録 → クリーンセット作成（[real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.md)）
-2. 実機データで ACT 学習: `python -m port_pick_align.training.train_act`（[training.md](training.md)）。MPS 上で実行する
-3. Phase 2-2（sim→実機）: [sim_to_real_act.md](sim_to_real_act.md)
-4. 実機学習ポリシーの評価: `lerobot-rollout`（0.6.1 ではポリシー実行は record ではなく rollout）。低速・短時間で行う
+2. 実機データで ACT 学習: `python -m port_pick_align.training.train_act`（[training.md](training.md)）。MPS 上で実行する。sim データは `train_act --preset sim`
+3. Phase 2-2（sim→実機）: 単位変換ラッパーで dry-run → 低速 live。[sim_to_real_act.md](sim_to_real_act.md)
+4. 実機学習ポリシー（ACT / SmolVLA）: 単位変換不要。dry-run → live は **[real_robot_deploy.md](real_robot_deploy.md)**（`scripts/run_act_real.sh` / `scripts/run_smolvla_real.sh`）。代替として `lerobot-rollout` も可。初回は `--max-relative-target` / `--max-delta-deg` を小さめに、低速・短時間で行う
+
+### Phase 2-2 クイックリンク（詳細は sim_to_real_act.md）
+
+```bash
+# Dry-run（モータ非駆動）— 必ず先にこれ
+python -m port_pick_align.deploy.run_sim_policy_on_real \
+  --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
+  --port "$PORT_FOLLOWER" \
+  --dry-run \
+  --device mps \
+  --episode-time-s 20
+
+# Live（12V スイッチに手を置く。初回は max-delta を小さめに）
+python -m port_pick_align.deploy.run_sim_policy_on_real \
+  --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
+  --port "$PORT_FOLLOWER" \
+  --device mps \
+  --episode-time-s 20 \
+  --max-delta-deg 3 \
+  --robot-max-relative-target 3
+```
+
+### 実機学習ポリシー（推奨: リポジトリのランナー）
+
+詳細・安全設定・推奨 live フラグは **[real_robot_deploy.md](real_robot_deploy.md)**。
+
+```bash
+# ACT（実機 train_act チェックポイント、単位変換なし）— 既定は dry-run
+./scripts/run_act_real.sh --device mps --episode-time-s 15
+# 初回 live 例
+./scripts/run_act_real.sh --live --device mps \
+  --max-delta-deg 2 --max-delta-gripper 3 --n-action-steps 10 --episode-time-s 15
+
+# SmolVLA fine-tune
+./scripts/run_smolvla_real.sh --live --device mps --n-action-steps 25 --episode-time-s 15
+```
+
+### 代替: lerobot-rollout（単位変換不要）
+
+```bash
+lerobot-rollout \
+  --strategy.type=base \
+  --policy.path=outputs/train/act_so101_real/checkpoints/last/pretrained_model \
+  --robot.type=so101_follower \
+  --robot.port=$PORT_FOLLOWER \
+  --robot.id=follower \
+  --robot.cameras="{ top: {type: opencv, index_or_path: 1, width: 640, height: 480, fps: 30}, wrist: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}" \
+  --robot.max_relative_target=5 \
+  --task="Pick up the yellow sponge and place it on the white paper" \
+  --duration=30
+```
 
 ## トラブルシューティング
 
@@ -340,7 +393,8 @@ lerobot-record \
 
 - [hardware.md](hardware.md) — 購入機材・作業エリア寸法
 - [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.md) — clean28 データセット要約
-- [sim_to_real_act.md](sim_to_real_act.md) — Phase 2-2: sim ACT → 実機 Follower
+- [sim_to_real_act.md](sim_to_real_act.md) — Phase 2-2: sim ACT → 実機 Follower（変換ラッパー）
+- [real_robot_deploy.md](real_robot_deploy.md) — 実機学習 ACT / SmolVLA の dry-run → live
 - [units.md](units.md) — ラジアン / 度 / グリッパ 0–100
 - [training.md](training.md) — ACT 学習
 - [plan_b.md](plan_b.md) — 実機障害時の縮退
