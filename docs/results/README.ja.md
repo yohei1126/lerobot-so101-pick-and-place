@@ -4,7 +4,7 @@
 
 ## 公式: post50 ACT（DoD 主結果）
 
-出典: [PR #34 の post50 パイプライン結果コメント](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103)。セル JSON はローカル `metrics.json` を `scripts/verify_eval_metrics.py --pin` で固定した実測コピーである。
+出典: [PR #34 の post50 パイプライン結果コメント](https://github.com/yohei1126/lerobot-so101-pick-and-place/pull/34#issuecomment-6233795103)。セル JSON はローカル `metrics.json` を `scripts/verify_eval_metrics.py --pin` で固定した実測コピーである。
 
 | ファイル | 内容 |
 | --- | --- |
@@ -80,6 +80,6 @@ python scripts/run_sim_eval.py --policy checkpoint \
   --output-dir outputs/eval_sim_act_chunk30
 ```
 
-単位（rad / deg / グリッパ 0–100）は [`docs/units.md`](../units.md) を参照する。
+単位（rad / deg / グリッパ 0–100）は [`docs/units.md`](../units.ja.md) を参照する。
 
 いずれのログも、実行して `status` が `measured` になったファイルだけを数値の根拠にする。

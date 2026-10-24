@@ -2,7 +2,7 @@
   "status": "measured",
   "run": "post50",
   "provenance": {
-    "source": "https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103",
+    "source": "https://github.com/yohei1126/lerobot-so101-pick-and-place/pull/34#issuecomment-6233795103",
     "source_label": "PR #34 pipeline results comment (post50 table), superseded by local metrics.json pins",
     "checkpoint_dir_local": "checkpoints/sim_act_post50",
     "raw_metrics_layout_local": "results/post50/eval/<checkpoint>/<chunk30|te>/metrics.json",

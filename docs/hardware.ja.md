@@ -16,7 +16,7 @@
 ## ホスト Python 依存パッケージの導入
 
 ```bash
-cd /path/to/utokyo-physical-ai-applied1-final-assignment
+cd /path/to/lerobot-so101-pick-and-place
 python -m venv .venv
 source .venv/bin/activate
 pip install -U pip

@@ -24,7 +24,7 @@
 
 実行後、`report/説明資料_PAI最終課題_yohei1126.pdf` に PDF が生成される（Git 管理対象外）。
 
-既定では [`説明資料_PAI最終課題_yohei1126.md`](説明資料_PAI最終課題_yohei1126.md) が入力原稿として使用される。別の原稿ファイルを指定する場合は、第2引数にファイルパスを渡す。
+既定では [`説明資料_PAI最終課題_yohei1126.md`](説明資料_PAI最終課題_yohei1126.ja.md) が入力原稿として使用される。別の原稿ファイルを指定する場合は、第2引数にファイルパスを渡す。
 
 ```bash
 ./scripts/build_report_pdf.sh yohei1126 path/to/draft.md
@@ -42,6 +42,6 @@
 
 ## 関連文書
 
-- 提出全体の要件一覧: [`docs/submission.md`](../docs/submission.md)
-- 実機障害時の縮退運用: [`docs/plan_b.md`](../docs/plan_b.md)
+- 提出全体の要件一覧: [`docs/submission.md`](../docs/submission.ja.md)
+- 実機障害時の縮退運用: [`docs/plan_b.md`](../docs/plan_b.ja.md)
 

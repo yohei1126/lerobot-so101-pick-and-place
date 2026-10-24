@@ -2,8 +2,8 @@
 
 実機テレオペで学習した ACT（`port_pick_align.training.train_act`）および
 `lerobot/smolvla_base` を fine-tune した SmolVLA を、SO-101 Follower 上で
-dry-run → live する手順。Bring-up 共通は [real_robot_bringup.md](real_robot_bringup.md)。
-sim 学習 ACT の rad↔deg 変換ラッパーは **使わない**（こちらは [sim_to_real_act.md](sim_to_real_act.md)）。
+dry-run → live する手順。Bring-up 共通は [real_robot_bringup.md](real_robot_bringup.ja.md)。
+sim 学習 ACT の rad↔deg 変換ラッパーは **使わない**（こちらは [sim_to_real_act.md](sim_to_real_act.ja.md)）。
 
 関連: Issue #76。
 
@@ -27,7 +27,7 @@ sim 学習 ACT の rad↔deg 変換ラッパーは **使わない**（こちら�
 
 ```bash
 source "$HOME/work/lerobot-hw/.venv/bin/activate"
-cd "$HOME/work/utokyo-ai-courses/utokyo-physical-ai-applied1-final-assignment"
+cd "/path/to/lerobot-so101-pick-and-place"
 pip install -e "port_pick_align/[training,feetech]"
 export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071   # lerobot-find-port の結果
 ```
@@ -119,7 +119,7 @@ macOS 向け。`caffeinate` + `start_new_session` で離脱する。
 ## 収録スクリプトとの整合
 
 ポート・カメラ index・タスク文は [scripts/record_real_so101.sh](../scripts/record_real_so101.sh)
-および [real_robot_bringup.md](real_robot_bringup.md) と本デプロイ既定を一致させる:
+および [real_robot_bringup.md](real_robot_bringup.ja.md) と本デプロイ既定を一致させる:
 
 | 項目 | 値 |
 | --- | --- |
@@ -132,7 +132,7 @@ macOS 向け。`caffeinate` + `start_new_session` で離脱する。
 
 ## 参照
 
-- [real_robot_bringup.md](real_robot_bringup.md)
-- [sim_to_real_act.md](sim_to_real_act.md) — sim ACT のみ（本手順とは別系統）
-- [units.md](units.md)
+- [real_robot_bringup.md](real_robot_bringup.ja.md)
+- [sim_to_real_act.md](sim_to_real_act.ja.md) — sim ACT のみ（本手順とは別系統）
+- [units.md](units.ja.md)
 - 実装: `port_pick_align.deploy.real_common` / `act_real` / `smolvla_real`

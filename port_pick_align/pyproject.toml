@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "port-pick-align"
 version = "0.1.0"
-description = "Physical AI Applied1 final assignment — RobOps / ACT pipeline"
+description = "SO-101 pick-and-place with LeRobot — RobOps / ACT / sim-to-real pipeline"
 requires-python = ">=3.12"
 dependencies = [
   "numpy>=1.24",

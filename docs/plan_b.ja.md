@@ -19,8 +19,8 @@
 
 | 代替経路 | 検証内容 | 参照手順 |
 | --- | --- | --- |
-| MuJoCo シミュレータ | 卓上把持・整列環境における閉ループ制御と評価メトリクスの算出 | [simulation.md](simulation.md)（出力: `outputs/eval/sim_rollout.mp4`） |
-| LeRobot 公開データセット | SO-100 などの公開データを用いた ACT の学習と推論動作確認 | [training.md](training.md) · [dataset.md](dataset.md) |
+| MuJoCo シミュレータ | 卓上把持・整列環境における閉ループ制御と評価メトリクスの算出 | [simulation.md](simulation.ja.md)（出力: `outputs/eval/sim_rollout.mp4`） |
+| LeRobot 公開データセット | SO-100 などの公開データを用いた ACT の学習と推論動作確認 | [training.md](training.ja.md) · [dataset.md](dataset.ja.md) |
 
 MuJoCo シミュレーションによる評価動画の出力例:
 
@@ -35,9 +35,9 @@ python scripts/run_sim_eval.py --policy scripted --save-video --no-rerun
 
 実機が存在しない場合でも、ソフトウェア側のパイプラインは契約定義に準拠して動作することを検証し、資料上で説明する。
 
-- rosbag2 から LeRobot 形式へのデータ変換機構（[dataset.md](dataset.md)）
+- rosbag2 から LeRobot 形式へのデータ変換機構（[dataset.md](dataset.ja.md)）
 - タイムスタンプ同期およびフレーム欠落を検出する品質バリデータ
-- GitHub Actions による継続的インテグレーション（[ci.md](ci.md)）
+- GitHub Actions による継続的インテグレーション（[ci.md](ci.ja.md)）
 - `configs/contract.yaml` による入出力仕様の厳密な管理
 
 ### 3. レポート資料における論述方針
@@ -48,10 +48,10 @@ python scripts/run_sim_eval.py --policy scripted --save-video --no-rerun
 - 第6章: 機材未着または故障の状況、代替手法の選定理由、および得られた知見を技術的観点から整理する。
 - 第8章: 成果発表動画において、シミュレーション画面と RobOps（Rerun による軌道表示や CI ログ）を組み合わせた構成を採用する。
 
-レポート原稿の雛形: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.md)
+レポート原稿の雛形: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.ja.md)
 
 ## 関連文書
 
-- 成果物提出の全体要件: [submission.md](submission.md)
-- 整列精度の評価 API 仕様: [evaluation.md](evaluation.md)
+- 成果物提出の全体要件: [submission.md](submission.ja.md)
+- 整列精度の評価 API 仕様: [evaluation.md](evaluation.ja.md)
 

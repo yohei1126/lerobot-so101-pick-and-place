@@ -26,7 +26,7 @@ docker compose -f docker/docker-compose.yml build dev
 docker compose -f docker/docker-compose.yml run --rm dev
 ```
 
-テスト用 sample_bag の生成手順は [dataset.md](dataset.md) を参照する。
+テスト用 sample_bag の生成手順は [dataset.md](dataset.ja.md) を参照する。
 
 ## ホスト Python 仮想環境の構築
 

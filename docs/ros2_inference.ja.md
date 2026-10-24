@@ -55,5 +55,5 @@ pip install -e "port_pick_align/[training,dev]"
 - `ros2_ws/src/pai_final_pkg/pai_final_pkg/act_policy_node.py`: ROS 2 推論ノード実装
 - `ros2_ws/src/pai_final_pkg/pai_final_pkg/rerun_visualizer.py`: Rerun 連携ノード実装
 
-整列誤差の集計 API 仕様については [evaluation.md](evaluation.md) を参照する。
+整列誤差の集計 API 仕様については [evaluation.md](evaluation.ja.md) を参照する。
 

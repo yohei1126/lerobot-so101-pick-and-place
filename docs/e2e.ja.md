@@ -1,6 +1,6 @@
 # エンドツーエンド（E2E）パイプライン結合試験
 
-本手順書は、データ収集、フォーマット変換・品質検証、ACT モデル推論、および ROS 2 / Rerun による可視化の各工程を連続して実行し、システム全体の疎通性を検証するための手順を定める。実機接続前の機材準備手順については [hardware.md](hardware.md) を参照する。
+本手順書は、データ収集、フォーマット変換・品質検証、ACT モデル推論、および ROS 2 / Rerun による可視化の各工程を連続して実行し、システム全体の疎通性を検証するための手順を定める。実機接続前の機材準備手順については [hardware.md](hardware.ja.md) を参照する。
 
 ## 前提条件と環境要件
 
@@ -53,5 +53,5 @@ pip install -e "port_pick_align/[training,feetech,dev]"
 # Linux 環境: deploy/udev/99-feetech-so101.rules のシリアル番号を実機に合わせて修正し、/etc/udev/rules.d/ に配置する
 ```
 
-詳細な機材設定手順は [hardware.md](hardware.md) を参照する。
+詳細な機材設定手順は [hardware.md](hardware.ja.md) を参照する。
 

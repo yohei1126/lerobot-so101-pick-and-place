@@ -43,10 +43,10 @@
   "n_val_episodes": 1,
   "recommended_min_steps": 1000,
   "below_recommended_steps": true,
-  "checkpoint": "/Users/yoheionishi/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019/best_model.pt",
+  "checkpoint": "$HOME/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019/best_model.pt",
   "te_checkpoint": null,
-  "last_checkpoint": "/Users/yoheionishi/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019/last.pt",
-  "dataset_root": "/Users/yoheionishi/work/lerobot-hw/datasets/so101_pick_sponge_trial3",
+  "last_checkpoint": "$HOME/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019/last.pt",
+  "dataset_root": "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_trial3",
   "device": "mps",
   "repo_id": "local/so101_pick_sponge_trial3",
   "arch": {

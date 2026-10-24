@@ -9,10 +9,10 @@
 
 ## 0. 本稿の位置づけと出典方針
 
-- 定量値の正本は `docs/results/` にピン留めした JSON である（[`docs/results/README.md`](../docs/results/README.md)、[`post50_official_summary.json`](../docs/results/post50_official_summary.json)）。表示の丸めは summary ファイル、転記根拠は各セル JSON の `summary` およびエピソード配列とする。
-- 単位系は [`docs/units.md`](../docs/units.md)（および `port_pick_align/units.py`）に従う。
+- 定量値の正本は `docs/results/` にピン留めした JSON である（[`docs/results/README.md`](../docs/results/README.ja.md)、[`post50_official_summary.json`](../docs/results/post50_official_summary.json)）。表示の丸めは summary ファイル、転記根拠は各セル JSON の `summary` およびエピソード配列とする。
+- 単位系は [`docs/units.md`](../docs/units.ja.md)（および `port_pick_align/units.py`）に従う。
 - 図表は [`docs/figures/`](../docs/figures/)（[`manifest.json`](../docs/figures/manifest.json)）。
-- その他の主要出典: [Issue #23](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/issues/23)（DoD）、[PR #34](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/34#issuecomment-6233795103)（post50 パイプライン経緯）、[PR #52](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/pull/52) / [Issue #51](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/issues/51)、[`docs/plan_b.md`](../docs/plan_b.md)、[`docs/hardware.md`](../docs/hardware.md)。
+- その他の主要出典: [Issue #23](https://github.com/yohei1126/lerobot-so101-pick-and-place/issues/23)（DoD）、[PR #34](https://github.com/yohei1126/lerobot-so101-pick-and-place/pull/34#issuecomment-6233795103)（post50 パイプライン経緯）、[PR #52](https://github.com/yohei1126/lerobot-so101-pick-and-place/pull/52) / [Issue #51](https://github.com/yohei1126/lerobot-so101-pick-and-place/issues/51)、[`docs/plan_b.md`](../docs/plan_b.ja.md)、[`docs/hardware.md`](../docs/hardware.ja.md)。
 
 ---
 
@@ -28,13 +28,13 @@
 | --- | --- |
 | 対象物 | 小型直方体箱（机上モック。現場のコンテナ／部品パレットに相当） |
 | 目標 | 机上の目標枠（パッド）へ平面位置およびヨー角を整合させて配置 |
-| 成功条件（評価 API） | 平面位置誤差 ≤ 25 mm、ヨー角誤差 ≤ 15 deg（[`docs/evaluation.md`](../docs/evaluation.md)、[`docs/hardware.md`](../docs/hardware.md)） |
+| 成功条件（評価 API） | 平面位置誤差 ≤ 25 mm、ヨー角誤差 ≤ 15 deg（[`docs/evaluation.md`](../docs/evaluation.ja.md)、[`docs/hardware.md`](../docs/hardware.ja.md)） |
 | 観測 | Top / Wrist 2 眼カメラ（640×480、30 fps）および関節 6 DoF |
 | 制御 | ACT（chunk_size=30）による関節位置指令。比較のため Temporal Ensembling（TE）も評価 |
 
 ### 1.3 Phase 1.5 完了基準（DoD）
 
-出典: [Issue #23](https://github.com/yohei1126/utokyo-physical-ai-applied1-final-assignment/issues/23)。
+出典: [Issue #23](https://github.com/yohei1126/lerobot-so101-pick-and-place/issues/23)。
 
 | # | 項目 | 判定 | 根拠 |
 | --- | --- | --- | --- |
@@ -48,7 +48,7 @@
 `best_model_te` を Temporal Ensembling（`n_action_steps=1`）で評価したとき、整列成功率 1.000、平均位置誤差 18.081 mm（中央値 18.955 mm）であり、DoD を満たす。正本: [`docs/results/eval_sim_act_post50_best_model_te_te.json`](../docs/results/eval_sim_act_post50_best_model_te_te.json)（一覧: [`post50_official_summary.json`](../docs/results/post50_official_summary.json)）。  
 初期のベンチマーク文書では達成判定を chunk30 側に置いていたが、本稿では実測上 DoD を満たす実行モードとして **TE を主達成**と明記する。chunk30 比較セルは未達である（第 5 章）。
 
-把持成功率の参考閾値（≥ 90%）は [`docs/results/README.md`](../docs/results/README.md) にあり、上記 TE セルでは把持率 1.000 である。
+把持成功率の参考閾値（≥ 90%）は [`docs/results/README.md`](../docs/results/README.ja.md) にあり、上記 TE セルでは把持率 1.000 である。
 
 ### 1.4 公式サンプルに対する独自性
 
@@ -89,7 +89,7 @@
 
 ### 2.3 単位系（sim / 契約 / 実機）
 
-出典: [`docs/units.md`](../docs/units.md)。
+出典: [`docs/units.md`](../docs/units.ja.md)。
 
 | 系 | アーム 5 軸 | グリッパ | 箱ヨー / 評価ヨー |
 | --- | --- | --- | --- |
@@ -100,13 +100,13 @@
 
 ### 2.4 実機ハードウェア（準備状況）
 
-設計対象は SO-ARM101（Feetech STS3215）＋ Top/Wrist カメラ。配置・機材一覧は [`docs/hardware.md`](../docs/hardware.md)。
+設計対象は SO-ARM101（Feetech STS3215）＋ Top/Wrist カメラ。配置・機材一覧は [`docs/hardware.md`](../docs/hardware.ja.md)。
 
 | 項目 | 状態 | 出典 |
 | --- | --- | --- |
 | SO-101 Leader / Follower | キャリブレーション済み、leader→follower テレオペ動作（オーナー報告 2026-10-17） | TODO: 証拠リンク（動画／ログ）を所有者が添付 |
 | 制御周期 | 約 60 Hz（同上） | TODO: 同上 |
-| カメラ | セットアップ中（C920 上カメラ、手首カメラ） | [`docs/hardware.md`](../docs/hardware.md) |
+| カメラ | セットアップ中（C920 上カメラ、手首カメラ） | [`docs/hardware.md`](../docs/hardware.ja.md) |
 | 次工程 | `lerobot-record` → 学習 → `lerobot-rollout` | 未着手 |
 
 ---
@@ -116,7 +116,7 @@
 ### 3.1 収集
 
 1. MuJoCo 上で `ScriptedPickAlignPolicy` をロールアウトし、画像＋関節目標を LeRobotDataset として保存（`scripts/collect_sim_dataset.py`）。
-2. 初期箱の平面位置・ヨーをランダム化し、整列成功エピソードのみ採録する（[`docs/dataset.md`](../docs/dataset.md)）。
+2. 初期箱の平面位置・ヨーをランダム化し、整列成功エピソードのみ採録する（[`docs/dataset.md`](../docs/dataset.ja.md)）。
 3. `validate_episode` により同期ずれ・フレーム間隔・関節可動域・静止を検査する。
 4. 教示軌道は反復改善済み（運搬中ヨー合わせ、パッド近傍の閉じた approach+place、開いた静止解放など。Issue #39/#41/#45 系）。
 
@@ -129,7 +129,7 @@ post50 ランは `scripts/run_pipeline.sh` 経由の収集・学習・評価で�
 | 時刻同期 | 33 ms 超を検出 |
 | フレーム欠落 | 50 ms 超間隔を検出 |
 | スキーマ | `contract.yaml` との一致 |
-| 公式収集フラグ | 50〜100 epi、640×480、260 step 等（[`docs/dataset.md`](../docs/dataset.md)） |
+| 公式収集フラグ | 50〜100 epi、640×480、260 step 等（[`docs/dataset.md`](../docs/dataset.ja.md)） |
 
 ---
 
@@ -214,7 +214,7 @@ post50 の `training_metrics.json` から生成した学習曲線を図 2 に示
 | 平均絶対ヨー誤差 (deg) | 11.665 |
 | 把持成功率 | 1.000 |
 
-依頼文の「100%、平均 18.28 mm、範囲 14.3–20.0 mm」は上記 JSON と tol 内で一致した（[`docs/results/README.md`](../docs/results/README.md)）。不一致時は JSON を正とする。
+依頼文の「100%、平均 18.28 mm、範囲 14.3–20.0 mm」は上記 JSON と tol 内で一致した（[`docs/results/README.md`](../docs/results/README.ja.md)）。不一致時は JSON を正とする。
 
 ### 5.4 scripted オラクル（参考ベースライン）
 
@@ -261,7 +261,7 @@ post50 の `training_metrics.json` から生成した学習曲線を図 2 に示
 ### 6.3 限界
 
 - 達成はシミュレーションかつ TE モードに依存。chunk30 単体では DoD 未達。
-- 実機分布（照明、カメラ外部、摩擦）へのギャップは未評価。単位変換手順は [`docs/units.md`](../docs/units.md) に確定済みだが、実機ログでの突合はこれからである。
+- 実機分布（照明、カメラ外部、摩擦）へのギャップは未評価。単位変換手順は [`docs/units.md`](../docs/units.ja.md) に確定済みだが、実機ログでの突合はこれからである。
 - 散布図の初期 XY は seed からの再構成であり、評価当時にログされた座標そのものではない（誤差は元 JSON）。
 
 ---
@@ -275,12 +275,12 @@ post50 の `training_metrics.json` から生成した学習曲線を図 2 に示
 | アーム | 実 SO-101 をキャリブレーション済み、leader→follower テレオペ可（2026-10-17 オーナー報告） | TODO: 証拠リンクを添付 |
 | 周期 | 約 60 Hz | TODO: 同上 |
 | カメラ | セットアップ中（配置は hardware.md に準拠予定） | 進行中 |
-| 単位 | sim/契約は rad、実機は deg + グリッパ 0–100（[`docs/units.md`](../docs/units.md)） | 文書化済み |
+| 単位 | sim/契約は rad、実機は deg + グリッパ 0–100（[`docs/units.md`](../docs/units.ja.md)） | 文書化済み |
 | 次 | 実デモを `lerobot-record` → 学習 → `lerobot-rollout` | 未着手 |
 
 ### 7.2 Plan B（シミュレーション縮退）
 
-実機が締切までに安定しない場合は [`docs/plan_b.md`](../docs/plan_b.md) に従い、MuJoCo 評価動画と RobOps（変換・バリデータ・CI）の検証性で提出要件を満たす。本稿第 5 章の post50 TE 結果と [`sim_rollout_representative.mp4`](../docs/figures/sim_rollout_representative.mp4) がその中核エビデンスである。切り替え判定日の目安は 2026-10-23（plan_b.md）。
+実機が締切までに安定しない場合は [`docs/plan_b.md`](../docs/plan_b.ja.md) に従い、MuJoCo 評価動画と RobOps（変換・バリデータ・CI）の検証性で提出要件を満たす。本稿第 5 章の post50 TE 結果と [`sim_rollout_representative.mp4`](../docs/figures/sim_rollout_representative.mp4) がその中核エビデンスである。切り替え判定日の目安は 2026-10-23（plan_b.md）。
 
 ### 7.3 産業展開の構想
 
@@ -316,7 +316,7 @@ post50 の `training_metrics.json` から生成した学習曲線を図 2 に示
 ## 9. 今後の課題
 
 1. **chunk30 の底上げ:** TE 依存を減らし、選択メトリクスと実行を chunk でも DoD 達成できるようにする。
-2. **実機デモ:** カメラ完成後にテレオペ教示を収集し、[`docs/units.md`](../docs/units.md) の変換で契約ラジアンへ揃えて学習・評価する。
+2. **実機デモ:** カメラ完成後にテレオペ教示を収集し、[`docs/units.md`](../docs/units.ja.md) の変換で契約ラジアンへ揃えて学習・評価する。
 3. **成果動画:** 提出仕様の YouTube 動画を完成させる。
 4. **PDF 化（DoD ⑤）:** `./scripts/build_report_pdf.sh yohei1126` で提出 PDF を生成する。
 
@@ -341,7 +341,7 @@ post50 の `training_metrics.json` から生成した学習曲線を図 2 に示
 
 - [ ] 実機 60 Hz テレオペの証拠リンク（動画・ログ）を添付する
 - [ ] 成果発表動画（YouTube、タイトル `PAI最終課題_yohei1126`）を公開する
-- [ ] 最終 PDF（DoD ⑤）を `./scripts/build_report_pdf.sh yohei1126` で生成し、個人情報チェックを行う（[`report/README.md`](README.md)）
+- [ ] 最終 PDF（DoD ⑤）を `./scripts/build_report_pdf.sh yohei1126` で生成し、個人情報チェックを行う（[`report/README.md`](README.ja.md)）
 
 ---
 

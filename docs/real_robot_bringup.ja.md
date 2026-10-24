@@ -1,13 +1,13 @@
 # SO-101 実機 Bring-up とテレオペ収録手順（Mac / LeRobot 0.6.1）
 
-本手順は、WowRobo 組立済み SO-101（Leader / Follower）を Mac 上の LeRobot 0.6.1 で駆動し、テレオペ・カメラ付きデモ収録まで行うための実務手順である。機材一覧・作業エリアの契約寸法は [hardware.md](hardware.md) を正とする。一次情報は [SO-101](https://huggingface.co/docs/lerobot/so101)、[Cameras](https://huggingface.co/docs/lerobot/cameras)、[実機での模倣学習](https://huggingface.co/docs/lerobot/il_robots) である。
+本手順は、WowRobo 組立済み SO-101（Leader / Follower）を Mac 上の LeRobot 0.6.1 で駆動し、テレオペ・カメラ付きデモ収録まで行うための実務手順である。機材一覧・作業エリアの契約寸法は [hardware.md](hardware.ja.md) を正とする。一次情報は [SO-101](https://huggingface.co/docs/lerobot/so101)、[Cameras](https://huggingface.co/docs/lerobot/cameras)、[実機での模倣学習](https://huggingface.co/docs/lerobot/il_robots) である。
 
 反映した実測:
 
 - 2026-10-17/18 の bring-up（UGREEN ハブ経由の接続・両カメラ同時配信・テレオペ・`lerobot-record` 試行）
 - **2026-10-22 / 23** の本収録（テーブル寸法、画角、キーボード操作、モータ温度、クリーンセット作成）
 
-収録データセットの要約は [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.md)。sim→実機の単位変換は [sim_to_real_act.md](sim_to_real_act.md) / [units.md](units.md)。
+収録データセットの要約は [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md)。sim→実機の単位変換は [sim_to_real_act.md](sim_to_real_act.ja.md) / [units.md](units.ja.md)。
 
 ## 前提と環境
 
@@ -93,7 +93,7 @@ Rerun 表示時のエンティティ名は `observation.top` と `observation.wr
 +------------------------------------------------------------------+
 ```
 
-座標系（sim / [hardware.md](hardware.md) と同じ）: 原点は Follower 基部中心、+x 前方、+y 左、+z 上。可動範囲（基部から半径およそ 45 cm）に障害物・液体を置かない。
+座標系（sim / [hardware.md](hardware.ja.md) と同じ）: 原点は Follower 基部中心、+x 前方、+y 左、+z 上。可動範囲（基部から半径およそ 45 cm）に障害物・液体を置かない。
 
 ## 上カメラ画角
 
@@ -265,7 +265,7 @@ scripts/record_real_so101.sh [N]
 
 ### 音声キュー
 
-`--play_sounds` は macOS の**デフォルト出力デバイス**へ出る。Yohei の Mac では Bluetooth の Jabra ヘッドセットがデフォルトだった。収録前に出力デバイスを確認する。
+`--play_sounds` は macOS の**デフォルト出力デバイス**へ出る。作業用 Mac では Bluetooth の Jabra ヘッドセットがデフォルトだった。収録前に出力デバイスを確認する。
 
 ## 手動の `lerobot-record` 例
 
@@ -311,10 +311,10 @@ lerobot-record \
 
 sim チェックポイントを実機へ直接載せない。sim ポリシーは関節が**ラジアン**、実機 Follower は本体関節が**度**・グリッパが **0–100** であり、入出力契約が一致しない。
 
-1. デモ収録 → クリーンセット作成（[real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.md)）
-2. 実機データで ACT 学習: `python -m port_pick_align.training.train_act`（[training.md](training.md)）。MPS 上で実行する。sim データは `train_act --preset sim`
-3. Phase 2-2（sim→実機）: 単位変換ラッパーで dry-run → 低速 live。[sim_to_real_act.md](sim_to_real_act.md)
-4. 実機学習ポリシー（ACT / SmolVLA）: 単位変換不要。dry-run → live は **[real_robot_deploy.md](real_robot_deploy.md)**（`scripts/run_act_real.sh` / `scripts/run_smolvla_real.sh`）。代替として `lerobot-rollout` も可。初回は `--max-relative-target` / `--max-delta-deg` を小さめに、低速・短時間で行う
+1. デモ収録 → クリーンセット作成（[real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md)）
+2. 実機データで ACT 学習: `python -m port_pick_align.training.train_act`（[training.md](training.ja.md)）。MPS 上で実行する。sim データは `train_act --preset sim`
+3. Phase 2-2（sim→実機）: 単位変換ラッパーで dry-run → 低速 live。[sim_to_real_act.md](sim_to_real_act.ja.md)
+4. 実機学習ポリシー（ACT / SmolVLA）: 単位変換不要。dry-run → live は **[real_robot_deploy.md](real_robot_deploy.ja.md)**（`scripts/run_act_real.sh` / `scripts/run_smolvla_real.sh`）。代替として `lerobot-rollout` も可。初回は `--max-relative-target` / `--max-delta-deg` を小さめに、低速・短時間で行う
 
 ### Phase 2-2 クイックリンク（詳細は sim_to_real_act.md）
 
@@ -339,7 +339,7 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
 
 ### 実機学習ポリシー（推奨: リポジトリのランナー）
 
-詳細・安全設定・推奨 live フラグは **[real_robot_deploy.md](real_robot_deploy.md)**。
+詳細・安全設定・推奨 live フラグは **[real_robot_deploy.md](real_robot_deploy.ja.md)**。
 
 ```bash
 # ACT（実機 train_act チェックポイント、単位変換なし）— 既定は dry-run
@@ -391,13 +391,13 @@ lerobot-rollout \
 
 ## 参照
 
-- [hardware.md](hardware.md) — 購入機材・作業エリア寸法
-- [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.md) — clean28 データセット要約
-- [sim_to_real_act.md](sim_to_real_act.md) — Phase 2-2: sim ACT → 実機 Follower（変換ラッパー）
-- [real_robot_deploy.md](real_robot_deploy.md) — 実機学習 ACT / SmolVLA の dry-run → live
-- [units.md](units.md) — ラジアン / 度 / グリッパ 0–100
-- [training.md](training.md) — ACT 学習
-- [plan_b.md](plan_b.md) — 実機障害時の縮退
+- [hardware.md](hardware.ja.md) — 購入機材・作業エリア寸法
+- [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md) — clean28 データセット要約
+- [sim_to_real_act.md](sim_to_real_act.ja.md) — Phase 2-2: sim ACT → 実機 Follower（変換ラッパー）
+- [real_robot_deploy.md](real_robot_deploy.ja.md) — 実機学習 ACT / SmolVLA の dry-run → live
+- [units.md](units.ja.md) — ラジアン / 度 / グリッパ 0–100
+- [training.md](training.ja.md) — ACT 学習
+- [plan_b.md](plan_b.ja.md) — 実機障害時の縮退
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)
 - [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots)

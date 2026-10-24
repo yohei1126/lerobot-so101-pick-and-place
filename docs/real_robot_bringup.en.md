@@ -1,8 +1,13 @@
-# SO-101 Real-Robot Bring-up (Mac / LeRobot 0.6.1)
+# SO-101 Real-Robot Bring-up and Teleop Recording (Mac / LeRobot 0.6.1)
 
-This procedure drives a WowRobo pre-assembled SO-101 (Leader / Follower) with LeRobot 0.6.1 on a Mac and verifies teleoperation through camera-backed recording. Equipment list and work-area dimensions are authoritative in [hardware.md](hardware.en.md). Primary references: [SO-101](https://huggingface.co/docs/lerobot/so101), [Cameras](https://huggingface.co/docs/lerobot/cameras), [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots).
+This procedure drives a WowRobo pre-assembled SO-101 (Leader / Follower) with LeRobot 0.6.1 on a Mac through teleoperation and camera-backed demo recording. Equipment list and work-area contract dimensions are authoritative in [hardware.md](hardware.en.md). Primary references: [SO-101](https://huggingface.co/docs/lerobot/so101), [Cameras](https://huggingface.co/docs/lerobot/cameras), [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots).
 
-Reflects bring-up on 2026-10-17/18 and **real-hardware validation on the evening of 2026-10-18** (connection via UGREEN hub, simultaneous dual-camera streaming, 60 Hz teleop, two successful `lerobot-record` runs including 23:48–23:50 SGT).
+Measured results reflected here:
+
+- Bring-up on 2026-10-17/18 (connection via UGREEN hub, simultaneous dual-camera streaming, teleop, `lerobot-record` trials)
+- **Main recording on 2026-10-22 / 23** (table dimensions, camera framing, keyboard controls, motor temperature, clean-set creation)
+
+Dataset summary: [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md). Sim→real unit conversion: [sim_to_real_act.md](sim_to_real_act.en.md) / [units.md](units.en.md).
 
 ## Prerequisites and environment
 
@@ -10,8 +15,8 @@ Use a **venv separate from this repository’s `.venv`** for the real robot (avo
 
 ```bash
 # Example: create a dedicated venv
-python3.12 -m venv ~/work/lerobot-hw/.venv
-source ~/work/lerobot-hw/.venv/bin/activate
+python3.12 -m venv "$HOME/work/lerobot-hw/.venv"
+source "$HOME/work/lerobot-hw/.venv/bin/activate"
 pip install -U pip
 pip install 'lerobot[feetech]==0.6.1'
 # Add for recording / visualization / training
@@ -27,50 +32,90 @@ pip install 'lerobot[dataset,viz]==0.6.1'
 | Robot types | `--robot.type=so101_follower` / `--teleop.type=so101_leader` |
 | Calibration ids | `follower` / `leader` (same for every later command) |
 
-## Safety and arm identification
+Prefer `$HOME` over `~` in docs (`~` right after `--dataset.root=` is not expanded).
 
-| Arm | How to tell | Power |
-| --- | --- | --- |
-| Leader | Has a handle. **No gripper jaws** | **5V** adapter |
-| Follower | **Has a gripper** | **12V** adapter |
+## Hardware (as of 2026-10-22)
 
-- **Never swap adapters.** Before plugging in, point-check the label voltage against the board side.
-- The board red LED may stay on after unplugging the DC adapter; that is USB power and is normal. Drive torque requires the DC adapter.
-- **Always turn the Follower 12V adapter ON (LED lit).** If left OFF, teleop appears to run but the Follower does not move. Measured 2026-10-18: Follower ≈ 12.6 V / Leader ≈ 5.5 V.
-- At teleop start, the Follower snaps toward the Leader pose. Align both arms before starting (Leader near neutral; joints at calibration-range ends will not change commanded values).
-- Stopping (Ctrl+C) disables torque (`disable_torque_on_disconnect`). Gravity drop or small motion is normal. Support the Follower by hand before stopping.
-- In an emergency, unplug the Follower **12V plug** first. Keep the power plug within immediate reach.
-- **Keep the camera stand outside the Follower workspace** (roughly ≥ 35 cm from the base). Place paper on the opposite side of the stand. Mark positions with tape. Contact with the stand has occurred during teleop.
-
-## Fixturing and work layout
-
-1. Clamp both arm bases to the table edge with C-clamps.
-2. Keep the reachable volume (≈ 45 cm radius from the base) free of obstacles and liquids.
-3. Coordinate frame matches sim / [hardware.md](hardware.en.md). **Origin is the Follower base center; +x forward, +y left, +z up** (confirm in `so101_tabletop.xml` / `env.py`).
-
-| Item | Placement |
+| Item | Detail |
 | --- | --- |
-| Object | Sponge (≈ 5×4×4 cm) |
-| Start area | 8×8 cm, center (28, −8) cm |
-| Goal pad | 8×6 cm (colored paper / felt taped down), center (35, +12) cm, long edge parallel to x. Place away from the camera pole |
-| Top camera (C920) | On VIJIM LS08 arm, via USB-A hub. Sponge, paper, and gripper work area must be in frame (trial3 first frames still had gripper out of frame → lower slightly, move back, and/or tip downward) |
-| Wrist camera | Kit included (USB2.0_CAM1 / Sonix 05a3:9230). Mount on Follower fixed-jaw side under the gripper motor. Leave cable slack and tape it |
+| Host | MacBook Pro M4. Arms and cameras connected via a USB-C hub |
+| Leader | Has a handle. **No gripper**. Power **5V**. Port example `/dev/tty.usbmodem5B790143611` |
+| Follower | **Has a gripper**. Power **12V**. Port example `/dev/tty.usbmodem5B8E1163071` |
+| Fixturing | Clamp both arm bases to the table edge with C-clamps |
+| Top camera | Logitech C920. Mounted on a VIJIM LS08 camera arm, clamped to the table edge |
+| Wrist camera | Kit-included USB2.0_CAM1 (Follower gripper side) |
+
+**Never swap adapters.** Before plugging in, point-check the label voltage against the board side. The board red LED may stay on after unplugging DC (USB power). Drive torque requires the DC adapter. Follower 12V must be ON (LED lit). Measured 2026-10-18: Follower ≈ 12.6 V / Leader ≈ 5.5 V.
+
+**Ports can change after unplug/replug.** Before work, re-check with `ls /dev/tty.usbmodem*` and `lerobot-find-port`.
+
+### Camera indices (OpenCV / LeRobot)
+
+| Camera | OpenCV index (typical 2026-10-18 / 22) | Resolution / fps |
+| --- | ---: | --- |
+| wrist (USB2.0_CAM1) | 0 | 640×480 / 30 |
+| top (C920) | 1 | 640×480 / 30 |
+
+**Indices can also shift after unplug/replug.** Confirm with `lerobot-find-cameras opencv` and `outputs/captured_images/opencv_*.png` (ffmpeg / avfoundation numbers differ from OpenCV).
+
+Rerun entity names when displaying: `observation.top` and `observation.wrist`.
+
+## Safety
+
+- At teleop start, the Follower snaps toward the Leader pose. Align both arms before starting.
+- Stopping (Ctrl+C) disables torque (`disable_torque_on_disconnect`). Gravity drop is possible. Support the Follower by hand before stopping.
+- In an emergency, unplug the Follower **12V plug** first. Keep the power plug within immediate reach.
+- **Keep the camera stand outside the Follower workspace** (roughly ≥ 35 cm from the base). Contact with the stand has occurred during teleop.
+
+## Table layout (measured 2026-10-22)
+
+All distances are from the **left edge** of the table. Table width is approximately **134 cm**. The sponge was shifted forward to keep clearance from the Follower base. Mark paper and sponge positions with masking tape.
+
+| Target | From left edge | From near edge (when applicable) |
+| --- | ---: | ---: |
+| Leader arm left edge | 28 cm | — |
+| White paper (portrait) | 56 cm | 13 cm |
+| Follower arm left edge | 78 cm | — |
+| Yellow sponge | 81 cm | 29 cm |
+| Top camera pole | 111 cm (23 cm from right edge) | — |
+
+Top view (left edge = 0 cm, near edge at bottom):
+
+```text
+左端 0 cm                                              右端 ~134 cm
++------------------------------------------------------------------+
+|                                                                  |
+|   Leader          紙(白)         Follower      スポンジ(黄)   C920 |
+|   28cm            56cm /13cm前    78cm          81cm /29cm前  111cm|
+|     [====]         [紙]            [====]         [スポ]      |pole|
+|                                                                  |
+|                         （手前縁）                                |
++------------------------------------------------------------------+
+```
+
+Coordinate frame (same as sim / [hardware.md](hardware.en.md)): origin at Follower base center, +x forward, +y left, +z up. Keep the reachable volume (≈ 45 cm radius from the base) free of obstacles and liquids.
+
+## Top camera framing
+
+The top view must show all of:
+
+1. White paper
+2. Yellow sponge
+3. Follower base and gripper work path
+
+Earlier framing was too tight and cut off the gripper path. Before recording, confirm in Rerun (`observation.top` / `observation.wrist`). If the C920 FOV is tight, lower it slightly and move it back / tilt it downward.
 
 ## USB and port identification
 
-Validated 2026-10-18: MacBook Pro M4 connected through a **UGREEN USB-C hub**. Ports stayed stable through the hub. After unplug/replug, names can change—recheck with `ls /dev/tty.usbmodem*`.
-
-C920 and wrist camera are USB-A. A hub with 2× USB-C data + 2× USB-A and PD passthrough is practical: arms on USB-C, cameras on USB-A, Mac charger on PD.
-
 ```bash
-source ~/work/lerobot-hw/.venv/bin/activate
+source "$HOME/work/lerobot-hw/.venv/bin/activate"
 # Run with USB and power connected to both arms
 lerobot-find-port
-# When prompted, unplug only the arm you want to identify, then press Enter
-# Record the shown port, replug USB, repeat for the other arm (one at a time)
+# When prompted, unplug only the USB of the arm you want to identify, then Enter
+# Record the shown port, replug USB. Repeat for the other arm (one at a time)
 ```
 
-| Arm | Port (validated 2026-10-18) | Power | id |
+| Arm | Port (recorded 2026-10-18 / 22) | Power | id |
 | --- | --- | --- | --- |
 | Leader | `/dev/tty.usbmodem5B790143611` | 5V | leader |
 | Follower | `/dev/tty.usbmodem5B8E1163071` | 12V | follower |
@@ -80,11 +125,11 @@ export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071
 export PORT_LEADER=/dev/tty.usbmodem5B790143611
 ```
 
-**On first bring-up, Leader / Follower ports were swapped and the gripper arm moved as the Leader during teleop.** Re-identify ports and recalibrate if that happens.
+**On first bring-up, Leader / Follower ports were swapped, so the gripper arm moved as the Leader during teleop.** Re-identify ports and redo calibration.
 
-## Verify motor IDs
+## Motor ID check
 
-On WowRobo pre-assembled kits, STS3215 IDs 1–6 and baud rate 1,000,000 are often already set. Scan the port before writing; if correct, skip `lerobot-setup-motors` (the official procedure assumes connecting motors one-by-one to the board and would require dismantling cables on an assembled arm).
+On WowRobo pre-assembled kits, STS3215 IDs 1–6 and baud rate 1,000,000 are often already set. Scan the port before writing; if correct, skip `lerobot-setup-motors`.
 
 ```bash
 python -c "from lerobot.motors.feetech import FeetechMotorsBus; print(FeetechMotorsBus.scan_port('$PORT_FOLLOWER'))"
@@ -92,11 +137,11 @@ python -c "from lerobot.motors.feetech import FeetechMotorsBus; print(FeetechMot
 ```
 
 - Healthy example: `{1000000: [1, 2, 3, 4, 5, 6]}` → proceed to calibration.
-- Missing IDs or only another baud rate: check power/wiring; if needed run `lerobot-setup-motors` per the official docs ([SO-101](https://huggingface.co/docs/lerobot/so101)).
+- If IDs are missing or only another baud rate is found, check power/wiring, then run `lerobot-setup-motors` per the official docs if needed ([SO-101](https://huggingface.co/docs/lerobot/so101)).
 
 ## Calibration
 
-If no calibration JSON exists on the host, later connect commands start calibration automatically. Run it explicitly.
+If the host has no calibration JSON, later connect commands start calibration automatically. Run it explicitly.
 
 ```bash
 lerobot-calibrate \
@@ -112,18 +157,18 @@ lerobot-calibrate \
 
 Practical notes:
 
-- **Move only the arm whose port you are calibrating.** Moving the other can cause `same min and max` failures.
-- Start pose: each joint near mid-range (roughly L-shaped).
-- Move every joint except `wrist_roll` fully in both directions. Avoid winding the wrist cable.
-- Gripper full open to full close. Leader trigger travel is inherently short.
+- **Move only the arm whose port is currently being calibrated.** Moving the other can cause `same min and max` failures.
+- Start pose: each joint near mid-range (roughly an L shape).
+- Move every joint except `wrist_roll` fully both ways. Avoid wrapping the wrist cable.
+- Gripper: full open to full close. The Leader trigger travel is inherently short.
 - Save locations (default `HF_LEROBOT_HOME=~/.cache/huggingface/lerobot`):
   - `~/.cache/huggingface/lerobot/calibration/robots/so_follower/follower.json`
   - `~/.cache/huggingface/lerobot/calibration/teleoperators/so_leader/leader.json`
-- On re-run you are prompted to reuse the existing file or press `c` to recalibrate.
+- On re-run, you get a prompt to reuse the existing file or press `c` to recalibrate.
 
 ## Teleoperation
 
-Before starting, match Leader to the same rest pose as Follower.
+Before starting, match the Leader to the same rest pose as the Follower.
 
 ```bash
 lerobot-teleoperate \
@@ -135,51 +180,18 @@ lerobot-teleoperate \
   --teleop.id=leader
 ```
 
-First bring-up ran at about 60 Hz. Optionally add `--robot.max_relative_target=10` (per-step limit in degrees) or `--teleop_time_s=60`. Support the Follower by hand before stopping.
+Optional: `--robot.max_relative_target=10` (per-step limit in degrees) or `--teleop_time_s=60`. Support the Follower by hand before stopping.
 
-Checks: each joint tracks in the same direction, gripper opens/closes, no unusual noise or vibration.
+Checks: each joint follows in the same direction, gripper opens/closes, no abnormal noise or vibration.
 
-## Cameras
-
-1. On macOS, first run may show “not authorized to capture video”. Allow the terminal (or iTerm / VS Code, etc.) under **System Settings → Privacy & Security → Camera**, **restart the app**, then retry. The 2026-10-18 validation had no permission issues.
-2. **iPhone Continuity Camera steals an index.** Choose Disconnect on the Continuity Camera alert on the iPhone, and turn off **Settings → General → AirPlay & Continuity → Continuity Camera**.
-3. List cameras and take snapshots:
+### With camera display
 
 ```bash
 lerobot-find-cameras opencv
-# Images save under outputs/captured_images/opencv_*.png. Indices can change after unplug/replug
-# ffmpeg avfoundation numbers differ from OpenCV / LeRobot. Always confirm with the command above and saved images
+# Images land in outputs/captured_images/opencv_*.png. Indices can change after unplug/replug
 ```
 
-| Camera | OpenCV / LeRobot index (2026-10-18) | Resolution / fps |
-| --- | --- | --- |
-| wrist (kit USB2.0_CAM1) | 0 | 640×480 / 30 |
-| top (C920) | 1 | 640×480 / 30 |
-| Built-in camera | 2 | (unused) |
-
-2026-10-18: both external cameras streamed simultaneously through the hub (640×480@30, measured ≈ 29.7 fps).
-
-4. Teleop with display (validated 2026-10-18: 60 Hz, min 57 Hz, 120 s, no camera warnings. Moved sponge onto paper):
-
-```bash
-lerobot-teleoperate \
-  --robot.type=so101_follower \
-  --robot.port=/dev/tty.usbmodem5B8E1163071 \
-  --robot.id=follower \
-  --robot.cameras="{ top: {type: opencv, index_or_path: 1, width: 640, height: 480, fps: 30}, wrist: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30} }" \
-  --teleop.type=so101_leader \
-  --teleop.port=/dev/tty.usbmodem5B790143611 \
-  --teleop.id=leader \
-  --display_data=true \
-  --fps=60 \
-  --teleop_time_s=120
-```
-
-The Rerun viewer displays only; it does not save. If using `$PORT_*`, keep the ports above aligned with those env vars.
-
-## Pre-record checklist (required)
-
-**Run this immediately before every `lerobot-record`.** Do not record until it passes. Teleop for 60 s with the same robot / teleop / cameras flags and confirm in Rerun.
+On macOS, camera permission is required the first time (System Settings → Privacy & Security → Camera). **iPhone Continuity Camera can steal an index.** Disconnect it, and turn Continuity Camera off if needed.
 
 ```bash
 lerobot-teleoperate \
@@ -190,36 +202,79 @@ lerobot-teleoperate \
   --teleop.type=so101_leader \
   --teleop.port=$PORT_LEADER \
   --teleop.id=leader \
-  --display_data=true \
-  --fps=60 \
-  --teleop_time_s=60
+  --display_data=true
 ```
+
+## Pre-recording checklist (required)
+
+**Run this immediately before every `lerobot-record`.**
+
+1. **Stop any running `lerobot-teleoperate`.** Camera and serial contention will occur.
+2. Teleop briefly with the same robot / teleop / cameras flags and confirm in Rerun.
+3. Stop teleop after the check, then proceed to recording.
 
 | # | Check |
 | --- | --- |
-| (a) | **top:** sponge, white paper, and gripper stay in frame across the work area |
-| (b) | **wrist:** gripper tip and sponge visible on approach |
-| (c) | Move Leader slowly through the full pick-and-place path (including extremes); Follower must not hit the camera stand / C920 pole (≥ ~35 cm from base) or table clamps |
-| (d) | No camera warnings; loop holds about 60 Hz |
+| (a) | **top:** paper, sponge, and Follower base / gripper path are in frame |
+| (b) | **wrist:** gripper tip and sponge are visible on approach |
+| (c) | No contact with stand / clamps along the full pick-and-place path |
+| (d) | No camera warnings. Loop runs stably |
 | (e) | Sponge and paper are at the taped start positions |
 
-If any item fails: Ctrl+C → fix → recheck. **Only after all are OK, close Rerun and proceed to `lerobot-record` in the next section.**
+## Demo recording rules (finalized 2026-10-22/23)
 
-## Demo recording (`lerobot-record`)
+- **1 episode = 1 pick-and-place.** Earlier trials that placed twice in one episode were discarded.
+- Start and end in the **same rest pose**.
+- After placing the sponge on the paper, end the episode early with the **Right arrow** (the last ~10–17 s of `episode_time_s=25` often had a stationary arm).
+- Move slowly and consistently.
+- **Rest about every 10 episodes**, power off the Follower, and cool the motors. After ~20 continuous episodes, Follower `shoulder_lift` lagged commands and mean `|action-state|` rose to about **10–12°** (normally about **1.5°**).
 
-**Prerequisite:** every item in [Pre-record checklist (required)](#pre-record-checklist-required) has passed.
+## Recording script
 
-2026-10-18 trials (both succeeded):
-
-| Trial | Result |
-| --- | --- |
-| 1st | 2 epi × 25 s, 750 frames each @ 30 fps, ~15 MB, no slow-loop warnings |
-| 2nd (23:48–23:50 SGT) | Same 2 epi × 25 s, 1500 frames total, ~17 MB. No slow-loop / OpenCV camera errors |
-
-Command is shared. `--dataset.root=$HOME/work/lerobot-hw/datasets/<name>` (absolute path; `~` not allowed). **Reusing an existing root fails—use a new dataset name every run.**
+Use the repository’s `scripts/record_real_so101.sh` (executable).
 
 ```bash
-# Example: change <name> each run (e.g. so101_pick_sponge_trial2)
+# Append N episodes. Auto-resumes if the dataset already exists
+scripts/record_real_so101.sh [N]
+```
+
+| Item | Value |
+| --- | --- |
+| Default N | 50 |
+| Dataset root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020` |
+| repo_id | `yohei1126/so101_pick_sponge_main` |
+| Task string | `Pick up the yellow sponge and place it on the white paper` |
+| episode / reset | 25 s / 10 s, fps 30 |
+| Logs | `$HOME/work/lerobot-hw/outputs/record_main_*.log` (cwd is `lerobot-hw`) |
+
+The script `pkill`s `lerobot-teleoperate` before start. Ports and camera indices are hardcoded in the script. Edit them after unplug/replug, or override for your environment.
+
+### Run in an interactive terminal (required)
+
+Keyboard controls:
+
+| Key | Meaning |
+| --- | --- |
+| Right | End current episode and go to next |
+| Left | Re-record |
+| Esc | Stop recording |
+
+**Keyboard input does not work under background / non-interactive launch.** Run in an interactive macOS Terminal. Terminal may need Accessibility and Input Monitoring permissions.
+
+If you must detach, use a **new session** (`start_new_session` / `setsid`), not `nohup`. `nohup` jobs have died after the parent exited.
+
+### Audio cues
+
+`--play_sounds` goes to the macOS **default output device**. On the working Mac, a Bluetooth Jabra headset was the default. Confirm the output device before recording.
+
+## Manual `lerobot-record` example
+
+Flags equivalent to the script:
+
+```bash
+source "$HOME/work/lerobot-hw/.venv/bin/activate"
+cd "$HOME/work/lerobot-hw"
+
 lerobot-record \
   --robot.type=so101_follower \
   --robot.port=$PORT_FOLLOWER \
@@ -228,42 +283,38 @@ lerobot-record \
   --teleop.type=so101_leader \
   --teleop.port=$PORT_LEADER \
   --teleop.id=leader \
-  --dataset.repo_id=yohei1126/so101_pick_sponge_trial \
+  --dataset.repo_id=yohei1126/so101_pick_sponge_main \
   --dataset.single_task='Pick up the yellow sponge and place it on the white paper' \
-  --dataset.num_episodes=2 \
+  --dataset.num_episodes=10 \
   --dataset.episode_time_s=25 \
   --dataset.reset_time_s=10 \
   --dataset.fps=30 \
   --dataset.no_stamp=true \
   --dataset.push_to_hub=false \
-  --dataset.root=$HOME/work/lerobot-hw/datasets/<name> \
-  --display_data=true
+  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020 \
+  --display_data=true \
+  --play_sounds=true \
+  --resume=true
 ```
 
-Notes:
-
-- A leading `~` right after `--dataset.root=` is not expanded. **Use an absolute path or `$HOME`.** Specifying an existing directory fails.
-- **Run in a foreground interactive terminal.** Backgrounding with `nohup` from an agent shell dies right after the first camera connect when the parent shell exits (log shows only rerun `h2 protocol error`, no Python traceback). If background is required, detach the session with `start_new_session=True` or `setsid`.
-- Without an interactive terminal or without pynput, keyboard controls (Right / Left / Esc) are disabled and only timers run. Follow the voice cues (`Recording episode N` / `Reset the environment` / `Stop recording`) (Mac sound ON).
-- Hung runs can keep serial ports busy. Before retrying, `pkill -f lerobot-record` and confirm both `/dev/tty.usbmodem*` are free with `lsof`. Close leftover Rerun windows.
-- In dataset v3.0, per-camera video is concatenated into `videos/observation.images.<cam>/chunk-000/file-000.mp4`.
-- Framing (trial3 first-frame check): wrist shows sponge, paper, and gripper. **top (C920) showed only sponge and paper—gripper out of frame.** In pre-record checks (a)(b), lower the C920 slightly, move it back, and/or tip it down until the gripper work area is in frame, then record.
-- `objc: Class AVFFrameReceiver is implemented in both ... cv2 ... and /opt/homebrew ... ffmpeg` is a harmless warning (recording still succeeds when it appears).
+- Append to an existing root with `--resume=true` (the script sets true automatically if the root exists).
+- In dataset v3.0, videos are concatenated per camera into `videos/observation.images.<cam>/chunk-000/file-000.mp4`.
+- Keep the dataset itself outside git (on the Mac).
 
 ## Shutdown
 
-1. Stop teleop (etc.) with Ctrl+C. Support the Follower by hand.
-2. **Unplug 12V / 5V adapters** (DC first, then USB).
+1. Stop teleop / recording (Ctrl+C or Esc). Support the Follower by hand.
+2. **Unplug the 12V / 5V adapters** (DC first, then USB).
 3. Carry by the base. Do not lift by the cables.
 
 ## Next steps
 
-Do not deploy a sim checkpoint straight onto the real robot. The sim policy uses **radians** for joints; the real Follower uses **degrees** for body joints and **0–100** for the gripper—I/O contracts do not match.
+Do not load a sim checkpoint onto the real robot directly. Sim policies use **radians** for joints; the real Follower uses **degrees** for body joints and **0–100** for the gripper — the I/O contracts do not match.
 
-1. **Scale up demo recording:** after framing and layout are fixed, increase episode count (extend the trial command above)
-2. **Training:** ACT with `lerobot-train`, `--policy.device=mps` (real data). For sim data: `python -m port_pick_align.training.train_act --preset sim`
-3. **Phase 2-2 (sim→real):** unit-conversion wrapper, dry-run then slow live. Procedure: **[sim_to_real_act.md](sim_to_real_act.en.md)**
-4. **Evaluate a real-trained policy:** `lerobot-rollout` (in 0.6.1, policy execution is rollout, not record). Start with a small `--robot.max_relative_target`, slow and short
+1. Demo recording → clean-set creation ([real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md))
+2. Train ACT on real data: `python -m port_pick_align.training.train_act` ([training.md](training.en.md)). Run on MPS. For sim data use `train_act --preset sim`
+3. Phase 2-2 (sim→real): dry-run with the unit-conversion wrapper → slow live. [sim_to_real_act.md](sim_to_real_act.en.md)
+4. Real-trained policies (ACT / SmolVLA): no unit conversion. dry-run → live via **[real_robot_deploy.md](real_robot_deploy.en.md)** (`scripts/run_act_real.sh` / `scripts/run_smolvla_real.sh`). Alternatively `lerobot-rollout`. First runs: keep `--max-relative-target` / `--max-delta-deg` small, slow, and short
 
 ### Phase 2-2 quick links (details in sim_to_real_act.md)
 
@@ -276,7 +327,7 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
   --device mps \
   --episode-time-s 20
 
-# Live (hand on the 12V switch. First run: keep max-delta small)
+# Live (keep a hand on the 12V switch. First run: smaller max-delta)
 python -m port_pick_align.deploy.run_sim_policy_on_real \
   --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
   --port "$PORT_FOLLOWER" \
@@ -286,7 +337,22 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
   --robot-max-relative-target 3
 ```
 
-### Example: evaluate a real-trained policy (no unit conversion)
+### Real-trained policies (recommended: repository runners)
+
+Details, safety settings, and recommended live flags: **[real_robot_deploy.md](real_robot_deploy.en.md)**.
+
+```bash
+# ACT (real train_act checkpoint, no unit conversion) — default is dry-run
+./scripts/run_act_real.sh --device mps --episode-time-s 15
+# First live example
+./scripts/run_act_real.sh --live --device mps \
+  --max-delta-deg 2 --max-delta-gripper 3 --n-action-steps 10 --episode-time-s 15
+
+# SmolVLA fine-tune
+./scripts/run_smolvla_real.sh --live --device mps --n-action-steps 25 --episode-time-s 15
+```
+
+### Alternative: lerobot-rollout (no unit conversion)
 
 ```bash
 lerobot-rollout \
@@ -305,30 +371,33 @@ lerobot-rollout \
 
 | Symptom | Action |
 | --- | --- |
-| Port missing / unchanged | Confirm data-capable USB-C. Bypass hub and connect direct. `ls /dev/tty.usbmodem*` |
-| Ports swapped (gripper arm behaves as Leader) | Re-run `lerobot-find-port` one arm at a time; recalibrate |
-| `Permission denied` / `Resource busy` | Kill the process holding the port via `lsof` |
+| Port missing / changes | Confirm data-capable USB-C. Bypass hub and connect direct. `ls /dev/tty.usbmodem*`. Re-identify after unplug/replug |
+| Ports swapped (gripper arm acts as Leader) | Re-run `lerobot-find-port` one arm at a time; recalibrate |
+| `Permission denied` / `Resource busy` | Kill the process holding the port with `lsof`. Stop `lerobot-teleoperate` before recording |
 | `Missing motor IDs` | Check `scan_port`, 12V/5V, 3-pin wiring, port swap |
 | Teleop runs but Follower does not move | Confirm 12V adapter ON (LED lit) |
-| `same min and max` (calibration) | Move only the target arm. From mid pose, drive each joint to its ends |
-| Sudden motion at teleop start | Align poses before start. Add `max_relative_target` |
-| Camera index drifts / only built-in visible | Disable Continuity Camera. Confirm with `lerobot-find-cameras opencv` and `outputs/captured_images/opencv_*.png` (do not use ffmpeg numbers) |
-| `not authorized to capture video` | macOS camera permission → restart terminal → `lerobot-find-cameras opencv` |
+| Top camera fails to open / times out | Can happen right after freeing a prior process. **Retry** often fixes it |
+| Keyboard (Right / Left / Esc) ignored | Run in an interactive Terminal. Grant macOS Accessibility / Input Monitoring |
+| No audio cues | Check macOS default output device (Bluetooth headset, etc.) |
+| `nohup` recording dies | Detach with a new session (`start_new_session` / `setsid`). Interactive Terminal is the main path |
+| torchcodec fails on missing FFmpeg dylib | LeRobot **falls back to pyav**. Long errors are harmless |
+| `AVFFrameReceiver is implemented in both ...` | Harmless. Can appear on successful recordings too |
+| `shoulder_lift` tracking lag (mean \|action-state\| ≈ 10–12°) | Stop continuous recording; power off Follower and cool. Rest about every 10 epi |
+| Camera index shifts / only built-in visible | Turn Continuity Camera off. Confirm with `lerobot-find-cameras opencv` and saved images |
 | rerun error with `--display_data` | `pip install 'lerobot[viz]==0.6.1'` |
 | `lerobot-record` import error | `pip install 'lerobot[dataset]==0.6.1'` |
-| `--dataset.root=~/...` fails | `~` is not expanded. Use `$HOME` or an absolute path. Do not reuse an existing root; pick a new `<name>` |
-| `lerobot-record` dies in a few seconds (`h2 protocol error` only) | Parent shell exit disconnected the process. Run in a foreground interactive terminal, or detach with `setsid` / `start_new_session=True` |
-| Port busy on retry | `pkill -f lerobot-record` → confirm both usbmodem ports free with `lsof`. Close Rerun windows |
-| `AVFFrameReceiver is implemented in both ...` | Harmless. Can appear on successful recordings |
-| Red LED on with DC unplugged | USB power; normal. Drive still needs the correct DC adapter |
-| Follower hits camera stand | Keep pole ≥ ~35 cm from base. Paper on opposite side. Mark with tape |
+| `--dataset.root=~/...` fails | `~` is not expanded. Use `$HOME` or an absolute path |
+| Follower hits the camera stand | Keep the pole ≥ ~35 cm from the base. Paper on the opposite side of the pole. Mark with tape |
 
 ## References
 
 - [hardware.md](hardware.en.md) — purchased equipment and work-area dimensions
+- [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md) — clean28 dataset summary
 - [sim_to_real_act.md](sim_to_real_act.en.md) — Phase 2-2: sim ACT → real Follower (conversion wrapper)
+- [real_robot_deploy.md](real_robot_deploy.en.md) — real-trained ACT / SmolVLA dry-run → live
 - [units.md](units.en.md) — radians / degrees / gripper 0–100
-- [plan_b.md](plan_b.en.md) — degradation path when real hardware is blocked
+- [training.md](training.en.md) — ACT training
+- [plan_b.md](plan_b.en.md) — fallback when real hardware is blocked
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)
 - [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots)

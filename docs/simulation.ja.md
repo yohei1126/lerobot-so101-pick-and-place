@@ -108,11 +108,11 @@ ACT は各制御周期で未来のアクションチャンクをまとめて予�
 
 ## オラクル教示データの収集
 
-同一環境と `ScriptedPickAlignPolicy` から LeRobotDataset を自動収集する手順は [dataset.md](dataset.md) に記載する。エントリポイントは `scripts/collect_sim_dataset.py` である。
+同一環境と `ScriptedPickAlignPolicy` から LeRobotDataset を自動収集する手順は [dataset.md](dataset.ja.md) に記載する。エントリポイントは `scripts/collect_sim_dataset.py` である。
 
 ## 関連文書
 
-- 評価 API 仕様: [evaluation.md](evaluation.md)
-- ACT モデルの訓練: [training.md](training.md)
-- 教示データ収集: [dataset.md](dataset.md)
+- 評価 API 仕様: [evaluation.md](evaluation.ja.md)
+- ACT モデルの訓練: [training.md](training.ja.md)
+- 教示データ収集: [dataset.md](dataset.ja.md)
 
