@@ -2,7 +2,7 @@
 # Keep numpy on 1.x for ABI compatibility with apt ROS / OpenCV stacks.
 # rerun-sdk>=0.23 requires numpy>=2, which conflicts with that pin.
 numpy==1.26.4
-rerun-sdk==0.22.1
+rerun-sdk==0.39.0
 PyYAML==6.0.3
 opencv-python-headless==5.0.0.93
 pytest==9.1.1
