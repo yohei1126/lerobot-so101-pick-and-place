@@ -43,7 +43,7 @@ ln -sfn "$(python -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR")
 
 Controls: drag to orbit, scroll to zoom. Close the window to exit.
 
-### 2. Multi-modal visualization with Rerun
+### 2. Multi-peak action-distribution visualization with Rerun
 
 Assumes the `rerun` binary from the venv is on `PATH`.
 

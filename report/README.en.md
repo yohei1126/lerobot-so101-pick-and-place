@@ -1,6 +1,6 @@
 # Submission report (PDF) build procedure
 
-The official submission for this assignment is a PDF document only. The canonical manuscript is the Markdown file in this directory (`説明資料_PAI最終課題_yohei1126.md`), and the build script produces the PDF.
+The official submission for this assignment is a PDF document only. While report drafts still live in this directory (`説明資料_PAI最終課題_yohei1126.{ja,en}.md`), the manuscript is planned to move to `yohei1126/utokyo-ai-courses` (`PhysicalAI-Applied1-202609/`). Pass the Markdown path explicitly to the build script.
 
 ## Submission file specification
 
@@ -15,16 +15,19 @@ Name the submission file according to the course specification as follows.
 
 ## PDF build procedure
 
-This build uses `pandoc` and `typst` (`--pdf-engine=typst`) internally.
+This build uses `pandoc` and `typst` (`--pdf-engine=typst`) internally. The input Markdown path is **required**.
 
 ```bash
-# Run from the repository root
-./scripts/build_report_pdf.sh yohei1126
+# Run from the repository root (JA manuscript example)
+./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.ja.md
+
+# English manuscript
+./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.en.md
 ```
 
 After execution, the PDF is written to `report/説明資料_PAI最終課題_yohei1126.pdf` (not tracked by Git).
 
-By default, [`説明資料_PAI最終課題_yohei1126.md`](説明資料_PAI最終課題_yohei1126.en.md) is used as the input manuscript. To use a different draft, pass its path as the second argument.
+To use a draft elsewhere (including after the move to `utokyo-ai-courses`), pass that path as the second argument.
 
 ```bash
 ./scripts/build_report_pdf.sh yohei1126 path/to/draft.md

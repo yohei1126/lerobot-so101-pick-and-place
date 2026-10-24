@@ -9,11 +9,11 @@ All three roots are LeRobot **v3.0** local datasets with `meta/`, `data/`, `vide
 
 | Dataset | Episodes | Frames | FPS | Cameras | Video (top/wrist) | Action motion |
 | --- | ---: | ---: | ---: | --- | --- | --- |
-| `~/work/lerobot-hw/datasets/so101_pick_sponge_trial` | 2 | 1500 | 30 | `observation.images.top`, `observation.images.wrist` (640×480 AV1) | 50.0 s / 1500 frames each | **Near-zero**: both episodes action std ≈ 0 (static pose) |
-| `~/work/lerobot-hw/datasets/so101_pick_sponge_trial2` | 2 | 1500 | 30 | same | 50.0 s / 1500 frames each | **Partial content**: epi0 has motion; **epi1 action std ≈ 0** (static). Files are complete (not truncated). |
-| `~/work/lerobot-hw/datasets/so101_pick_sponge_trial3` | 2 | 1500 | 30 | same | 50.0 s / 1500 frames each | **Both episodes have motion** |
+| `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_trial` | 2 | 1500 | 30 | `observation.images.top`, `observation.images.wrist` (640×480 AV1) | 50.0 s / 1500 frames each | **Near-zero**: both episodes action std ≈ 0 (static pose) |
+| `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_trial2` | 2 | 1500 | 30 | same | 50.0 s / 1500 frames each | **Partial content**: epi0 has motion; **epi1 action std ≈ 0** (static). Files are complete (not truncated). |
+| `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_trial3` | 2 | 1500 | 30 | same | 50.0 s / 1500 frames each | **Both episodes have motion** |
 
-Record logs under `~/work/lerobot-hw/outputs/record_trial_*.log`:
+Record logs under `$LEROBOT_HW_ROOT/outputs/record_trial_*.log`:
 
 - First `trial` attempt (`…2337.log`) failed on save (`meta/` missing); successful rewrite is `…2338.log`.
 - `trial2` (`…2342.log`) and `trial3` (`…234850.log`) exited cleanly after 2 episodes.
@@ -31,7 +31,7 @@ Documented path: [`docs/training.md`](training.en.md) →
   (`top` / `wrist`, chunk_size 30). Contract joint limits are in **radians**; these
   trial datasets are in **degrees**.
 
-Also available: `~/work/lerobot-hw/.venv` has `lerobot-train` (0.6.1). Smoke used the
+Also available: `$LEROBOT_HW_ROOT/.venv` has `lerobot-train` (0.6.1). Smoke used the
 repo trainer for consistency with prior sim ACT work.
 
 ## Smoke train (executed)
@@ -39,14 +39,15 @@ repo trainer for consistency with prior sim ACT work.
 Dataset used: **trial3 only** (both episodes movable).
 
 ```bash
-cd ~/work/lerobot-so101-pick-and-place
+cd /path/to/lerobot-so101-pick-and-place
 source .venv/bin/activate
+export LEROBOT_HW_ROOT=<path>   # host hardware workspace
 
-OUT="$HOME/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019"
-LOG="$HOME/work/lerobot-hw/outputs/logs/act_so101_trial_smoke_20261019.log"
+OUT="$LEROBOT_HW_ROOT/outputs/act_so101_trial_smoke_20261019"
+LOG="$LEROBOT_HW_ROOT/outputs/logs/act_so101_trial_smoke_20261019.log"
 
 caffeinate -dimsu python -X faulthandler -m port_pick_align.training.train_act \
-  --dataset-root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_trial3" \
+  --dataset-root "$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_trial3" \
   --repo-id local/so101_pick_sponge_trial3 \
   --output-dir "$OUT" \
   --steps 200 \
@@ -83,8 +84,8 @@ caffeinate -dimsu python -X faulthandler -m port_pick_align.training.train_act \
 
 Artifacts (outside git; large `.pt` not copied into the course repo):
 
-- Log: `~/work/lerobot-hw/outputs/logs/act_so101_trial_smoke_20261019.log`
-- Metrics: `~/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019/training_metrics.json`
+- Log: `$LEROBOT_HW_ROOT/outputs/logs/act_so101_trial_smoke_20261019.log`
+- Metrics: `$LEROBOT_HW_ROOT/outputs/act_so101_trial_smoke_20261019/training_metrics.json`
 - Checkpoints: `…/best_model.pt`, `…/last.pt`
 
 ## Verdict

@@ -23,8 +23,19 @@ import torch
 
 from port_pick_align.deploy import real_common as rc
 
-DEFAULT_CKPT = rc.hw_root() / "outputs/act_so101_main_clean28_20261023/best_model.pt"
-DEFAULT_DATASET = rc.hw_root() / "datasets/so101_pick_sponge_main_20261023_clean28"
+
+def _default_ckpt() -> Path:
+    env = os.environ.get("ACT_REAL_CHECKPOINT", "").strip()
+    if env:
+        return Path(env).expanduser()
+    return rc.hw_root() / "outputs/act_so101_main_clean28_20261023/best_model.pt"
+
+
+def _default_dataset() -> Path:
+    env = os.environ.get("ACT_REAL_DATASET", "").strip()
+    if env:
+        return Path(env).expanduser()
+    return rc.hw_root() / "datasets/so101_pick_sponge_main_20261023_clean28"
 
 
 def load_act(ckpt: Path, device: str):
@@ -128,13 +139,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path(os.environ.get("ACT_REAL_CHECKPOINT", str(DEFAULT_CKPT))),
+        default=None,
+        help="ACT checkpoint (env ACT_REAL_CHECKPOINT; else under $LEROBOT_HW_ROOT/outputs)",
     )
     ap.add_argument(
         "--dataset",
         type=Path,
-        default=Path(os.environ.get("ACT_REAL_DATASET", str(DEFAULT_DATASET))),
-        help="LeRobot dataset root for --offline-check",
+        default=None,
+        help="LeRobot dataset root for --offline-check (env ACT_REAL_DATASET)",
     )
     ap.add_argument(
         "--n-action-steps",
@@ -149,6 +161,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
+    rc.apply_hw_root(args)
+    if args.checkpoint is None:
+        args.checkpoint = _default_ckpt()
+    if args.dataset is None:
+        args.dataset = _default_dataset()
     rc.setup_log("act_offline" if args.offline_check else ("act_live" if args.live else "act_dry"))
     print(f"[args] {vars(args)}", flush=True)
     policy, chunk = load_act(args.checkpoint, args.device)

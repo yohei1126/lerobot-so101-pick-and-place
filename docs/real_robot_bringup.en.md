@@ -14,9 +14,10 @@ Dataset summary: [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_
 Use a **venv separate from this repository’s `.venv`** for the real robot (avoid interfering with training jobs or sim dependencies).
 
 ```bash
-# Example: create a dedicated venv
-python3.12 -m venv "$HOME/work/lerobot-hw/.venv"
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
+# Example: create a dedicated venv under a host path you choose
+export LEROBOT_HW_ROOT=<path>   # or pass --hw-root <path> to repo scripts
+python3.12 -m venv "$LEROBOT_HW_ROOT/.venv"
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
 pip install -U pip
 pip install 'lerobot[feetech]==0.6.1'
 # Add for recording / visualization / training
@@ -39,8 +40,8 @@ Prefer `$HOME` over `~` in docs (`~` right after `--dataset.root=` is not expand
 | Item | Detail |
 | --- | --- |
 | Host | MacBook Pro M4. Arms and cameras connected via a USB-C hub |
-| Leader | Has a handle. **No gripper**. Power **5V**. Port example `/dev/tty.usbmodem5B790143611` |
-| Follower | **Has a gripper**. Power **12V**. Port example `/dev/tty.usbmodem5B8E1163071` |
+| Leader | Has a handle. **No gripper**. Power **5V**. Serial from `lerobot-find-port` (`PORT_LEADER`) |
+| Follower | **Has a gripper**. Power **12V**. Serial from `lerobot-find-port` (`PORT_FOLLOWER`) |
 | Fixturing | Clamp both arm bases to the table edge with C-clamps |
 | Top camera | Logitech C920. Mounted on a VIJIM LS08 camera arm, clamped to the table edge |
 | Wrist camera | Kit-included USB2.0_CAM1 (Follower gripper side) |
@@ -108,21 +109,23 @@ Earlier framing was too tight and cut off the gripper path. Before recording, co
 ## USB and port identification
 
 ```bash
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
 # Run with USB and power connected to both arms
 lerobot-find-port
 # When prompted, unplug only the USB of the arm you want to identify, then Enter
 # Record the shown port, replug USB. Repeat for the other arm (one at a time)
 ```
 
-| Arm | Port (recorded 2026-10-18 / 22) | Power | id |
+| Arm | Port | Power | id |
 | --- | --- | --- | --- |
-| Leader | `/dev/tty.usbmodem5B790143611` | 5V | leader |
-| Follower | `/dev/tty.usbmodem5B8E1163071` | 12V | follower |
+| Leader | from `lerobot-find-port` → `PORT_LEADER` | 5V | leader |
+| Follower | from `lerobot-find-port` → `PORT_FOLLOWER` | 12V | follower |
+
+Ports are host-specific and change after unplug/replug. Pass them on the command line or via env; do not hardcode absolute device paths in scripts.
 
 ```bash
-export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071
-export PORT_LEADER=/dev/tty.usbmodem5B790143611
+export PORT_FOLLOWER=<follower-serial>
+export PORT_LEADER=<leader-serial>
 ```
 
 **On first bring-up, Leader / Follower ports were swapped, so the gripper arm moved as the Leader during teleop.** Re-identify ports and redo calibration.
@@ -235,19 +238,24 @@ Use the repository’s `scripts/record_real_so101.sh` (executable).
 
 ```bash
 # Append N episodes. Auto-resumes if the dataset already exists
-scripts/record_real_so101.sh [N]
+scripts/record_real_so101.sh \
+  --hw-root <path> \
+  --port-follower <follower-serial> \
+  --port-leader <leader-serial> \
+  [--dataset-root <path>] \
+  [N]
 ```
 
 | Item | Value |
 | --- | --- |
 | Default N | 50 |
-| Dataset root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020` |
+| Dataset root | `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_main_20261020` (override with `--dataset-root`) |
 | repo_id | `yohei1126/so101_pick_sponge_main` |
 | Task string | `Pick up the yellow sponge and place it on the white paper` |
 | episode / reset | 25 s / 10 s, fps 30 |
-| Logs | `$HOME/work/lerobot-hw/outputs/record_main_*.log` (cwd is `lerobot-hw`) |
+| Logs | `$LEROBOT_HW_ROOT/outputs/record_main_*.log` (cwd is `$LEROBOT_HW_ROOT`) |
 
-The script `pkill`s `lerobot-teleoperate` before start. Ports and camera indices are hardcoded in the script. Edit them after unplug/replug, or override for your environment.
+The script `pkill`s `lerobot-teleoperate` before start. Pass serial ports via `--port-follower` / `--port-leader` (or `PORT_FOLLOWER` / `PORT_LEADER`). Camera indices stay at top=1 / wrist=0 unless you edit the script.
 
 ### Run in an interactive terminal (required)
 
@@ -272,8 +280,11 @@ If you must detach, use a **new session** (`start_new_session` / `setsid`), not 
 Flags equivalent to the script:
 
 ```bash
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
-cd "$HOME/work/lerobot-hw"
+export LEROBOT_HW_ROOT=<path>
+export PORT_FOLLOWER=<follower-serial>
+export PORT_LEADER=<leader-serial>
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
+cd "$LEROBOT_HW_ROOT"
 
 lerobot-record \
   --robot.type=so101_follower \
@@ -291,7 +302,7 @@ lerobot-record \
   --dataset.fps=30 \
   --dataset.no_stamp=true \
   --dataset.push_to_hub=false \
-  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020 \
+  --dataset.root=$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_main_20261020 \
   --display_data=true \
   --play_sounds=true \
   --resume=true
@@ -321,7 +332,7 @@ Do not load a sim checkpoint onto the real robot directly. Sim policies use **ra
 ```bash
 # Dry-run (motors not driven); always do this first
 python -m port_pick_align.deploy.run_sim_policy_on_real \
-  --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
+  --checkpoint "$LEROBOT_HW_ROOT/outputs/sim_act/best_model.pt" \
   --port "$PORT_FOLLOWER" \
   --dry-run \
   --device mps \
@@ -329,13 +340,15 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
 
 # Live (keep a hand on the 12V switch. First run: smaller max-delta)
 python -m port_pick_align.deploy.run_sim_policy_on_real \
-  --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
+  --checkpoint "$LEROBOT_HW_ROOT/outputs/sim_act/best_model.pt" \
   --port "$PORT_FOLLOWER" \
   --device mps \
   --episode-time-s 20 \
   --max-delta-deg 3 \
   --robot-max-relative-target 3
 ```
+
+Set `LEROBOT_HW_ROOT` / `PORT_FOLLOWER` first (or substitute absolute paths you pass on the command line).
 
 ### Real-trained policies (recommended: repository runners)
 

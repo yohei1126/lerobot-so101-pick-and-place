@@ -12,24 +12,25 @@ sim 学習 ACT の rad↔deg 変換ラッパーは **使わない**（こちら�
 | 項目 | 値 |
 | --- | --- |
 | ホスト | Apple Silicon Mac / LeRobot **0.6.1** / MPS |
-| 実機 venv | `$LEROBOT_HW_ROOT`（既定 `$HOME/work/lerobot-hw`） |
+| 実機 venv | `$LEROBOT_HW_ROOT/.venv`（`--hw-root` / `LEROBOT_HW_ROOT` で指定） |
 | カメラ | top=OpenCV index **1**、wrist=index **0**、640×480@30（収録と同じ） |
 | タスク文 | `Pick up the yellow sponge and place it on the white paper` |
 
-パスは環境変数で上書きする（絶対 `/Users/...` は使わない）。
+ホスト固有パスはコマンドライン（または環境変数）で渡す。絶対 `/Users/...` は使わない。
 
-| 変数 | 用途 |
+| フラグ / 変数 | 用途 |
 | --- | --- |
-| `LEROBOT_HW_ROOT` | データセット・出力・venv のルート |
-| `PORT_FOLLOWER` | Follower シリアルポート |
-| `ACT_REAL_CHECKPOINT` / `ACT_REAL_DATASET` | ACT 用 |
-| `SMOLVLA_CHECKPOINT` / `SMOLVLA_DATASET` / `SMOLVLA_TASK` | SmolVLA 用 |
+| `--hw-root` / `LEROBOT_HW_ROOT` | データセット・出力・venv のルート |
+| `--port` / `PORT_FOLLOWER` | Follower シリアル（`lerobot-find-port`） |
+| `--checkpoint` / `ACT_REAL_CHECKPOINT` / `SMOLVLA_CHECKPOINT` | ポリシー重み |
+| `--dataset` / `ACT_REAL_DATASET` / `SMOLVLA_DATASET` | オフライン確認用データセット root |
 
 ```bash
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
+export LEROBOT_HW_ROOT=<path>   # またはランナーに --hw-root <path>
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
 cd "/path/to/lerobot-so101-pick-and-place"
 pip install -e "port_pick_align/[training,feetech]"
-export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071   # lerobot-find-port の結果
+export PORT_FOLLOWER=<follower-serial>   # lerobot-find-port の結果
 ```
 
 ## 安全モデル
@@ -61,13 +62,13 @@ Ctrl-C / SIGTERM でループを中断する。非常時は Follower の **12V �
 
 ```bash
 # Offline MAE（ロボット不要）
-./scripts/run_act_real.sh --offline-check --device mps
+./scripts/run_act_real.sh --hw-root <path> --port <follower-serial> --offline-check --device mps
 
 # Dry-run
-./scripts/run_act_real.sh --device mps --episode-time-s 15
+./scripts/run_act_real.sh --hw-root <path> --port <follower-serial> --device mps --episode-time-s 15
 
 # 推奨の初回 live
-./scripts/run_act_real.sh --live --device mps \
+./scripts/run_act_real.sh --hw-root <path> --port <follower-serial> --live --device mps \
   --max-delta-deg 2 --max-delta-gripper 3 \
   --n-action-steps 10 --episode-time-s 15
 ```
@@ -85,13 +86,13 @@ python -m port_pick_align.deploy.act_real --live --max-delta-deg 2 ...
 
 ```bash
 # Offline
-./scripts/run_smolvla_real.sh --offline-check --device mps
+./scripts/run_smolvla_real.sh --hw-root <path> --port <follower-serial> --offline-check --device mps
 
 # Dry-run
-./scripts/run_smolvla_real.sh --device mps --episode-time-s 15
+./scripts/run_smolvla_real.sh --hw-root <path> --port <follower-serial> --device mps --episode-time-s 15
 
 # 推奨の初回 live（chunk 50 のうち 25 ステップ実行して replan）
-./scripts/run_smolvla_real.sh --live --device mps \
+./scripts/run_smolvla_real.sh --hw-root <path> --port <follower-serial> --live --device mps \
   --n-action-steps 25 --episode-time-s 15 \
   --max-delta-deg 2 --max-delta-gripper 3
 ```
@@ -101,7 +102,7 @@ python -m port_pick_align.deploy.act_real --live --max-delta-deg 2 ...
 macOS 向け。`caffeinate` + `start_new_session` で離脱する。
 
 ```bash
-./scripts/train_smolvla.sh 10000 8
+./scripts/train_smolvla.sh --hw-root <path> [--dataset-root <path>] 10000 8
 # ログ: $LEROBOT_HW_ROOT/outputs/logs/smolvla_so101_clean28_<TS>.log
 ```
 
@@ -123,8 +124,7 @@ macOS 向け。`caffeinate` + `start_new_session` で離脱する。
 
 | 項目 | 値 |
 | --- | --- |
-| Follower ポート例 | `/dev/tty.usbmodem5B8E1163071` |
-| Leader ポート例 | `/dev/tty.usbmodem5B790143611` |
+| Follower / Leader ポート | `lerobot-find-port` の結果を `--port` / `--port-follower` / `--port-leader`（または `PORT_*`）で渡す |
 | top / wrist index | 1 / 0 |
 | タスク | `Pick up the yellow sponge and place it on the white paper` |
 

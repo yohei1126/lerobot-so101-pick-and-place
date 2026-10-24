@@ -14,10 +14,10 @@ OmniCampus needs a PDF report, a public GitHub URL, and a 1–3 minute YouTube t
 ### 1. PDF report (filename and build)
 
 - Filename: `説明資料_PAI最終課題_yohei1126.pdf`
-- Report source: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.en.md)
-- Build command:
+- Report source (while still in this repo): [`report/説明資料_PAI最終課題_yohei1126.en.md`](../report/説明資料_PAI最終課題_yohei1126.en.md) (planned move to `yohei1126/utokyo-ai-courses`)
+- Build command (input path required):
   ```bash
-  ./scripts/build_report_pdf.sh yohei1126
+  ./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.en.md
   ```
 
 ### 2. Source repository (GitHub URL)

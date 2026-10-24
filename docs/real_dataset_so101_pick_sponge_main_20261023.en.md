@@ -10,8 +10,8 @@ Related procedure: [real_robot_bringup.md](real_robot_bringup.en.md). Training: 
 
 | | Path on Mac | Episodes | Frames | `du -sh` |
 | --- | --- | ---: | ---: | ---: |
-| raw | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020` | 32 (0–31) | 23,610 | 350M |
-| clean | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261023_clean28` | 28 (0–27) | 20,660 | 309M |
+| raw | `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_main_20261020` | 32 (0–31) | 23,610 | 350M |
+| clean | `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_main_20261023_clean28` | 28 (0–27) | 20,660 | 309M |
 
 - Task (single, `task_index` 0): `Pick up the yellow sponge and place it on the white paper`
 - `repo_id` `yohei1126/so101_pick_sponge_main`, `robot_type` `so_follower`, `codebase_version` v3.0, split train `0:28`
@@ -80,7 +80,7 @@ Per-episode table (on Mac): `per_episode_events.csv`.
 
 ## Recording sessions
 
-Logs: `$HOME/work/lerobot-hw/outputs/record_main_*.log` (times in SGT). All used root `.../so101_pick_sponge_main_20261020`, `episode_time_s` 25, `reset_time_s` 10, fps 30, `push_to_hub` False.
+Logs: `$LEROBOT_HW_ROOT/outputs/record_main_*.log` (times in SGT). All used root `.../so101_pick_sponge_main_20261020`, `episode_time_s` 25, `reset_time_s` 10, fps 30, `push_to_hub` False.
 
 | log | resume | num_episodes arg | Episodes recorded | End |
 | --- | --- | ---: | --- | --- |
@@ -97,7 +97,7 @@ The second session restarted from episode 0 with `resume=False`, so the raw 32 e
 
 Rows = clean ep 0, 14, 27. Columns = start top/wrist, midgrasp top/wrist (midpoint of grasp and release), end top/wrist. At start the sponge is off the paper; at midgrasp the gripper holds it; at end it is on the paper.
 
-Individual PNGs (on Mac): `$HOME/work/lerobot-hw/outputs/dataset_summary_20261023/ep{00,14,27}_{start,midgrasp,end}_{top,wrist}.png`.
+Individual PNGs (on Mac): `$LEROBOT_HW_ROOT/outputs/dataset_summary_20261023/ep{00,14,27}_{start,midgrasp,end}_{top,wrist}.png`.
 
 ## Overnight ACT training (started 2026-10-23 00:52 SGT)
 
@@ -115,4 +115,4 @@ Results pending.
 | selection | `val_l1` |
 | Speed | ≈ 0.75 s / step |
 | ETA | ≈ 06:10 SGT |
-| Output | `$HOME/work/lerobot-hw/outputs/act_so101_main_clean28_20261023` |
+| Output | `$LEROBOT_HW_ROOT/outputs/act_so101_main_clean28_20261023` |

@@ -14,10 +14,10 @@
 ### 1. 成果説明レポート（PDF）
 
 - ファイル命名規則: `説明資料_PAI最終課題_yohei1126.pdf`
-- レポート原稿: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.ja.md)
-- 生成コマンド:
+- レポート原稿（当面このリポジトリ内）: [`report/説明資料_PAI最終課題_yohei1126.ja.md`](../report/説明資料_PAI最終課題_yohei1126.ja.md)（`yohei1126/utokyo-ai-courses` へ移す予定）
+- 生成コマンド（入力パス必須）:
   ```bash
-  ./scripts/build_report_pdf.sh yohei1126
+  ./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.ja.md
   ```
 
 ### 2. ソースコードリポジトリ（GitHub URL）

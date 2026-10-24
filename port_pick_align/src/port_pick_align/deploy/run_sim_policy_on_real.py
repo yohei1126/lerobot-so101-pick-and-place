@@ -3,7 +3,7 @@
 Dry-run (recommended first):
 
   python -m port_pick_align.deploy.run_sim_policy_on_real \\
-    --checkpoint $HOME/work/.../best_model.pt \\
+    --checkpoint $LEROBOT_HW_ROOT/outputs/sim_act/best_model.pt \\
     --port $PORT_FOLLOWER \\
     --dry-run \\
     --episode-time-s 20
@@ -11,7 +11,7 @@ Dry-run (recommended first):
 Live (12V switch under hand, low speed):
 
   python -m port_pick_align.deploy.run_sim_policy_on_real \\
-    --checkpoint $HOME/work/.../best_model.pt \\
+    --checkpoint $LEROBOT_HW_ROOT/outputs/sim_act/best_model.pt \\
     --port $PORT_FOLLOWER \\
     --max-delta-deg 3 \\
     --episode-time-s 20

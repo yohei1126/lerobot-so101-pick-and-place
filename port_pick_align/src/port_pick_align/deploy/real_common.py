@@ -8,8 +8,9 @@ Safety model:
     send_action. On exit robot.disconnect() (LeRobot default: disable torque ->
     support the arm!).
 
-Paths default to ``$LEROBOT_HW_ROOT`` (or ``~/work/lerobot-hw``) for logs / rollouts.
-Override with env or CLI flags; no absolute ``/Users/...`` paths.
+Paths resolve from ``--hw-root`` / ``$LEROBOT_HW_ROOT`` (fallback ``~/work/lerobot-hw``)
+for logs / rollouts. Serial ports come from ``--port`` / ``PORT_FOLLOWER`` (no machine-
+specific device string is baked in). Do not hardcode absolute ``/Users/...`` paths.
 """
 
 from __future__ import annotations
@@ -26,8 +27,7 @@ import numpy as np
 
 JOINTS = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"]
 TASK = "Pick up the yellow sponge and place it on the white paper"
-# Bring-up default (2026-10-18/22); override with --port or PORT_FOLLOWER.
-DEFAULT_PORT = "/dev/tty.usbmodem5B8E1163071"
+# Convention fallback only; prefer --hw-root or LEROBOT_HW_ROOT.
 DEFAULT_HW_ROOT = Path.home() / "work" / "lerobot-hw"
 
 
@@ -37,6 +37,14 @@ def hw_root() -> Path:
     if env:
         return Path(env).expanduser()
     return DEFAULT_HW_ROOT
+
+
+def apply_hw_root(args: argparse.Namespace) -> Path:
+    """Apply ``--hw-root`` to the process env, then return the resolved root."""
+    raw = getattr(args, "hw_root", None)
+    if raw:
+        os.environ["LEROBOT_HW_ROOT"] = str(Path(raw).expanduser())
+    return hw_root()
 
 
 def log_dir() -> Path:
@@ -87,9 +95,18 @@ def add_common_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--live", action="store_true", help="Actually send actions (default: dry-run)")
     ap.add_argument("--dry-run", action="store_true", help="(default) never send actions")
     ap.add_argument(
+        "--hw-root",
+        default=None,
+        help=(
+            "Hardware workspace root (datasets/outputs/venv). "
+            "Sets LEROBOT_HW_ROOT for this process; else env LEROBOT_HW_ROOT; "
+            "else ~/work/lerobot-hw."
+        ),
+    )
+    ap.add_argument(
         "--port",
-        default=os.environ.get("PORT_FOLLOWER", DEFAULT_PORT),
-        help="Follower serial port (env PORT_FOLLOWER overrides default).",
+        default=os.environ.get("PORT_FOLLOWER") or None,
+        help="Follower serial port (required unless PORT_FOLLOWER is set; from lerobot-find-port).",
     )
     ap.add_argument("--robot-id", default="follower")
     ap.add_argument("--top-index", type=int, default=1)
@@ -254,6 +271,11 @@ def install_sigterm():
 
 def run_loop(args, name: str, step_fn, reset_fn=None) -> int:
     """step_fn(obs, state) -> (target np[6], info str). Handles robot, clamp, timing, Ctrl-C."""
+    apply_hw_root(args)
+    if not getattr(args, "port", None):
+        raise SystemExit(
+            "Follower serial port required: pass --port or set PORT_FOLLOWER (lerobot-find-port)."
+        )
     live = is_live(args)
     mode = (
         "LIVE (motors WILL move; hand on 12V switch)"
@@ -261,6 +283,7 @@ def run_loop(args, name: str, step_fn, reset_fn=None) -> int:
         else "DRY-RUN (no send_action, no torque writes)"
     )
     print(f"[mode] {mode}", flush=True)
+    print(f"[hw-root] {hw_root()}", flush=True)
     install_sigterm()
     clamp = Clamp(args.max_delta_deg, args.max_delta_gripper)
     vid = VideoSaver(name, args.fps, args.save_video)

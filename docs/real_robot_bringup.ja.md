@@ -14,9 +14,10 @@
 実機用の仮想環境は**本リポジトリの `.venv` とは分離**する（学習ジョブや sim 依存と干渉させない）。
 
 ```bash
-# 例: 専用ディレクトリに venv を作成
-python3.12 -m venv "$HOME/work/lerobot-hw/.venv"
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
+# 例: ホスト上の任意パスに専用 venv を作成
+export LEROBOT_HW_ROOT=<path>   # またはリポジトリ脚本に --hw-root <path>
+python3.12 -m venv "$LEROBOT_HW_ROOT/.venv"
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
 pip install -U pip
 pip install 'lerobot[feetech]==0.6.1'
 # 収録・可視化・学習時に追加
@@ -39,8 +40,8 @@ pip install 'lerobot[dataset,viz]==0.6.1'
 | 項目 | 内容 |
 | --- | --- |
 | ホスト | MacBook Pro M4。USB-C ハブ経由でアーム・カメラを接続 |
-| Leader | ハンドル付き・**グリッパなし**。電源 **5V**。ポート例 `/dev/tty.usbmodem5B790143611` |
-| Follower | **グリッパ付き**。電源 **12V**。ポート例 `/dev/tty.usbmodem5B8E1163071` |
+| Leader | ハンドル付き・**グリッパなし**。電源 **5V**。シリアルは `lerobot-find-port`（`PORT_LEADER`） |
+| Follower | **グリッパ付き**。電源 **12V**。シリアルは `lerobot-find-port`（`PORT_FOLLOWER`） |
 | 固定 | 両アーム基部を C クランプでテーブル縁に固定 |
 | 上カメラ | Logitech C920。VIJIM LS08 カメラアームに取り付け、テーブル縁にクランプ |
 | 手首カメラ | キット同梱 USB2.0_CAM1（Follower グリッパ側） |
@@ -108,21 +109,23 @@ top には次がすべて写っていること:
 ## USB とポート識別
 
 ```bash
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
 # 両アームに USB と電源を接続した状態で実行
 lerobot-find-port
 # プロンプトが出たら、識別したいアームの USB を 1 本だけ抜き、Enter
 # 表示されたポートを記録し、USB を挿し直す。もう一方も同様（1 台ずつ）
 ```
 
-| アーム | ポート（2026-10-18 / 22 の記録） | 電源 | id |
+| アーム | ポート | 電源 | id |
 | --- | --- | --- | --- |
-| Leader | `/dev/tty.usbmodem5B790143611` | 5V | leader |
-| Follower | `/dev/tty.usbmodem5B8E1163071` | 12V | follower |
+| Leader | `lerobot-find-port` → `PORT_LEADER` | 5V | leader |
+| Follower | `lerobot-find-port` → `PORT_FOLLOWER` | 12V | follower |
+
+ポートはホスト固有で、抜き差し後に変わる。コマンドラインまたは環境変数で渡し、スクリプトに絶対デバイスパスを埋め込まない。
 
 ```bash
-export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071
-export PORT_LEADER=/dev/tty.usbmodem5B790143611
+export PORT_FOLLOWER=<follower-serial>
+export PORT_LEADER=<leader-serial>
 ```
 
 **初回 bring-up では Leader / Follower のポートを取り違え、テレオペ時にグリッパ付きアームが Leader 側として動いた。** その場合はポートを再識別し、キャリブレーションをやり直す。
@@ -235,19 +238,24 @@ lerobot-teleoperate \
 
 ```bash
 # N エピソードを追加。データセットが既にあれば自動で resume
-scripts/record_real_so101.sh [N]
+scripts/record_real_so101.sh \
+  --hw-root <path> \
+  --port-follower <follower-serial> \
+  --port-leader <leader-serial> \
+  [--dataset-root <path>] \
+  [N]
 ```
 
 | 項目 | 値 |
 | --- | --- |
 | 既定 N | 50 |
-| データセット root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020` |
+| データセット root | `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_main_20261020`（`--dataset-root` で上書き可） |
 | repo_id | `yohei1126/so101_pick_sponge_main` |
 | タスク文 | `Pick up the yellow sponge and place it on the white paper` |
 | episode / reset | 25 s / 10 s、fps 30 |
-| ログ | `$HOME/work/lerobot-hw/outputs/record_main_*.log`（cwd は `lerobot-hw`） |
+| ログ | `$LEROBOT_HW_ROOT/outputs/record_main_*.log`（cwd は `$LEROBOT_HW_ROOT`） |
 
-スクリプトは開始前に `lerobot-teleoperate` を `pkill` する。ポートとカメラ index はスクリプト内にハードコードされている。抜き差し後は編集するか、環境に合わせて上書きする。
+スクリプトは開始前に `lerobot-teleoperate` を `pkill` する。シリアルは `--port-follower` / `--port-leader`（または `PORT_FOLLOWER` / `PORT_LEADER`）で渡す。カメラ index は top=1 / wrist=0 のまま（変える場合はスクリプトを編集）。
 
 ### 対話ターミナルで実行する（必須）
 
@@ -272,8 +280,11 @@ scripts/record_real_so101.sh [N]
 スクリプトと同等のフラグ:
 
 ```bash
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
-cd "$HOME/work/lerobot-hw"
+export LEROBOT_HW_ROOT=<path>
+export PORT_FOLLOWER=<follower-serial>
+export PORT_LEADER=<leader-serial>
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
+cd "$LEROBOT_HW_ROOT"
 
 lerobot-record \
   --robot.type=so101_follower \
@@ -291,7 +302,7 @@ lerobot-record \
   --dataset.fps=30 \
   --dataset.no_stamp=true \
   --dataset.push_to_hub=false \
-  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020 \
+  --dataset.root=$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_main_20261020 \
   --display_data=true \
   --play_sounds=true \
   --resume=true
@@ -321,7 +332,7 @@ sim チェックポイントを実機へ直接載せない。sim ポリシーは
 ```bash
 # Dry-run（モータ非駆動）; 必ず先にこれ
 python -m port_pick_align.deploy.run_sim_policy_on_real \
-  --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
+  --checkpoint "$LEROBOT_HW_ROOT/outputs/sim_act/best_model.pt" \
   --port "$PORT_FOLLOWER" \
   --dry-run \
   --device mps \
@@ -329,7 +340,7 @@ python -m port_pick_align.deploy.run_sim_policy_on_real \
 
 # Live（12V スイッチに手を置く。初回は max-delta を小さめに）
 python -m port_pick_align.deploy.run_sim_policy_on_real \
-  --checkpoint "$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt" \
+  --checkpoint "$LEROBOT_HW_ROOT/outputs/sim_act/best_model.pt" \
   --port "$PORT_FOLLOWER" \
   --device mps \
   --episode-time-s 20 \

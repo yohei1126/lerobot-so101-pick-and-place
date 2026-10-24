@@ -43,7 +43,7 @@ ln -sfn "$(python -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR")
 
 操作方法: マウスのドラッグ操作で視点回転、スクロールでズームを行う。ウィンドウを閉じると終了する。
 
-### 2. Rerun によるマルチモーダル可視化
+### 2. Rerun による多峰性（行動分布に峰が複数ある）可視化
 
 仮想環境内の `rerun` バイナリが実行可能パスに含まれていることを前提とする。
 

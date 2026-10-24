@@ -8,11 +8,11 @@
 
 | Dataset | Episodes | Frames | FPS | Cameras | Video (top/wrist) | Action motion |
 | --- | ---: | ---: | ---: | --- | --- | --- |
-| `~/work/lerobot-hw/datasets/so101_pick_sponge_trial` | 2 | 1500 | 30 | `observation.images.top`, `observation.images.wrist` (640×480 AV1) | 50.0 s / 1500 frames each | **Near-zero**: both episodes action std ≈ 0 (static pose) |
-| `~/work/lerobot-hw/datasets/so101_pick_sponge_trial2` | 2 | 1500 | 30 | same | 50.0 s / 1500 frames each | **Partial content**: epi0 has motion; **epi1 action std ≈ 0** (static). Files are complete (not truncated). |
-| `~/work/lerobot-hw/datasets/so101_pick_sponge_trial3` | 2 | 1500 | 30 | same | 50.0 s / 1500 frames each | **Both episodes have motion** |
+| `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_trial` | 2 | 1500 | 30 | `observation.images.top`, `observation.images.wrist` (640×480 AV1) | 50.0 s / 1500 frames each | **Near-zero**: both episodes action std ≈ 0 (static pose) |
+| `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_trial2` | 2 | 1500 | 30 | same | 50.0 s / 1500 frames each | **Partial content**: epi0 has motion; **epi1 action std ≈ 0** (static). Files are complete (not truncated). |
+| `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_trial3` | 2 | 1500 | 30 | same | 50.0 s / 1500 frames each | **Both episodes have motion** |
 
-記録ログは `~/work/lerobot-hw/outputs/record_trial_*.log` 配下:
+記録ログは `$LEROBOT_HW_ROOT/outputs/record_trial_*.log` 配下:
 
 - 最初の `trial` 試行（`…2337.log`）は保存時に失敗（`meta/` 欠落）。成功した書き換えは `…2338.log`。
 - `trial2`（`…2342.log`）と `trial3`（`…234850.log`）は 2 エピソード後に正常終了。
@@ -30,7 +30,7 @@
   （`top` / `wrist`、chunk_size 30）。契約の関節制限は **ラジアン**；これらの
   トライアルデータセットは **度**。
 
-利用可能な別環境: `~/work/lerobot-hw/.venv` に `lerobot-train`（0.6.1）あり。スモークは
+利用可能な別環境: `$LEROBOT_HW_ROOT/.venv` に `lerobot-train`（0.6.1）あり。スモークは
 過去の sim ACT 作業との一貫性のためリポジトリの trainer を使用した。
 
 ## スモーク学習（実行済み）
@@ -38,14 +38,15 @@
 使用データセット: **trial3 のみ**（両エピソードとも可動）。
 
 ```bash
-cd ~/work/lerobot-so101-pick-and-place
+cd /path/to/lerobot-so101-pick-and-place
 source .venv/bin/activate
+export LEROBOT_HW_ROOT=<path>   # ホスト上のハードウェア作業ルート
 
-OUT="$HOME/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019"
-LOG="$HOME/work/lerobot-hw/outputs/logs/act_so101_trial_smoke_20261019.log"
+OUT="$LEROBOT_HW_ROOT/outputs/act_so101_trial_smoke_20261019"
+LOG="$LEROBOT_HW_ROOT/outputs/logs/act_so101_trial_smoke_20261019.log"
 
 caffeinate -dimsu python -X faulthandler -m port_pick_align.training.train_act \
-  --dataset-root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_trial3" \
+  --dataset-root "$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_trial3" \
   --repo-id local/so101_pick_sponge_trial3 \
   --output-dir "$OUT" \
   --steps 200 \
@@ -82,8 +83,8 @@ caffeinate -dimsu python -X faulthandler -m port_pick_align.training.train_act \
 
 成果物（git 外。大きな `.pt` はコースリポジトリへ未コピー）:
 
-- ログ: `~/work/lerobot-hw/outputs/logs/act_so101_trial_smoke_20261019.log`
-- メトリクス: `~/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019/training_metrics.json`
+- ログ: `$LEROBOT_HW_ROOT/outputs/logs/act_so101_trial_smoke_20261019.log`
+- メトリクス: `$LEROBOT_HW_ROOT/outputs/act_so101_trial_smoke_20261019/training_metrics.json`
 - チェックポイント: `…/best_model.pt`、`…/last.pt`
 
 ## 判定

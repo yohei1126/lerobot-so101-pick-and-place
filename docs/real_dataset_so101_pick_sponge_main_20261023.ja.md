@@ -10,8 +10,8 @@
 
 | | Mac 上のパス | エピソード | フレーム | `du -sh` |
 | --- | --- | ---: | ---: | ---: |
-| raw | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020` | 32（0–31） | 23,610 | 350M |
-| clean | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261023_clean28` | 28（0–27） | 20,660 | 309M |
+| raw | `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_main_20261020` | 32（0–31） | 23,610 | 350M |
+| clean | `$LEROBOT_HW_ROOT/datasets/so101_pick_sponge_main_20261023_clean28` | 28（0–27） | 20,660 | 309M |
 
 - タスク（単一、`task_index` 0）: `Pick up the yellow sponge and place it on the white paper`
 - `repo_id` `yohei1126/so101_pick_sponge_main`、`robot_type` `so_follower`、`codebase_version` v3.0、split train `0:28`
@@ -80,7 +80,7 @@ idle / release 後の値が中間付近にあるため、固定中点閾値は�
 
 ## 収録セッション
 
-ログ: `$HOME/work/lerobot-hw/outputs/record_main_*.log`（時刻は SGT）。いずれも root `.../so101_pick_sponge_main_20261020`、`episode_time_s` 25、`reset_time_s` 10、fps 30、`push_to_hub` False。
+ログ: `$LEROBOT_HW_ROOT/outputs/record_main_*.log`（時刻は SGT）。いずれも root `.../so101_pick_sponge_main_20261020`、`episode_time_s` 25、`reset_time_s` 10、fps 30、`push_to_hub` False。
 
 | log | resume | num_episodes 引数 | 記録されたエピソード | 終了 |
 | --- | --- | ---: | --- | --- |
@@ -97,7 +97,7 @@ idle / release 後の値が中間付近にあるため、固定中点閾値は�
 
 行 = clean ep 0, 14, 27。列 = start top/wrist、midgrasp top/wrist（grasp と release の中点）、end top/wrist。開始時はスポンジが紙の外、midgrasp でグリッパ保持、終了時は紙の上。
 
-個別 PNG（Mac 上）: `$HOME/work/lerobot-hw/outputs/dataset_summary_20261023/ep{00,14,27}_{start,midgrasp,end}_{top,wrist}.png`。
+個別 PNG（Mac 上）: `$LEROBOT_HW_ROOT/outputs/dataset_summary_20261023/ep{00,14,27}_{start,midgrasp,end}_{top,wrist}.png`。
 
 ## 夜間 ACT 学習（開始 2026-10-23 00:52 SGT）
 
@@ -115,4 +115,4 @@ idle / release 後の値が中間付近にあるため、固定中点閾値は�
 | selection | `val_l1` |
 | 速度 | およそ 0.75 s / step |
 | 見込み終了 | およそ 06:10 SGT |
-| 出力 | `$HOME/work/lerobot-hw/outputs/act_so101_main_clean28_20261023` |
+| 出力 | `$LEROBOT_HW_ROOT/outputs/act_so101_main_clean28_20261023` |

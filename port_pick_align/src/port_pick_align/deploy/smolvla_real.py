@@ -27,10 +27,22 @@ import torch
 
 from port_pick_align.deploy import real_common as rc
 
-DEFAULT_CKPT = (
-    rc.hw_root() / "outputs/smolvla_so101_clean28_20261023_2132/checkpoints/010000/pretrained_model"
-)
-DEFAULT_DATASET = rc.hw_root() / "datasets/so101_pick_sponge_main_20261023_clean28"
+
+def _default_ckpt() -> Path:
+    env = os.environ.get("SMOLVLA_CHECKPOINT", "").strip()
+    if env:
+        return Path(env).expanduser()
+    return (
+        rc.hw_root()
+        / "outputs/smolvla_so101_clean28_20261023_2132/checkpoints/010000/pretrained_model"
+    )
+
+
+def _default_dataset() -> Path:
+    env = os.environ.get("SMOLVLA_DATASET", "").strip()
+    if env:
+        return Path(env).expanduser()
+    return rc.hw_root() / "datasets/so101_pick_sponge_main_20261023_clean28"
 
 
 def load_smolvla(path: Path, device: str):
@@ -158,13 +170,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path(os.environ.get("SMOLVLA_CHECKPOINT", str(DEFAULT_CKPT))),
+        default=None,
+        help="SmolVLA checkpoint dir (env SMOLVLA_CHECKPOINT; else under $LEROBOT_HW_ROOT/outputs)",
     )
     ap.add_argument(
         "--dataset",
         type=Path,
-        default=Path(os.environ.get("SMOLVLA_DATASET", str(DEFAULT_DATASET))),
-        help="LeRobot dataset root for --offline-check",
+        default=None,
+        help="LeRobot dataset root for --offline-check (env SMOLVLA_DATASET)",
     )
     ap.add_argument("--task", default=os.environ.get("SMOLVLA_TASK", rc.TASK))
     ap.add_argument(
@@ -180,6 +193,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
+    rc.apply_hw_root(args)
+    if args.checkpoint is None:
+        args.checkpoint = _default_ckpt()
+    if args.dataset is None:
+        args.dataset = _default_dataset()
     rc.setup_log(
         "smolvla_offline"
         if args.offline_check

@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# Build the submission report PDF from the Markdown template.
+# Build the submission report PDF from a Markdown manuscript.
 #
 # Prerequisites:
 #   - pandoc
 #   - typst  (used as pandoc --pdf-engine)
 #
 # Usage (from repo root):
-#   ./scripts/build_report_pdf.sh yohei1126
+#   ./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.ja.md
 #   ./scripts/build_report_pdf.sh yohei1126 path/to/draft.md
+#
+# The input Markdown path is required (no silent default to a missing unsuffixed
+# .md). While report drafts still live here, prefer the .ja.md / .en.md files;
+# the manuscript is expected to move to yohei1126/utokyo-ai-courses
+# (PhysicalAI-Applied1-202609/).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -26,10 +31,17 @@ Install tip: brew install pandoc typst"
 usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/build_report_pdf.sh <omnicampus_account> [input.md]
+  ./scripts/build_report_pdf.sh <omnicampus_account> <input.md>
+
+Examples:
+  ./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.ja.md
+  ./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.en.md
 
 Output:
   report/説明資料_PAI最終課題_<omnicampus_account>.pdf
+
+Note: pass the manuscript path explicitly. The report is planned to move to
+yohei1126/utokyo-ai-courses (PhysicalAI-Applied1-202609/).
 EOF
 }
 
@@ -39,7 +51,10 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 fi
 
 ACCOUNT="${1:-}"
+INPUT_MD="${2:-}"
 [[ -n "$ACCOUNT" ]] || die "omnicampus account name is required
+$(usage)"
+[[ -n "$INPUT_MD" ]] || die "input markdown path is required (e.g. report/説明資料_PAI最終課題_yohei1126.ja.md)
 $(usage)"
 
 # Reject path separators / whitespace that would break the official filename rule.
@@ -47,8 +62,6 @@ if [[ "$ACCOUNT" == *"/"* || "$ACCOUNT" == *"\\"* || "$ACCOUNT" =~ [[:space:]] ]
   die "omnicampus account must not contain spaces or path separators: '$ACCOUNT'"
 fi
 
-DEFAULT_MD="$ROOT/report/説明資料_PAI最終課題_yohei1126.md"
-INPUT_MD="${2:-$DEFAULT_MD}"
 [[ -f "$INPUT_MD" ]] || die "input markdown not found: $INPUT_MD"
 
 OUT_PDF="$ROOT/report/説明資料_PAI最終課題_${ACCOUNT}.pdf"

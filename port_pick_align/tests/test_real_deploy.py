@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import ast
 import inspect
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -102,6 +103,26 @@ def test_hw_root_respects_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
 
 
 @pytest.mark.unit
+def test_apply_hw_root_cli(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("LEROBOT_HW_ROOT", raising=False)
+    root = tmp_path / "from-cli"
+    args = argparse.Namespace(hw_root=str(root))
+    assert rc.apply_hw_root(args) == root
+    assert Path(os.environ["LEROBOT_HW_ROOT"]) == root
+
+
+@pytest.mark.unit
+def test_common_args_port_requires_env_or_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("PORT_FOLLOWER", raising=False)
+    ap = argparse.ArgumentParser()
+    add_common_args(ap)
+    args = ap.parse_args([])
+    assert args.port is None
+    args_cli = ap.parse_args(["--port", "/dev/tty.usbmodemTEST"])
+    assert args_cli.port == "/dev/tty.usbmodemTEST"
+
+
+@pytest.mark.unit
 def test_dry_run_never_calls_send_action(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeBus:
         def __init__(self) -> None:
@@ -159,6 +180,8 @@ def test_dry_run_never_calls_send_action(monkeypatch: pytest.MonkeyPatch) -> Non
     args = SimpleNamespace(
         live=False,
         dry_run=False,
+        hw_root=None,
+        port="/dev/tty.usbmodemTEST",
         max_delta_deg=3.0,
         max_delta_gripper=5.0,
         fps=100.0,
@@ -202,6 +225,8 @@ def test_live_calls_send_action(monkeypatch: pytest.MonkeyPatch) -> None:
     args = SimpleNamespace(
         live=True,
         dry_run=False,
+        hw_root=None,
+        port="/dev/tty.usbmodemTEST",
         max_delta_deg=100.0,
         max_delta_gripper=100.0,
         fps=200.0,

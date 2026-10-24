@@ -12,24 +12,25 @@ Related: Issue #76.
 | Item | Value |
 | --- | --- |
 | Host | Apple Silicon Mac / LeRobot **0.6.1** / MPS |
-| Real-robot venv | `$LEROBOT_HW_ROOT` (default `$HOME/work/lerobot-hw`) |
+| Real-robot venv | `$LEROBOT_HW_ROOT/.venv` (set via `--hw-root` / `LEROBOT_HW_ROOT`) |
 | Cameras | top=OpenCV index **1**, wrist=index **0**, 640×480@30 (same as recording) |
 | Task string | `Pick up the yellow sponge and place it on the white paper` |
 
-Override paths with environment variables (do not hardcode absolute `/Users/...` paths).
+Pass host paths on the command line (or via env). Do not hardcode absolute `/Users/...` paths.
 
-| Variable | Purpose |
+| Flag / variable | Purpose |
 | --- | --- |
-| `LEROBOT_HW_ROOT` | Root for datasets, outputs, and venv |
-| `PORT_FOLLOWER` | Follower serial port |
-| `ACT_REAL_CHECKPOINT` / `ACT_REAL_DATASET` | For ACT |
-| `SMOLVLA_CHECKPOINT` / `SMOLVLA_DATASET` / `SMOLVLA_TASK` | For SmolVLA |
+| `--hw-root` / `LEROBOT_HW_ROOT` | Root for datasets, outputs, and venv |
+| `--port` / `PORT_FOLLOWER` | Follower serial port (`lerobot-find-port`) |
+| `--checkpoint` / `ACT_REAL_CHECKPOINT` / `SMOLVLA_CHECKPOINT` | Policy weights |
+| `--dataset` / `ACT_REAL_DATASET` / `SMOLVLA_DATASET` | Dataset root for offline checks |
 
 ```bash
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
+export LEROBOT_HW_ROOT=<path>   # or pass --hw-root <path> to the runners
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
 cd "/path/to/lerobot-so101-pick-and-place"
 pip install -e "port_pick_align/[training,feetech]"
-export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071   # from lerobot-find-port
+export PORT_FOLLOWER=<follower-serial>   # from lerobot-find-port
 ```
 
 ## Safety model
@@ -61,13 +62,13 @@ Do **not** apply the rad↔deg conversion from `run_sim_policy_on_real`.
 
 ```bash
 # Offline MAE (no robot)
-./scripts/run_act_real.sh --offline-check --device mps
+./scripts/run_act_real.sh --hw-root <path> --port <follower-serial> --offline-check --device mps
 
 # Dry-run
-./scripts/run_act_real.sh --device mps --episode-time-s 15
+./scripts/run_act_real.sh --hw-root <path> --port <follower-serial> --device mps --episode-time-s 15
 
 # Recommended first live
-./scripts/run_act_real.sh --live --device mps \
+./scripts/run_act_real.sh --hw-root <path> --port <follower-serial> --live --device mps \
   --max-delta-deg 2 --max-delta-gripper 3 \
   --n-action-steps 10 --episode-time-s 15
 ```
@@ -85,13 +86,13 @@ Because `empty_cameras=0`, do **not** pass camera3 (it was also skipped at train
 
 ```bash
 # Offline
-./scripts/run_smolvla_real.sh --offline-check --device mps
+./scripts/run_smolvla_real.sh --hw-root <path> --port <follower-serial> --offline-check --device mps
 
 # Dry-run
-./scripts/run_smolvla_real.sh --device mps --episode-time-s 15
+./scripts/run_smolvla_real.sh --hw-root <path> --port <follower-serial> --device mps --episode-time-s 15
 
 # Recommended first live (run 25 of chunk 50, then replan)
-./scripts/run_smolvla_real.sh --live --device mps \
+./scripts/run_smolvla_real.sh --hw-root <path> --port <follower-serial> --live --device mps \
   --n-action-steps 25 --episode-time-s 15 \
   --max-delta-deg 2 --max-delta-gripper 3
 ```
@@ -101,11 +102,11 @@ Because `empty_cameras=0`, do **not** pass camera3 (it was also skipped at train
 For macOS. Detach with `caffeinate` + `start_new_session`.
 
 ```bash
-./scripts/train_smolvla.sh 10000 8
+./scripts/train_smolvla.sh --hw-root <path> [--dataset-root <path>] 10000 8
 # Log: $LEROBOT_HW_ROOT/outputs/logs/smolvla_so101_clean28_<TS>.log
 ```
 
-`rename_map` and `dataset.video_backend=pyav` are fixed in the script. Dataset root / repo id can be changed via environment variables.
+`rename_map` and `dataset.video_backend=pyav` are fixed in the script. Dataset root / repo id can be changed via `--dataset-root` / `--dataset-repo-id` or env.
 
 ## Verification notes on Mac (as of 2026-10-23)
 
@@ -123,8 +124,7 @@ Keep ports, camera indices, and task string consistent across [scripts/record_re
 
 | Item | Value |
 | --- | --- |
-| Follower port example | `/dev/tty.usbmodem5B8E1163071` |
-| Leader port example | `/dev/tty.usbmodem5B790143611` |
+| Follower / Leader ports | Pass `--port` / `--port-follower` / `--port-leader` (or `PORT_*`) from `lerobot-find-port` |
 | top / wrist index | 1 / 0 |
 | Task | `Pick up the yellow sponge and place it on the white paper` |
 

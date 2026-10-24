@@ -1,6 +1,6 @@
 # 提出用レポート（PDF）作成手順
 
-本課題の公式提出物は PDF 形式の文書のみである。原稿の正本は本ディレクトリ内の Markdown ファイル（`説明資料_PAI最終課題_yohei1126.md`）として管理し、ビルドスクリプトを通じて PDF を出力する。
+本課題の公式提出物は PDF 形式の文書のみである。原稿は当面本ディレクトリの `説明資料_PAI最終課題_yohei1126.{ja,en}.md` にあるが、`yohei1126/utokyo-ai-courses`（`PhysicalAI-Applied1-202609/`）へ移す予定である。ビルド時は Markdown パスを明示する。
 
 ## 提出ファイル仕様
 
@@ -15,16 +15,19 @@
 
 ## PDF のビルド手順
 
-本ビルド処理は、内部で `pandoc` および `typst`（`--pdf-engine=typst`）を利用する。
+本ビルド処理は、内部で `pandoc` および `typst`（`--pdf-engine=typst`）を利用する。入力 Markdown パスは**必須**である。
 
 ```bash
-# リポジトリルートからの実行
-./scripts/build_report_pdf.sh yohei1126
+# リポジトリルートからの実行（日本語原稿の例）
+./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.ja.md
+
+# 英語原稿
+./scripts/build_report_pdf.sh yohei1126 report/説明資料_PAI最終課題_yohei1126.en.md
 ```
 
 実行後、`report/説明資料_PAI最終課題_yohei1126.pdf` に PDF が生成される（Git 管理対象外）。
 
-既定では [`説明資料_PAI最終課題_yohei1126.md`](説明資料_PAI最終課題_yohei1126.ja.md) が入力原稿として使用される。別の原稿ファイルを指定する場合は、第2引数にファイルパスを渡す。
+別原稿（`utokyo-ai-courses` へ移したあと含む）を使う場合は、第2引数にそのパスを渡す。
 
 ```bash
 ./scripts/build_report_pdf.sh yohei1126 path/to/draft.md
@@ -44,4 +47,3 @@
 
 - 提出全体の要件一覧: [`docs/submission.md`](../docs/submission.ja.md)
 - 実機障害時の縮退運用: [`docs/plan_b.md`](../docs/plan_b.ja.md)
-

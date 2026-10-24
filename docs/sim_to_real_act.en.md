@@ -22,29 +22,31 @@ Implementation: `port_pick_align.deploy.conversion` / `sim_policy_wrapper` / `ru
 ## Prerequisites
 
 - Mac M4, LeRobot **0.6.1**, Follower calibration id=`follower`
-- Install this package editable into the real-robot venv (e.g. `$HOME/work/lerobot-hw/.venv`)
+- Install this package editable into the real-robot venv (`$LEROBOT_HW_ROOT/.venv`)
 - Sim checkpoint (e.g. `best_model.pt` from `train_act --preset sim`)
 - Port env: `PORT_FOLLOWER` (`lerobot-find-port`)
 - Cameras: top=OpenCV index 1, wrist=index 0, 640×480@30 (same as bring-up)
 
 ```bash
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
+export LEROBOT_HW_ROOT=<path>
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
 cd "/path/to/lerobot-so101-pick-and-place"
 pip install -e "port_pick_align/[training,feetech]"
 ```
 
-Adapt paths to your machine. In docs prefer `$HOME` over `~`.
+Pass host paths via env or CLI placeholders; do not hardcode absolute `/Users/...` paths.
 
 ## Step 1: Dry-run (required)
 
 Read observations and print converted actions only. **Do not send motor commands.**
 
 ```bash
-source "$HOME/work/lerobot-hw/.venv/bin/activate"
+export LEROBOT_HW_ROOT=<path>
+source "$LEROBOT_HW_ROOT/.venv/bin/activate"
 cd "/path/to/lerobot-so101-pick-and-place"
 
-export PORT_FOLLOWER=  # result of lerobot-find-port
-CKPT="$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt"  # match your actual sim ckpt
+export PORT_FOLLOWER=<follower-serial>  # result of lerobot-find-port
+CKPT="$LEROBOT_HW_ROOT/outputs/sim_act/best_model.pt"  # or --checkpoint <path>
 
 python -m port_pick_align.deploy.run_sim_policy_on_real \
   --checkpoint "$CKPT" \
