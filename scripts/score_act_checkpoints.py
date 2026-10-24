@@ -21,6 +21,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -37,8 +38,7 @@ def discover_checkpoints(run_dirs: list[Path]) -> list[Path]:
         if not d.is_dir():
             print(f"[warn] missing run dir: {d}", file=sys.stderr)
             continue
-        for p in sorted(d.glob("*.pt")):
-            found.append(p)
+        found.extend(sorted(d.glob("*.pt")))
     return found
 
 
@@ -48,17 +48,18 @@ def sample_indices(dataset_root: Path, n_eps: int, seed: int) -> dict[str, list[
 
     ep_files = sorted((dataset_root / "meta" / "episodes").rglob("*.parquet"))
     if not ep_files:
-        raise FileNotFoundError(f"No episode parquet under {dataset_root}/meta/episodes")
+        raise FileNotFoundError(
+            f"No episode parquet under {dataset_root}/meta/episodes"
+        )
     ep = pq.read_table(ep_files[0]).to_pandas()
     n = len(ep)
-    rng = np.random.default_rng(seed)
+    _ = np.random.default_rng(seed)  # reserved for future random mid sampling
     # evenly spaced episode ids for coverage
     if n_eps >= n:
         picks = list(range(n))
     else:
         picks = np.linspace(0, n - 1, n_eps, dtype=int).tolist()
-        # tiny jitter without duplicates
-        picks = sorted(set(int(i) for i in picks))
+        picks = sorted({int(i) for i in picks})
     frame0: list[int] = []
     mid: list[int] = []
     for i in picks:
@@ -66,8 +67,48 @@ def sample_indices(dataset_root: Path, n_eps: int, seed: int) -> dict[str, list[
         s, e = int(row["dataset_from_index"]), int(row["dataset_to_index"])
         frame0.append(s)
         mid.append((s + e) // 2)
-    _ = rng  # seed reserved for future random mid sampling
     return {"frame0": frame0, "mid": mid}
+
+
+@torch.inference_mode()
+def _eval_index_bucket(
+    policy: Any,
+    dataset: Any,
+    idxs: list[int],
+    device: str,
+) -> dict:
+    e0: list[np.ndarray] = []
+    travels: list[float] = []
+    for i in idxs:
+        s = dataset[i]
+        top = s["observation.images.top"].unsqueeze(0).to(device)
+        wr = s["observation.images.wrist"].unsqueeze(0).to(device)
+        st = s["observation.state"]
+        gt = s["action"].numpy()
+        pad = s["action_is_pad"].numpy()
+        batch = {
+            "observation.images.top": top,
+            "observation.images.wrist": wr,
+            "observation.state": torch.as_tensor(st, dtype=torch.float32)
+            .reshape(1, -1)
+            .to(device),
+        }
+        pred = policy.predict_action_chunk(batch)
+        if pred.ndim == 3:
+            pred = pred[0]
+        pred = pred.float().cpu().numpy()
+        mask = ~pad
+        e0.append(np.abs(pred[0] - gt[0]))
+        travels.append(float(np.linalg.norm(pred[mask][-1, :5] - pred[mask][0, :5])))
+    e0_arr = np.asarray(e0, dtype=np.float64)
+    return {
+        "mae_step0_arm": float(e0_arr[:, :5].mean()),
+        "mae_step0_grip": float(e0_arr[:, 5].mean()),
+        "mae_step0_per_joint": e0_arr.mean(0).tolist(),
+        "chunk_travel_arm_mean": float(np.mean(travels)),
+        "chunk_travel_arm_std": float(np.std(travels)),
+        "n": len(idxs),
+    }
 
 
 @torch.inference_mode()
@@ -84,39 +125,6 @@ def eval_checkpoint(
     policy = load_policy_from_checkpoint(ckpt, contract, device=device)
     policy.eval()
     chunk = int(contract["model"]["chunk_size"])
-
-    def _bucket(idxs: list[int]) -> dict:
-        e0: list[np.ndarray] = []
-        travels: list[float] = []
-        for i in idxs:
-            s = dataset[i]
-            top = s["observation.images.top"].unsqueeze(0).to(device)
-            wr = s["observation.images.wrist"].unsqueeze(0).to(device)
-            st = s["observation.state"]
-            gt = s["action"].numpy()
-            pad = s["action_is_pad"].numpy()
-            batch = {
-                "observation.images.top": top,
-                "observation.images.wrist": wr,
-                "observation.state": torch.as_tensor(st, dtype=torch.float32).reshape(1, -1).to(device),
-            }
-            pred = policy.predict_action_chunk(batch)
-            if pred.ndim == 3:
-                pred = pred[0]
-            pred = pred.float().cpu().numpy()
-            mask = ~pad
-            e0.append(np.abs(pred[0] - gt[0]))
-            travels.append(float(np.linalg.norm(pred[mask][-1, :5] - pred[mask][0, :5])))
-        e0_arr = np.asarray(e0, dtype=np.float64)
-        return {
-            "mae_step0_arm": float(e0_arr[:, :5].mean()),
-            "mae_step0_grip": float(e0_arr[:, 5].mean()),
-            "mae_step0_per_joint": e0_arr.mean(0).tolist(),
-            "chunk_travel_arm_mean": float(np.mean(travels)),
-            "chunk_travel_arm_std": float(np.std(travels)),
-            "n": len(idxs),
-        }
-
     out = {
         "path": str(ckpt),
         "name": ckpt.name,
@@ -124,8 +132,8 @@ def eval_checkpoint(
         "step": payload.get("step"),
         "val_l1": payload.get("val_l1"),
         "chunk_size": chunk,
-        "frame0": _bucket(indices["frame0"]),
-        "mid": _bucket(indices["mid"]),
+        "frame0": _eval_index_bucket(policy, dataset, indices["frame0"], device),
+        "mid": _eval_index_bucket(policy, dataset, indices["mid"], device),
     }
     del policy
     if device == "mps" and hasattr(torch, "mps"):
@@ -141,7 +149,9 @@ def rank_rows(rows: list[dict]) -> list[dict]:
     """
     if not rows:
         return rows
-    travel = np.array([r["frame0"]["chunk_travel_arm_mean"] for r in rows], dtype=np.float64)
+    travel = np.array(
+        [r["frame0"]["chunk_travel_arm_mean"] for r in rows], dtype=np.float64
+    )
     mae0 = np.array([r["frame0"]["mae_step0_arm"] for r in rows], dtype=np.float64)
     maem = np.array([r["mid"]["mae_step0_arm"] for r in rows], dtype=np.float64)
 
@@ -195,10 +205,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--repo-id", default="local/clean28")
     p.add_argument("--device", default=None)
-    p.add_argument("--n-episodes", type=int, default=6, help="episodes sampled for frame0/mid")
+    p.add_argument(
+        "--n-episodes", type=int, default=6, help="episodes sampled for frame0/mid"
+    )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", type=Path, default=None, help="JSON output path")
-    p.add_argument("--md-out", type=Path, default=None, help="Markdown table output path")
+    p.add_argument(
+        "--md-out", type=Path, default=None, help="Markdown table output path"
+    )
     return p.parse_args(argv)
 
 
@@ -250,7 +264,7 @@ def main(argv: list[str] | None = None) -> int:
     for r in ranked:
         by_run.setdefault(r["run"], []).append(r)
     recs = []
-    for run, rs in by_run.items():
+    for rs in by_run.values():
         recs.append(rs[0])
     # also flag highest travel overall
     best_travel = max(ranked, key=lambda r: r["frame0"]["chunk_travel_arm_mean"])
@@ -272,7 +286,12 @@ def main(argv: list[str] | None = None) -> int:
         "ranked": ranked,
         "recommendations": {
             "per_run_top": [
-                {"run": r["run"], "name": r["name"], "path": r["path"], "score": r["score"]}
+                {
+                    "run": r["run"],
+                    "name": r["name"],
+                    "path": r["path"],
+                    "score": r["score"],
+                }
                 for r in recs
             ],
             "highest_frame0_travel": {

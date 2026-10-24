@@ -17,6 +17,7 @@ import argparse
 import os
 import time
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
@@ -93,7 +94,8 @@ class TemporalEnsembler:
         ages = np.arange(n - 1, -1, -1, dtype=np.float64)
         weights = np.exp(-self.k * ages)
         weights = weights / weights.sum()
-        return (actions * weights[:, None]).sum(axis=0).astype(np.float32)
+        blended = (actions * weights[:, None]).sum(axis=0)
+        return cast(np.ndarray, np.asarray(blended, dtype=np.float32))
 
 
 def offline_check(policy, chunk, device, dataset: Path, n_frames: int):

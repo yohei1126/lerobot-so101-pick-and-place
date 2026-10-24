@@ -14,7 +14,6 @@ must launch when MPS is free — do not auto-start long jobs from agents.
 
 from __future__ import annotations
 
-import argparse
 import random
 import sys
 from pathlib import Path
@@ -122,7 +121,9 @@ def install_light_trim_patch(
     cache: dict[int, tuple[dict[int, int], list[tuple[int, int]]]] = {}
 
     def split_train_val_light(dataset: Any, val_ratio: float, seed_split: int):
-        train_data, val_data, n_train_eps, n_val_eps = original(dataset, val_ratio, seed_split)
+        train_data, val_data, n_train_eps, n_val_eps = original(
+            dataset, val_ratio, seed_split
+        )
         ds_id = id(dataset)
         if ds_id not in cache:
             cache[ds_id] = compute_keep_from(dataset, keep_before=keep_before)
@@ -131,7 +132,7 @@ def install_light_trim_patch(
         # Episodes to leave untrimmed (train only), chosen by seed.
         rng = random.Random(seed_split if seed is None else seed)
         all_eps = list(range(len(ranges)))
-        n_untrim = int(round(len(all_eps) * untrim_mix))
+        n_untrim = round(len(all_eps) * untrim_mix)
         untrim_eps = set(rng.sample(all_eps, n_untrim)) if n_untrim > 0 else set()
         if untrim_eps:
             print(
@@ -148,11 +149,11 @@ def install_light_trim_patch(
             after: list[int] = []
             for idx in before:
                 ep_id = _index_to_episode(ranges, idx)
-                if allow_untrim and ep_id in untrim_eps:
+                if (allow_untrim and ep_id in untrim_eps) or idx >= keep_from[ep_id]:
                     after.append(idx)
-                elif idx >= keep_from[ep_id]:
-                    after.append(idx)
-            print(f"  {name}: frames {len(before)} -> {len(after)} (removed {len(before)-len(after)})")
+            print(
+                f"  {name}: frames {len(before)} -> {len(after)} (removed {len(before) - len(after)})"
+            )
             if len(after) < 1:
                 raise RuntimeError(f"{name} split empty after light trim")
             base = split.dataset if isinstance(split, Subset) else split
@@ -242,7 +243,9 @@ def main(argv: list[str] | None = None) -> None:
 
     install_light_trim_patch(keep_before=keep_before, untrim_mix=untrim_mix, seed=seed)
     if dry:
-        print("[light-trim] patch installed; not calling train_act (--print-command-only)")
+        print(
+            "[light-trim] patch installed; not calling train_act (--print-command-only)"
+        )
         return
 
     from port_pick_align.training import train_act
