@@ -243,7 +243,6 @@ results/
 # Keep bilingual docs under docs/results/ tracked (JSON eval logs stay ignored via results/)
 !docs/results/
 !docs/results/**/*.md
-report/*.pdf
 docs/figures/_rollout_tmp/
 docs/figures/_enriched_scatter_metrics.json
 docs/figures/fixtures/

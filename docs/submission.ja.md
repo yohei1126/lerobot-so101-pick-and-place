@@ -14,11 +14,8 @@
 ### 1. 成果説明レポート（PDF）
 
 - ファイル命名規則: `説明資料_PAI最終課題_yohei1126.pdf`
-- レポート原稿: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.ja.md)
-- 生成コマンド:
-  ```bash
-  ./scripts/build_report_pdf.sh yohei1126
-  ```
+- レポート原稿（移設先）: [utokyo-ai-courses の PhysicalAI-Applied1-202609](https://github.com/yohei1126/utokyo-ai-courses/tree/main/PhysicalAI-Applied1-202609) — 日本語原稿 [`説明資料_PAI最終課題_yohei1126.ja.md`](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/説明資料_PAI最終課題_yohei1126.ja.md)
+- PDF 生成: 上記コース側ディレクトリの手順に従う（本リポジトリの `scripts/build_report_pdf.sh` と `report/` は削除済み）
 
 ### 2. ソースコードリポジトリ（GitHub URL）
 
@@ -38,7 +35,7 @@
 ## 個人情報の保護方針
 
 提出物（PDF レポート、ソースコード、コミット履歴、動画コンテンツ）には、氏名、所属機関、メールアドレス、電話番号等の個人識別情報を一切記載・映り込ませないこと。  
-許容される識別子は OmniCampus アカウント名（`yohei1126`）のみである。詳細は [`report/README.md`](../report/README.ja.md) を参照する。
+許容される識別子は OmniCampus アカウント名（`yohei1126`）のみである。詳細は [PhysicalAI-Applied1-202609](https://github.com/yohei1126/utokyo-ai-courses/tree/main/PhysicalAI-Applied1-202609) 配下のレポート README を参照する。
 
 ## 評価基準とレポート章立ての対応関係
 

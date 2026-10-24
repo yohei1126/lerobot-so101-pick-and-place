@@ -48,7 +48,7 @@ python scripts/run_sim_eval.py --policy scripted --save-video --no-rerun
 - 第6章: 機材未着または故障の状況、代替手法の選定理由、および得られた知見を技術的に整理する。
 - 第8章: 成果発表動画では、シミュレーション画面と RobOps（Rerun による軌道表示や CI ログ）を組み合わせる。
 
-レポート原稿の雛形: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.ja.md)
+レポート原稿: [utokyo-ai-courses の PhysicalAI-Applied1-202609](https://github.com/yohei1126/utokyo-ai-courses/tree/main/PhysicalAI-Applied1-202609)（[`説明資料_PAI最終課題_yohei1126.ja.md`](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/説明資料_PAI最終課題_yohei1126.ja.md)）
 
 ## 関連文書
 

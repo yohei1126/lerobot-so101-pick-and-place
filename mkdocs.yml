@@ -92,7 +92,7 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
-# Repo-root paths (../configs, ../port_pick_align, ../report, ../scripts) are
+# Repo-root paths (../configs, ../port_pick_align, ../scripts) are
 # intentional for GitHub browsing; ignore so --strict stays green.
 validation:
   links:

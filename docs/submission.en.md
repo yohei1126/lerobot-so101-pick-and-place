@@ -14,11 +14,8 @@ OmniCampus needs a PDF report, a public GitHub URL, and a 1–3 minute YouTube t
 ### 1. PDF report (filename and build)
 
 - Filename: `説明資料_PAI最終課題_yohei1126.pdf`
-- Report source: [`report/説明資料_PAI最終課題_yohei1126.md`](../report/説明資料_PAI最終課題_yohei1126.en.md)
-- Build command:
-  ```bash
-  ./scripts/build_report_pdf.sh yohei1126
-  ```
+- Report source (moved): [PhysicalAI-Applied1-202609 in utokyo-ai-courses](https://github.com/yohei1126/utokyo-ai-courses/tree/main/PhysicalAI-Applied1-202609) — English manuscript [`説明資料_PAI最終課題_yohei1126.en.md`](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/説明資料_PAI最終課題_yohei1126.en.md)
+- PDF build: follow the instructions in that course directory (this repository no longer ships `scripts/build_report_pdf.sh` or `report/`)
 
 ### 2. Source repository (GitHub URL)
 
@@ -38,7 +35,7 @@ OmniCampus needs a PDF report, a public GitHub URL, and a 1–3 minute YouTube t
 ## Personal information policy
 
 Do not include or film personally identifiable information (name, affiliation, email, phone, etc.) in any submission artifact (PDF report, source, commit history, video).  
-The only allowed identifier is the OmniCampus account name (`yohei1126`). See [`report/README.md`](../report/README.en.md) for details.
+The only allowed identifier is the OmniCampus account name (`yohei1126`). See the report README under [PhysicalAI-Applied1-202609](https://github.com/yohei1126/utokyo-ai-courses/tree/main/PhysicalAI-Applied1-202609) for details.
 
 ## Rubric ↔ report chapter mapping
 
