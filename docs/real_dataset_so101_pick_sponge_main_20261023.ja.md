@@ -1,10 +1,10 @@
 # 実機テレオペデータセット: `so101_pick_sponge_main`（clean28）
 
-事実記録。計算日時は 2026-10-23 およそ 01:15 SGT（Yohei の Mac、LeRobot 0.6.1 venv）。読み取りのみ。データセットは変更していない。
+事実記録。計算日時は 2026-10-23 およそ 01:15 SGT（作業用 Mac、LeRobot 0.6.1 venv）。読み取りのみ。データセットは変更していない。
 
 **データセット本体は git 外（Mac 上）にある。** 本ドキュメントとコンタクトシート画像のみをリポジトリに置く。
 
-関連手順: [real_robot_bringup.md](real_robot_bringup.md)。学習手順: [training.md](training.md)。
+関連手順: [real_robot_bringup.md](real_robot_bringup.ja.md)。学習手順: [training.md](training.ja.md)。
 
 ## データセット
 

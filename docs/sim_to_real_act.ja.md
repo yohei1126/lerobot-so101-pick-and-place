@@ -1,6 +1,6 @@
 # Phase 2-2: sim 学習 ACT を実機 SO-101 Follower で試す
 
-sim チェックポイントを実機へ**そのまま**載せない。本リポジトリのラッパーが単位・グリッパ・カメラを変換する。Bring-up 共通手順は [real_robot_bringup.md](real_robot_bringup.md)、単位の背景は [units.md](units.md)。
+sim チェックポイントを実機へ**そのまま**載せない。本リポジトリのラッパーが単位・グリッパ・カメラを変換する。Bring-up 共通手順は [real_robot_bringup.md](real_robot_bringup.ja.md)、単位の背景は [units.md](units.ja.md)。
 
 ## 変換ルール（実装）
 
@@ -29,7 +29,7 @@ sim チェックポイントを実機へ**そのまま**載せない。本リポ
 
 ```bash
 source "$HOME/work/lerobot-hw/.venv/bin/activate"
-cd "$HOME/work/utokyo-ai-courses/utokyo-physical-ai-applied1-final-assignment"
+cd "/path/to/lerobot-so101-pick-and-place"
 pip install -e "port_pick_align/[training,feetech]"
 ```
 
@@ -41,7 +41,7 @@ pip install -e "port_pick_align/[training,feetech]"
 
 ```bash
 source "$HOME/work/lerobot-hw/.venv/bin/activate"
-cd "$HOME/work/utokyo-ai-courses/utokyo-physical-ai-applied1-final-assignment"
+cd "/path/to/lerobot-so101-pick-and-place"
 
 export PORT_FOLLOWER=  # lerobot-find-port の結果
 CKPT="$HOME/work/lerobot-hw/outputs/sim_act/best_model.pt"  # 実際の sim ckpt に合わせる

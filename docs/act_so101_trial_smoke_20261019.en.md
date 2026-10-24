@@ -22,7 +22,7 @@ Record logs under `~/work/lerobot-hw/outputs/record_trial_*.log`:
 
 ## How this repo trains ACT
 
-Documented path: [`docs/training.md`](training.md) →
+Documented path: [`docs/training.md`](training.en.md) →
 `python -m port_pick_align.training.train_act` (course `.venv`, LeRobot 0.6.1).
 
 - Default / `--preset sim` targets sim datasets under `data/sim_expert/…` and closed-loop MuJoCo selection.
@@ -39,7 +39,7 @@ repo trainer for consistency with prior sim ACT work.
 Dataset used: **trial3 only** (both episodes movable).
 
 ```bash
-cd /Users/yoheionishi/work/utokyo-ai-courses/utokyo-physical-ai-applied1-final-assignment
+cd ~/work/lerobot-so101-pick-and-place
 source .venv/bin/activate
 
 OUT="$HOME/work/lerobot-hw/outputs/act_so101_trial_smoke_20261019"

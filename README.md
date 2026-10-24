@@ -1,104 +1,73 @@
-# utokyo-physical-ai-applied1-final-assignment
+# lerobot-so101-pick-and-place
 
-本リポジトリは、東京大学「Physical AI 応用編1」最終課題の実装基盤である。  
-造船・海事現場における部品やコンテナの配置作業を模した「卓上直方体の把持・精密整列」タスクを対象とし、データ収集から品質検証、ACT モデルの訓練、ROS 2 上での推論および MuJoCo シミュレーション評価に至る RobOps パイプラインを提供する。
+Open-source toolkit for **SO-101** arm **pick-and-place** with [LeRobot](https://github.com/huggingface/lerobot): simulation training, real-robot demo recording, **ACT** and **SmolVLA** training, and safe real-arm runners.
 
-## ドキュメント一覧
+[日本語版 README](README.ja.md) · [Docs site (EN)](https://yohei1126.github.io/lerobot-so101-pick-and-place/) · [ドキュメント (JA)](https://yohei1126.github.io/lerobot-so101-pick-and-place/ja/)
 
-環境構築、実行手順、評価方法の詳細は [`docs/`](docs/README.md) 配下の各文書を参照する。
+## What this robot does
 
-| 対象領域 | 参照文書 | 概要 |
-| --- | --- | --- |
-| 環境・契約 | [docs/setup.md](docs/setup.md) | Docker、ホスト Python 環境の構築と契約ファイルの仕様 |
-| データセット | [docs/dataset.md](docs/dataset.md) | rosbag2 の生成、品質検証、LeRobot 形式への変換 |
-| ACT 学習 | [docs/training.md](docs/training.md) | ACT モデルの訓練手順とチェックポイントの生成 |
-| ROS 2 / Rerun | [docs/ros2_inference.md](docs/ros2_inference.md) | ROS 2 推論ノードの実行と Rerun による軌道可視化 |
-| シミュレーション | [docs/simulation.md](docs/simulation.md) | MuJoCo 環境を用いた閉ループ制御と評価 |
-| 評価指標 | [docs/evaluation.md](docs/evaluation.md) | 位置・姿勢誤差の集計 API 仕様 |
-| 結合テスト・機材 | [docs/e2e.md](docs/e2e.md) · [docs/hardware.md](docs/hardware.md) · [docs/real_robot_bringup.md](docs/real_robot_bringup.md) · [docs/real_dataset_so101_pick_sponge_main_20261023.md](docs/real_dataset_so101_pick_sponge_main_20261023.md) · [docs/sim_to_real_act.md](docs/sim_to_real_act.md) · [docs/real_robot_deploy.md](docs/real_robot_deploy.md) | エンドツーエンド結合試験、機材一覧、実機 bring-up・収録、clean28 要約、sim→実機 ACT、実機学習ポリシーの live |
-| 継続的インテグレーション | [docs/ci.md](docs/ci.md) | GitHub Actions およびローカルテストの実行 |
-| 提出仕様 | [docs/submission.md](docs/submission.md) · [report/](report/) | 成果物要件と提出用レポート原稿 |
-| 縮退運用（Plan B） | [docs/plan_b.md](docs/plan_b.md) | 実機障害時におけるシミュレーション代替運用 |
+The follower arm picks a small tabletop object and places it onto a target pose (planar position + yaw). The stack covers:
 
-パイプライン全体の疎通確認は、以下のスクリプトにより一括実行できる。
+1. **Sim** — MuJoCo tabletop env, scripted expert collection, closed-loop ACT eval  
+2. **Data** — rosbag2 / synthetic / LeRobotDataset conversion and quality checks  
+3. **Train** — ACT (and SmolVLA scripts where available) on sim or real demos  
+4. **Real** — SO-101 Leader/Follower bring-up, teleop recording, cameras, unit-aware sim→real and real-trained policy deploy runners  
+
+Hardware target: **SO-101** (Feetech STS3215) with top + wrist cameras (see docs).
+
+## Quickstart
 
 ```bash
-./scripts/e2e_pipeline_smoke.sh
-```
+git clone https://github.com/yohei1126/lerobot-so101-pick-and-place.git
+cd lerobot-so101-pick-and-place
 
-## 教示収集→学習→評価の一括実行
-
-Issue #41 以降の再学習のように、収集・ACT 学習・複数チェックポイントの閉ループ評価を無人で回すときは `scripts/run_pipeline.sh` を使う。進捗は `results/<run>/status.json`、比較表は `results/<run>/summary.md` に書き出される。エージェントは `nohup` で起動した直後に終了してよい。
-
-```bash
+python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -e "port_pick_align/[simulation,training]"
+pip install -e "port_pick_align/[simulation,training,dev]"
 
-# Mac (MPS) 本学習。終了時に PR へ summary.md をコメントする例:
-mkdir -p results/post41
-nohup ./scripts/run_pipeline.sh \
-  --run post41 \
-  --device mps \
-  --dataset-dir data/sim_expert/lerobot_post41 \
-  --checkpoint-dir checkpoints/sim_act_post41 \
-  --steps 5000 \
-  --min-steps 3000 \
-  --early-stop-patience 10 \
-  --collect-episodes 100 \
-  --eval-episodes 20 \
-  --pr 42 \
-  > results/post41/pipeline.log 2>&1 &
-echo "pid=$!  status=results/post41/status.json"
+# End-to-end smoke (bag → convert → train stub → ROS mock path as applicable)
+./scripts/e2e_pipeline_smoke.sh
 
-# 収集または学習を飛ばして評価だけ再実行:
-./scripts/run_pipeline.sh --run post41 --skip-collect --skip-train --device mps
-
-# CPU スモーク（少数エピソード・約 50 step）:
+# Unattended collect → ACT train → multi-checkpoint sim eval
 ./scripts/run_pipeline.sh --smoke --device cpu
 ```
 
-早期終了は chunk30 / TE の `(整列率, -平均位置誤差)` を辞書式に見て、どちらかが改善すれば patience をリセットする（整列 0% でも誤差が下がれば進捗）。`--min-steps`（既定 3000）より前は早期終了しない。`best_model.pt` / `best_model_te.pt` も同じ基準で選ぶ。`--early-stop-patience` / `--min-steps` を省略すると `train_act --preset sim` の既定に従う。
+Real-robot bring-up, recording, udev, sim→real ACT, and real-trained ACT/SmolVLA deploy steps live under `docs/` (linked below). Prefer dry-run before live motor commands.
 
-評価対象は存在する `best_model.pt` / `best_model_te.pt` / `last.pt` / `step_*.pt` で、それぞれ chunk30 と Temporal Ensembling の両方を既存の `scripts/run_sim_eval.py` で回す。`--pr N` は `gh` が無い環境ではスキップする。
+## Documentation
 
-## 成果物の提出
+| Topic | English | 日本語 |
+| --- | --- | --- |
+| Docs index | [docs/index.en.md](docs/index.en.md) | [docs/index.ja.md](docs/index.ja.md) |
+| Setup | [docs/setup.en.md](docs/setup.en.md) | [docs/setup.ja.md](docs/setup.ja.md) |
+| Dataset | [docs/dataset.en.md](docs/dataset.en.md) | [docs/dataset.ja.md](docs/dataset.ja.md) |
+| Training | [docs/training.en.md](docs/training.en.md) | [docs/training.ja.md](docs/training.ja.md) |
+| Simulation | [docs/simulation.en.md](docs/simulation.en.md) | [docs/simulation.ja.md](docs/simulation.ja.md) |
+| Hardware / bring-up / deploy | [hardware.en.md](docs/hardware.en.md) · [bring-up](docs/real_robot_bringup.en.md) · [deploy](docs/real_robot_deploy.en.md) | [hardware.ja.md](docs/hardware.ja.md) · [bring-up](docs/real_robot_bringup.ja.md) · [deploy](docs/real_robot_deploy.ja.md) |
+| Published site | https://yohei1126.github.io/lerobot-so101-pick-and-place/ | https://yohei1126.github.io/lerobot-so101-pick-and-place/ja/ |
 
-- 提出前チェックリスト: [docs/submission.md](docs/submission.md)
-- レポート原稿: [report/](report/)
-- レポート PDF の生成コマンド: `./scripts/build_report_pdf.sh yohei1126`
-- 機材未着・故障時の縮退方針: [docs/plan_b.md](docs/plan_b.md)
+Full list: see the docs index in each language.
 
-## ディレクトリ構成
+## Repo layout
 
 ```text
 .
-├── configs/contract.yaml   # トピック名・テンソル形状・モデル入出力の契約（SSOT）
-├── docs/                   # 各種手順書・仕様解説
-├── report/                 # 提出用レポート Markdown 原稿
-├── scripts/                # bag 生成・データ変換・E2E 試験・シミュ評価スクリプト
-├── deploy/udev/            # Linux 用 udev 設定ルール例
-├── port_pick_align/        # Python パッケージ（LeRobot / RobOps / ACT / MuJoCo）
-├── ros2_ws/                # ROS 2 ワークスペース（推論ノード・可視化ノード）
-├── docker/                 # ROS 2 Humble 実行環境用 Dockerfile / Compose 設定
-└── .github/workflows/      # CI ワークフロー（静的解析・単体テスト・結合テスト）
+├── configs/contract.yaml   # topics, tensor shapes, model I/O (SSOT)
+├── docs/                   # bilingual procedures (*.en.md / *.ja.md)
+├── report/                 # optional report drafts (bilingual)
+├── scripts/                # bag, convert, E2E, sim eval, pipeline, real runners
+├── deploy/udev/            # Linux udev examples
+├── port_pick_align/        # Python package (dataset, ACT, MuJoCo, deploy)
+├── ros2_ws/                # ROS 2 Humble mock inference / Rerun
+├── mkdocs.yml              # GitHub Pages (Material + i18n)
+└── tests / port_pick_align/tests
 ```
 
-## 実行環境の分離
+## Models
 
-開発再現性と環境汚染防止のため、実行層ごとに役割を分離している。
+- **ACT** — primary imitation policy for sim closed-loop eval and real trials (`port_pick_align` training entrypoints).  
+- **SmolVLA** — fine-tune / real-runner scripts (`scripts/train_smolvla.sh`, `scripts/run_smolvla_real.sh`, deploy docs).
 
-| 実行環境 | 担当範囲 |
-| --- | --- |
-| Docker (`docker/`) | ROS 2 Humble ランタイム、rosbag2 記録再生、推論モック、Rerun 可視化 |
-| ホスト Python 仮想環境 | 合成データ生成、PyTorch / ACT 学習、データセット変換器・バリデータ、MuJoCo シミュレータ |
-| クラウド GPU（任意） | 大規模エピソードを用いた ACT モデルの本格学習 |
+## License
 
-## 契約の一元管理（contract.yaml）
-
-本システムでは、Top/Wrist の 2 眼カメラ（640×480、30 fps）、6 自由度アーム、ACT モデル（ResNet18、chunk_size=30）のトピック名とデータ次元を [`configs/contract.yaml`](configs/contract.yaml) で一元管理している。  
-データ変換器、品質バリデータ、および推論ノードはすべて本設定ファイルを参照して動作するため、仕様変更時の不整合を防止できる。
-
-## ライセンス
-
-本リポジトリのコードは [MIT License](LICENSE) の下で公開されている。
-
+See [LICENSE](LICENSE).

@@ -1,0 +1,132 @@
+site_name: lerobot-so101-pick-and-place
+site_description: SO-101 arm pick-and-place with LeRobot — sim training, real demo recording, ACT and SmolVLA, safe real-arm runners
+site_url: https://yohei1126.github.io/lerobot-so101-pick-and-place/
+repo_url: https://github.com/yohei1126/lerobot-so101-pick-and-place
+repo_name: yohei1126/lerobot-so101-pick-and-place
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+exclude_docs: |
+  **/*.json
+  **/_rollout_tmp/**
+  figures/fixtures/**
+hooks:
+  - hooks/i18n_links.py
+site_dir: site
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - content.code.copy
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+          site_name: lerobot-so101-pick-and-place
+        - locale: ja
+          name: 日本語
+          build: true
+          site_name: lerobot-so101-pick-and-place
+          nav_translations:
+            Home: ホーム
+            Setup: セットアップ
+            Dataset: データセット
+            Training: 学習
+            Simulation: シミュレーション
+            Evaluation: 評価
+            Units: 単位
+            ROS 2 Inference: ROS 2 推論
+            E2E Pipeline: E2E パイプライン
+            Hardware: ハードウェア
+            Real Robot Bring-up: 実機 Bring-up
+            Real Robot Deploy: 実機デプロイ
+            Sim to Real ACT: sim→実機 ACT
+            CI: CI
+            Submission: 提出
+            Plan B: Plan B
+            Results: 結果
+            Figures: 図表
+            Trial Smoke Log: トライアル・スモーク記録
+            Real Dataset clean28: 実機データセット clean28
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+
+# Repo-root paths (../configs, ../port_pick_align, ../report, ../scripts) are
+# intentional for GitHub browsing; ignore so --strict stays green.
+validation:
+  links:
+    absolute_links: ignore
+    not_found: ignore
+    anchors: ignore
+    unrecognized_links: ignore
+
+not_in_nav: |
+  act_so101_trial_smoke_20261019.md
+
+nav:
+  - Home: index.md
+  - Setup: setup.md
+  - Dataset: dataset.md
+  - Training: training.md
+  - Simulation: simulation.md
+  - Evaluation: evaluation.md
+  - Units: units.md
+  - ROS 2 Inference: ros2_inference.md
+  - E2E Pipeline: e2e.md
+  - Hardware: hardware.md
+  - Real Robot Bring-up: real_robot_bringup.md
+  - Real Robot Deploy: real_robot_deploy.md
+  - Sim to Real ACT: sim_to_real_act.md
+  - CI: ci.md
+  - Submission: submission.md
+  - Plan B: plan_b.md
+  - Results: results/README.md
+  - Figures: figures/README.md
+  - Trial Smoke Log: act_so101_trial_smoke_20261019.md
+  - Real Dataset clean28: real_dataset_so101_pick_sponge_main_20261023.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yohei1126/lerobot-so101-pick-and-place

@@ -9,7 +9,7 @@
   "temporal_ensemble_coeff": null,
   "n_action_steps": 30,
   "device": "mps",
-  "checkpoint": "/Users/yoheionishi/work/utokyo-ai-courses/utokyo-physical-ai-applied1-final-assignment/checkpoints/sim_act_post50/best_model.pt",
+  "checkpoint": "$HOME/work/lerobot-so101-pick-and-place/checkpoints/sim_act_post50/best_model.pt",
   "thresholds": {
     "align_success_rate_min": 0.85,
     "grasp_success_rate_min": 0.9,
