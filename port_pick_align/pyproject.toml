@@ -16,8 +16,8 @@ dependencies = [
 [project.optional-dependencies]
 training = [
   "lerobot[dataset]==0.6.1",
-  "torch==2.14.1",
-  "torchvision==0.29.1",
+  "torch==2.11.0",
+  "torchvision==0.26.0",
   "Pillow>=10.0",
   # Prefer headless OpenCV so its bundled libavdevice does not collide with PyAV
   # (lerobot[dataset] → av) and silently abort long MPS training jobs on macOS.
