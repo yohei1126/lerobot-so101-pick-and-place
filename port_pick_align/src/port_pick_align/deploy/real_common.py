@@ -117,9 +117,21 @@ def add_common_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--print-every", type=int, default=1)
     ap.add_argument(
         "--save-video",
-        action="store_true",
-        help="save top|wrist mp4 under LEROBOT_ROLLOUT_DIR / outputs/rollouts/",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Save top|wrist mp4 under LEROBOT_ROLLOUT_DIR / outputs/rollouts/. "
+            "Default: ON for --live, OFF for dry-run. Use --no-save-video to disable."
+        ),
     )
+
+
+def resolve_save_video(args: argparse.Namespace) -> bool:
+    """Default --save-video to True when --live, unless explicitly set."""
+    explicit = getattr(args, "save_video", None)
+    if explicit is not None:
+        return bool(explicit)
+    return is_live(args)
 
 
 def is_live(args: argparse.Namespace) -> bool:
@@ -263,7 +275,10 @@ def run_loop(args, name: str, step_fn, reset_fn=None) -> int:
     print(f"[mode] {mode}", flush=True)
     install_sigterm()
     clamp = Clamp(args.max_delta_deg, args.max_delta_gripper)
-    vid = VideoSaver(name, args.fps, args.save_video)
+    save_video = resolve_save_video(args)
+    args.save_video = save_video  # reflect resolved default in logs
+    print(f"[video] save_video={save_video}", flush=True)
+    vid = VideoSaver(name, args.fps, save_video)
     robot = None
     step = 0
     lat: list[float] = []
