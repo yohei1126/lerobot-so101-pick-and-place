@@ -20,6 +20,7 @@
 - カメラ: `observation.images.top`、`observation.images.wrist`。いずれも 640×480、AV1、yuv420p、30 fps、g=2、crf=30、preset 12、音声なし
 - レイアウト: parquet 3 ファイル、カメラあたり mp4 3 ファイル（`chunk-000/file-000..002`）
 - ディレクトリ名は `20261020` だが、収録は 2026-10-22 23:30 〜 2026-10-23 00:38 SGT（ログ参照）
+- これらのエピソードの物理配置は廃止した 2026-10-22 のテーブルであり、2026-10-26 の正ではない。[廃止した配置](real_robot_bringup.ja.md#廃止した配置) を参照
 
 ## clean ↔ raw の対応（action / state 配列が一致することを確認済み）
 

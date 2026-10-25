@@ -1,66 +1,42 @@
 #!/usr/bin/env python3
-"""Draw the SO-101 tabletop layout guide into ``docs/images/``.
+"""Draw the current SO-101 table layout into ``docs/images/``.
 
-Planar geometry matches the simplified MuJoCo scene, not a real SO-101 CAD
-model. Sources:
-
-- ``port_pick_align/src/port_pick_align/simulation/assets/so101_tabletop.xml``
-- ``port_pick_align/src/port_pick_align/simulation/env.py``
-- ``port_pick_align/src/port_pick_align/evaluation/eval_alignment.py``
-
-Coordinates are centimetres. The origin is the arm-base centre, +x is forward,
-and +y is left. Run from anywhere:
+The figure is the 2026-10-26 source of truth (Issue #90), mapped from table-edge
+measurements. It replaces the pre-2026-10-26 simplified MuJoCo guide. The old
+figure is kept as ``so101_layout_guide_superseded_pre_20261026``.
 
     python scripts/draw_layout_guide.py
 """
 
 from __future__ import annotations
 
-import math
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+PACKAGE_SRC = REPO_ROOT / "port_pick_align" / "src"
+if str(PACKAGE_SRC) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_SRC))
+
+from port_pick_align.simulation.table_layout import (
+    FOLLOWER_FROM_LEFT_CM,
+    FOLLOWER_FROM_RIGHT_CM,
+    LEADER_FROM_LEFT_CM,
+    LEADER_FROM_RIGHT_CM,
+    OPENCV_TOP_INDEX,
+    OPENCV_WRIST_INDEX,
+    PAPER_DEPTH_CM,
+    PAPER_WIDTH_CM,
+    SPONGE_DEPTH_CM,
+    SPONGE_WIDTH_CM,
+    TABLE_DEPTH_CM,
+    TABLE_WIDTH_CM,
+    TOP_CAMERA_FROM_FRONT_CM,
+    base_span_u,
+    layout_points,
+)
+
 OUT_DIR = REPO_ROOT / "docs" / "images"
-
-# so101_tabletop.xml / env.py (metres in the model, centimetres here).
-TABLE_Z_M = 0.42
-TOP_CAM_Z_M = 1.05
-TOP_CAM_XY_CM = (25.0, 0.0)
-TOP_CAM_VFOV_DEG = 55.0
-IMAGE_ASPECT = 640 / 480  # configs/contract.yaml
-BOX_CENTER_CM = (28.0, -8.0)
-BOX_SIZE_CM = (5.0, 4.0)
-BOX_XY_JITTER_CM = 4.0
-GOAL_CENTER_CM = (35.0, 12.0)
-GOAL_SIZE_CM = (8.0, 6.0)
-SUCCESS_RADIUS_CM = 2.5  # DEFAULT_ALIGN_POS_MM = 25
-REACH_CM = 42.0
-PAN_DEG = 110.0
-
-
-def _top_camera_half_extents_cm() -> tuple[float, float]:
-    """Return (half-width x, half-height y) of the top-camera footprint on the table.
-
-    MuJoCo ``fovy`` is the vertical FOV. With ``xyaxes="1 0 0 0 1 0"`` the camera
-    y axis is world +y, so the vertical FOV spans y and the horizontal FOV spans x.
-    """
-    height_cm = (TOP_CAM_Z_M - TABLE_Z_M) * 100.0
-    half_y = height_cm * math.tan(math.radians(TOP_CAM_VFOV_DEG / 2.0))
-    half_x = half_y * IMAGE_ASPECT
-    return half_x, half_y
-
-
-def _cjk_font_family() -> str:
-    from matplotlib import font_manager as fm
-
-    names = {font.name for font in fm.fontManager.ttflist}
-    for candidate in ("Noto Sans CJK JP", "WenQuanYi Micro Hei", "Droid Sans Fallback"):
-        if candidate in names:
-            return candidate
-    cjk = sorted(name for name in names if "CJK" in name)
-    if cjk:
-        return cjk[0]
-    return "DejaVu Sans"
 
 
 def draw() -> tuple[Path, Path]:
@@ -68,208 +44,205 @@ def draw() -> tuple[Path, Path]:
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.patches import Circle, Polygon, Rectangle, Wedge
+    from matplotlib.patches import FancyArrowPatch, Rectangle
 
-    plt.rcParams["font.family"] = _cjk_font_family()
-    half_x, half_y = _top_camera_half_extents_cm()
-    cam_x, cam_y = TOP_CAM_XY_CM
-    box_x, box_y = BOX_CENTER_CM
-    goal_x, goal_y = GOAL_CENTER_CM
+    points = layout_points()
+    paper = points["paper"]
+    sponge = points["sponge"]
+    camera = points["top_camera"]
+    leader_left, leader_right, _ = base_span_u(
+        LEADER_FROM_LEFT_CM, LEADER_FROM_RIGHT_CM
+    )
+    follower_left, follower_right, _ = base_span_u(
+        FOLLOWER_FROM_LEFT_CM, FOLLOWER_FROM_RIGHT_CM
+    )
 
-    fig = plt.figure(figsize=(17, 11))
-    ax = fig.add_axes((0.03, 0.08, 0.55, 0.84))
-    sx = fig.add_axes((0.62, 0.45, 0.36, 0.47))
-    lx = fig.add_axes((0.62, 0.03, 0.36, 0.38))
-    lx.axis("off")
+    fig = plt.figure(figsize=(16, 10))
+    ax = fig.add_axes((0.05, 0.08, 0.60, 0.78))
+    note = fig.add_axes((0.66, 0.06, 0.32, 0.86))
+    note.axis("off")
 
     ax.add_patch(
         Rectangle(
-            (-10, -30),
-            70,
-            60,
-            fc="#d9c7a8",
+            (0, 0),
+            TABLE_WIDTH_CM,
+            TABLE_DEPTH_CM,
+            fc="#f4efe4",
             ec="#7a5c3a",
             lw=2,
-            label="テーブル 70×60cm",
+            zorder=0,
         )
     )
-    ax.add_patch(
-        Wedge(
-            (0, 0),
-            REACH_CM,
-            -PAN_DEG,
-            PAN_DEG,
-            fc="#4a7bd422",
-            ec="#4a7bd4",
-            ls="--",
-            lw=1.5,
-            label="到達範囲の目安 (sim 幾何最大 ~42cm, pan ±110°)",
-        )
-    )
-    ax.add_patch(
-        Circle((0, 0), 4, fc="#3f6fbf", ec="k", label="アーム基部 (原点, Φ8cm)")
-    )
+    # Bases sit on the front edge. The drawn thickness is only so the span is visible.
     ax.add_patch(
         Rectangle(
-            (cam_x - half_x, cam_y - half_y),
-            2 * half_x,
-            2 * half_y,
-            fill=False,
-            ec="purple",
-            ls=":",
-            lw=2,
-            label="上カメラ視野 (テーブル面, 約87×66cm)",
-        )
-    )
-    ax.plot(cam_x, cam_y, marker="X", ms=16, color="purple")
-    ax.annotate(
-        "上カメラ真下\n(25, 0) 高さ105cm",
-        (cam_x, cam_y),
-        (14, 4),
-        color="purple",
-        fontsize=10,
-    )
-    jitter = BOX_XY_JITTER_CM
-    ax.add_patch(
-        Rectangle(
-            (box_x - jitter, box_y - jitter),
-            2 * jitter,
-            2 * jitter,
-            fc="#ff990033",
-            ec="#e07000",
-            lw=2.5,
-            label="箱 初期配置範囲 (中心 ±4cm, yaw ±17°)",
-        )
-    )
-    ax.add_patch(
-        Rectangle(
-            (box_x - BOX_SIZE_CM[0] / 2, box_y - BOX_SIZE_CM[1] / 2),
-            BOX_SIZE_CM[0],
-            BOX_SIZE_CM[1],
-            fc="#e07000",
+            (leader_left, 0),
+            leader_right - leader_left,
+            6,
+            fc="#3f6fbf",
             ec="k",
-            alpha=0.8,
-            label="箱 5×4×4cm (中心28,-8)",
+            zorder=2,
         )
     )
     ax.add_patch(
         Rectangle(
-            (goal_x - GOAL_SIZE_CM[0] / 2, goal_y - GOAL_SIZE_CM[1] / 2),
-            GOAL_SIZE_CM[0],
-            GOAL_SIZE_CM[1],
-            fc="#33cc5555",
-            ec="green",
-            lw=2.5,
-            label="ゴール 8×6cm 枠 (中心35,12, yaw 0°)",
+            (follower_left, 0),
+            follower_right - follower_left,
+            6,
+            fc="#1f4e79",
+            ec="k",
+            zorder=2,
         )
     )
-    ax.plot([33, 37], [12, 12], "g", lw=2)
-    ax.plot([35, 35], [10, 14], "g", lw=2)
     ax.add_patch(
-        Circle(
-            (goal_x, goal_y),
-            SUCCESS_RADIUS_CM,
-            fill=False,
-            ec="green",
-            ls="--",
-            label="成功判定 位置誤差 <2.5cm (yaw <15°)",
+        Rectangle(
+            (paper.u_cm - PAPER_WIDTH_CM / 2, paper.v_cm - PAPER_DEPTH_CM / 2),
+            PAPER_WIDTH_CM,
+            PAPER_DEPTH_CM,
+            fc="#f7f7f7",
+            ec="#444",
+            lw=1.5,
+            zorder=2,
         )
     )
-    for point, text, offset in (
-        ((box_x, box_y), "(28, −8)", (29, -17)),
-        ((goal_x, goal_y), "(35, 12)", (36, 17)),
-    ):
-        ax.annotate(text, point, offset, fontsize=11, arrowprops={"arrowstyle": "->"})
-    ax.annotate("", (box_x, -22), (0, -22), arrowprops={"arrowstyle": "<->"})
-    ax.text(box_x / 2, -24.5, "28cm", ha="center")
-    ax.annotate("", (goal_x, 24), (0, 24), arrowprops={"arrowstyle": "<->"})
-    ax.text(goal_x / 2, 25, "35cm", ha="center")
-    ax.annotate("", (45, goal_y), (45, 0), arrowprops={"arrowstyle": "<->"})
-    ax.text(46, goal_y / 2, "12cm")
-    ax.annotate("", (45, box_y), (45, 0), arrowprops={"arrowstyle": "<->"})
-    ax.text(46, box_y / 2, "8cm")
-    ax.annotate(
-        "", (12, 0), (0, 0), arrowprops={"arrowstyle": "->", "color": "r", "lw": 2}
+    ax.add_patch(
+        Rectangle(
+            (sponge.u_cm - SPONGE_WIDTH_CM / 2, sponge.v_cm - SPONGE_DEPTH_CM / 2),
+            SPONGE_WIDTH_CM,
+            SPONGE_DEPTH_CM,
+            fc="#e0b000",
+            ec="k",
+            lw=1.2,
+            zorder=3,
+        )
     )
-    ax.text(12.5, -1.5, "+x (前方)", color="r")
-    ax.annotate(
-        "", (0, 12), (0, 0), arrowprops={"arrowstyle": "->", "color": "g", "lw": 2}
-    )
-    ax.text(-2, 13, "+y (左)", color="g")
-    ax.set_xlim(-22, 72)
-    ax.set_ylim(-36, 36)
-    ax.set_aspect("equal")
-    ax.grid(alpha=0.3)
-    ax.set_xticks(range(-20, 71, 10))
-    ax.set_xlabel("x [cm] (アーム基部中心が原点)")
-    ax.set_ylabel("y [cm]")
-    ax.set_title("上面図 (縮尺 cm) — 実機セットアップ配置ガイド", fontsize=15)
-    ax.legend(loc="lower right", fontsize=8.5, framealpha=0.9)
-
-    sx.add_patch(Rectangle((-10, -4), 70, 4, fc="#d9c7a8", ec="#7a5c3a"))
-    sx.text(40, -3, "テーブル天板 (z=0)", fontsize=9)
-    sx.add_patch(Rectangle((-4, 0), 8, 3, fc="#3f6fbf"))
-    sx.plot([0, 0, 14, 22], [3, 19, 19, 19], "o-", color="#3f6fbf", lw=4)
-    sx.text(-9, 8, "肩 7cm\n上腕 12cm\n前腕 14cm", fontsize=8)
-    sx.add_patch(
-        Rectangle((box_x - BOX_SIZE_CM[0] / 2, 0), BOX_SIZE_CM[0], 4, fc="#e07000")
-    )
-    sx.text(24, 5, "箱 4cm高", fontsize=9)
-    sx.plot([31, 39], [0.2, 0.2], "g", lw=5)
-    sx.text(32, 1.5, "ゴール", color="green", fontsize=9)
-    sx.plot(cam_x, 63, "s", ms=14, color="purple")
-    sx.text(
-        27,
-        62,
-        "上カメラ (C920 想定)\nテーブル面から 63cm\n(床から105cm) 真下向き",
+    ax.plot(camera.u_cm, camera.v_cm, marker="X", ms=14, color="purple", zorder=4)
+    aim = FancyArrowPatch(
+        (camera.u_cm - 2, camera.v_cm + 1),
+        ((paper.u_cm + sponge.u_cm) / 2, (paper.v_cm + sponge.v_cm) / 2),
+        arrowstyle="-|>",
+        mutation_scale=14,
         color="purple",
+        lw=1.4,
+        linestyle="--",
+        zorder=1,
+    )
+    ax.add_patch(aim)
+
+    ax.text(
+        (leader_left + leader_right) / 2,
+        8,
+        "Leader base\n27 cm from left\n101 cm from right\n5V",
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color="#1d3557",
+    )
+    ax.text(
+        (follower_left + follower_right) / 2,
+        8,
+        "Follower base\n~68 cm from left\n61 cm from right\n12V",
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color="#1d3557",
+    )
+    ax.annotate(
+        "Paper (goal)\n69 cm from right\n27 cm from front\nportrait 20×30 cm",
+        (paper.u_cm, paper.v_cm),
+        (paper.u_cm - 28, paper.v_cm + 8),
+        fontsize=8,
+        arrowprops={"arrowstyle": "->", "color": "#333"},
+    )
+    ax.annotate(
+        "Sponge\n54 cm from right\n44 cm from front\nportrait 6×11 cm",
+        (sponge.u_cm, sponge.v_cm),
+        (sponge.u_cm + 6, sponge.v_cm + 8),
+        fontsize=8,
+        arrowprops={"arrowstyle": "->", "color": "#333"},
+    )
+    ax.annotate(
+        "Top camera C920\nright edge, 16 cm from front\naimed at paper + sponge + follower",
+        (camera.u_cm, camera.v_cm),
+        (camera.u_cm - 46, camera.v_cm + 18),
+        fontsize=8,
+        color="purple",
+        arrowprops={"arrowstyle": "->", "color": "purple"},
+    )
+    ax.text(
+        TABLE_WIDTH_CM / 2,
+        -6,
+        "front edge",
+        ha="center",
+        va="top",
         fontsize=9,
     )
-    sx.add_patch(
-        Polygon(
-            [[cam_x, 63], [cam_x - half_x, 0], [cam_x + half_x, 0]],
-            fc="#80008015",
-            ec="purple",
-            ls=":",
-        )
+    ax.text(
+        TABLE_WIDTH_CM / 2, TABLE_DEPTH_CM + 2, "back edge", ha="center", fontsize=9
     )
-    sx.annotate("", (cam_x, 0), (cam_x, 63), arrowprops={"arrowstyle": "<->"})
-    sx.text(
-        48, 30, "x方向 水平FOV≈69°\n(y方向 垂直FOV 55°)", fontsize=9, color="purple"
+    ax.set_xlim(-8, TABLE_WIDTH_CM + 8)
+    ax.set_ylim(-12, TABLE_DEPTH_CM + 10)
+    ax.set_aspect("equal")
+    ax.set_xlabel("from left edge [cm]")
+    ax.set_ylabel("from front edge [cm]")
+    ax.set_title(
+        "SO-101 table layout — source of truth 2026-10-26 (Issue #90)\n"
+        "140 cm wide × 70 cm deep. Footprints are centered on the measured point.",
+        fontsize=12,
     )
-    sx.set_xlim(-22, 72)
-    sx.set_ylim(-5, 70)
-    sx.set_aspect("equal")
-    sx.grid(alpha=0.3)
-    sx.set_xlabel("x [cm]")
-    sx.set_ylabel("z [cm] (天板から)")
-    sx.set_title("側面図 (x–z)", fontsize=14)
+    ax.grid(alpha=0.25)
 
-    note = """【テープ目印】
- ・オレンジ枠 8×8cm: 箱の初期配置範囲 (中心 x=28, y=−8)
- ・緑の十字+枠 8×6cm: ゴール (中心 x=35, y=12, 向き x軸平行)
- ・紫の×: 上カメラの真下 (x=25, y=0)
-【推奨物体】 約5×4×4cm のスポンジ/ブロック (sim: 30g)
-【カメラ】 モデルは 上カメラ(top)＋手首カメラ(wrist) の
-  2入力 (各640×480, 30fps) を前提。C920 1台のみの場合は
-  上カメラに使用し、手首カメラは別途必要 (未装着だと分布外)。
-  手首カメラ: グリッパ根元 前2cm・上4cm, 下向き約30°, FOV 60°
-【注意】 sim のアームは簡易モデル (実SO-101と寸法差あり)。
-  到達範囲は目安。テーブル寸法/高さ(42cm)は sim 値。"""
-    lx.text(
-        0,
-        1,
-        note,
+    leader = points["leader_mid"]
+    body = f"""Current layout (2026-10-26 ~00:36 SGT)
+Table {TABLE_WIDTH_CM:.0f} × {TABLE_DEPTH_CM:.0f} cm.
+Supersedes 2026-10-25 ~23:28 and 2026-10-22.
+
+Sim frame
+Origin: follower midpoint on the front edge.
++x forward (into the table), +y left.
+Front offset of the bases was not remeasured (v = 0).
+
+Item                  sim (x, y) cm
+Leader midpoint       ({leader.x_cm:.1f}, {leader.y_cm:.1f})
+Follower origin       (0, 0)
+Paper point           ({paper.x_cm:.1f}, {paper.y_cm:.1f})
+Sponge point          ({sponge.x_cm:.1f}, {sponge.y_cm:.1f})
+Top camera            ({camera.x_cm:.1f}, {camera.y_cm:.1f})
+
+Metres: divide by 100.
+Code: simulation/table_layout.py
+
+Cameras
+Wrist on the follower gripper.
+OpenCV wrist={OPENCV_WRIST_INDEX}, top={OPENCV_TOP_INDEX}
+(2026-10-25 cable swap, still current).
+Top camera is {TOP_CAMERA_FROM_FRONT_CM:.0f} cm from the front
+on the right edge. Height was not remeasured.
+
+Do not use
+• 2026-10-22 (~134 cm, pole at 111 cm)
+• 2026-10-25 ~23:28 (140×69; C920 28 cm
+  from right; sponge 70/45; paper 82/26;
+  follower 62 cm from right)
+• MuJoCo scene: 70×60 cm, box (28, -8),
+  goal (35, 12), nadir camera (25, 0)
+"""
+    note.text(
+        0.02,
+        0.98,
+        body,
         va="top",
-        fontsize=10.5,
-        linespacing=1.5,
-        bbox={"fc": "#f7f7f7", "ec": "gray"},
+        ha="left",
+        fontsize=8,
+        family="DejaVu Sans",
+        linespacing=1.25,
+        bbox={"fc": "#f7f7f7", "ec": "gray", "boxstyle": "square,pad=0.4"},
     )
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     png_path = OUT_DIR / "so101_layout_guide.png"
     pdf_path = OUT_DIR / "so101_layout_guide.pdf"
-    fig.savefig(png_path, dpi=130)
+    fig.savefig(png_path, dpi=140)
     fig.savefig(pdf_path)
     plt.close(fig)
     return png_path, pdf_path
