@@ -232,7 +232,8 @@ class PickAlignSimEnv:
             self.data.qpos[adr] = float(home[i])
             self.data.ctrl[self._act_ids[i]] = float(home[i])
 
-        # Randomize box XY on table near default spawn.
+        # Legacy simplified-scene spawn. Not the 2026-10-26 real table.
+        # Real/sim-frame coordinates live in simulation/table_layout.py (Issue #90).
         box_xy = np.array([0.28, -0.08], dtype=np.float64)
         if options is None or options.get("randomize_box", True):
             box_xy = box_xy + self._rng.uniform(-0.04, 0.04, size=2)

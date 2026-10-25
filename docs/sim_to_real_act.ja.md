@@ -26,6 +26,7 @@ sim チェックポイントを実機へ**そのまま**載せない。本リポ
 - sim チェックポイント（`train_act --preset sim` の `best_model.pt` 等）
 - ポート変数: `PORT_FOLLOWER`（`lerobot-find-port`）
 - カメラ: top=OpenCV index 1、wrist=index 0、640×480@30（bring-up と同じ）
+- テーブル: [現行配置 2026-10-26](real_robot_bringup.ja.md#現行テーブル配置2026-10-26)。sim チェックポイントは廃止した MuJoCo シーンで学習している。後の sim 合わせまで、箱とパッドがこのテーブルと一致するとは期待しない
 
 ```bash
 source "$HOME/work/lerobot-hw/.venv/bin/activate"

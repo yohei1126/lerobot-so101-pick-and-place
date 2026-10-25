@@ -1,5 +1,12 @@
 <!-- Lightweight SO-101-class tabletop scene (6 DoF + gripper).
-     Joint names match configs/contract.yaml. No external meshes. -->
+     Joint names match configs/contract.yaml. No external meshes.
+
+     SUPERSEDED for real-robot and future sim alignment.
+     Geom positions below are the pre-2026-10-26 simplified scene
+     (70x60 cm table, box at 0.28 -0.08, goal at 0.35 0.12, nadir
+     camera at 0.25 0 1.05). The source of truth is the 2026-10-26
+     table (Issue #90), mapped in simulation/table_layout.py.
+     Do not copy these geoms into bring-up or live-eval docs. -->
 <mujoco model="so101_tabletop">
   <compiler angle="radian" coordinate="local" inertiafromgeom="true"/>
   <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4"/>

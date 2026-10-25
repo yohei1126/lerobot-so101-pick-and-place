@@ -1,6 +1,6 @@
 # SO-ARM101 / Feetech STS3215 ドライラン手順書
 
-配線と電源投入の前に、公式仕様の確認、Linux での udev 設定、Python 依存の解決、簡易シミュレーションと同座標系の作業エリア配置、購入済み機材の一覧を整える。物理駆動はせず、ソフトウェアの接続確認にとどめる。
+配線と電源投入の前に、公式仕様の確認、Linux での udev 設定、Python 依存の解決、現行テーブル配置（2026-10-26）との一致、購入済み機材の一覧を整える。物理駆動はせず、ソフトウェアの接続確認にとどめる。
 
 ## 公式仕様と参照ドキュメント
 
@@ -96,7 +96,7 @@ lerobot-setup-motors \
 
 ## 購入済み機材
 
-実機はキッチンのテーブルに置く。配置の数値は「[作業エリアの配置](#作業エリアの配置シミュレーション準拠)」に従う。
+実機はキッチンのテーブルに置く。配置の数値は「[現行テーブル配置（2026-10-26）](#現行テーブル配置2026-10-26)」に従う。
 
 | 品目 | 数量 | 用途・備考 |
 | --- | --- | --- |
@@ -112,30 +112,96 @@ lerobot-setup-motors \
 | DELIXI C クランプ | 4 | アーム基部をテーブルへ固定する。キット同梱 |
 | 3D プリント部品（橙・黒）および小物 | 一式 | キット付属の造形部品とアクセサリ |
 | Feetech 小箱 | 1 | 予備サーボ STS3215。電圧は箱のラベルで確認。キット同梱 |
-| VIJIM LS08（C クランプ式フレキシブルカメラアーム） | 1 | 天板の縁をクランプし、上カメラを基部から平面約 (25, 0) cm、天板から 63 cm の位置で真下向きに保持する。取付ネジは 1/4 インチ |
+| VIJIM LS08（C クランプ式フレキシブルカメラアーム） | 1 | 上カメラをテーブル**右端**、手前から 16 cm に固定し、紙・スポンジ・Follower が画角に入る向きにする。取付ネジは 1/4 インチ。以前の真下向き (25, 0) cm は廃止 |
 | Logitech C920 | 1 | 上カメラ（USB） |
 
 ### まだ購入が必要なもの
 
 - 延長コードまたは電源タップ。シンガポールの Safety Mark 付き、UK プラグ、差込口 3 口以上。12V アダプタ、5V アダプタ、予備をキッチンのテーブルで使う。
 
-## 作業エリアの配置（シミュレーション準拠）
+## 現行テーブル配置（2026-10-26）
 
-使用する機材は「[購入済み機材](#購入済み機材)」に示す。原点はアーム基部の中心、+x は前方、+y は左、+z は上である。下表の平面位置は基部中心からの距離である。数値は簡易 MuJoCo シーンから読んだものであり、実機 SO-101 のリンク長とは寸法差がある。到達範囲は目安である。
+使用する機材は「[購入済み機材](#購入済み機材)」に示す。本節が bring-up と live eval の実機配置の正である（Issue #90、2026-10-26 ~00:36 SGT 実測）。2026-10-25 ~23:28 の実測、2026-10-22 の数値、および下の簡易 MuJoCo シーンを置き換える。
 
-出典:
+手順と live-eval チェックリストは [real_robot_bringup.md](real_robot_bringup.ja.md#現行テーブル配置2026-10-26)。
 
-- [`port_pick_align/src/port_pick_align/simulation/assets/so101_tabletop.xml`](../port_pick_align/src/port_pick_align/simulation/assets/so101_tabletop.xml)
-- [`port_pick_align/src/port_pick_align/simulation/env.py`](../port_pick_align/src/port_pick_align/simulation/env.py)
-- [`port_pick_align/src/port_pick_align/evaluation/eval_alignment.py`](../port_pick_align/src/port_pick_align/evaluation/eval_alignment.py)
+テーブル: 幅 **140 cm** × 奥行 **70 cm**。
 
-![作業エリア配置ガイド（上面図・側面図）](images/so101_layout_guide.png)
+| 対象 | 配置 | 備考 |
+| --- | --- | --- |
+| Leader 基部 | 左から 27 cm / 右から 101 cm | 5V。二つの距離は基部の両端 |
+| Follower 基部 | 左から約 68 cm / 右から 61 cm | 12V。左からの距離は概数 |
+| 上カメラ（C920） | テーブル**右端**、**手前から 16 cm** | 紙・スポンジ・Follower が写る向き。高さは今回未計測 |
+| 紙（ゴール） | 右から 69 cm、手前から 27 cm | 縦置き 幅 20 cm × 奥行 30 cm |
+| スポンジ | 右から 54 cm、手前から 44 cm | 縦置き 幅 6 cm × 奥行 11 cm |
+| 手首カメラ | Follower のグリッパ | OpenCV index **0** |
+| 上カメラ index | OpenCV index **1** | 2026-10-25 のケーブル交換後も同じ |
 
-印刷用 PDF: [so101_layout_guide.pdf](images/so101_layout_guide.pdf)。図の再生成は `python scripts/draw_layout_guide.py` であり、出力先は `docs/images/` である。
+![現行テーブル配置（2026-10-26）](images/so101_layout_guide.png)
+
+印刷用 PDF: [so101_layout_guide.pdf](images/so101_layout_guide.pdf)。再生成は `python scripts/draw_layout_guide.py`。出力先は `docs/images/`。
+
+定数: [`port_pick_align/src/port_pick_align/simulation/table_layout.py`](../port_pick_align/src/port_pick_align/simulation/table_layout.py)。
+
+### sim 座標系への写像
+
+sim の軸は従来のアーム基部と同じである。原点は Follower、**+x は前方**（手前縁から奥へ）、**+y は左**、+z は上。
+
+2026-10-26 の記録は基部の一点を指定しておらず、基部の手前からの奥行きも再計測していない。写像は次の二つの規約による。
+
+- 基部の参照点は、**両端の距離が示す区間の中点**である。Leader は左から 27 cm 〜 39 cm（中点 33 cm）。Follower は左から 68 cm 〜 79 cm（中点 73.5 cm）。区間幅は両端から求めたものであり、別計測の幅ではない。
+- Follower 原点はその中点を**手前縁**（`v = 0`）に置いた点である。後から手前オフセットが測れれば、すべての `x` に同じ定数が足され、`y` は変わらない。
+
+紙・スポンジ・上カメラは実測点を使う。記録はその点と縦置きサイズであり、点が角であるとは書いていない。図はサイズが見えるよう、各外形を実測点中心に描いている。
+
+| 対象 | 左から `u`（cm） | 手前から `v`（cm） | sim `(x, y)` cm | sim `(x, y)` m |
+| --- | ---: | ---: | --- | --- |
+| Leader 中点 | 33 | 0 | (0, 40.5) | (0, 0.405) |
+| Follower 原点 | 73.5 | 0 | (0, 0) | (0, 0) |
+| 紙の実測点 | 71 | 27 | (27, 2.5) | (0.27, 0.025) |
+| スポンジの実測点 | 86 | 44 | (44, −12.5) | (0.44, −0.125) |
+| 上カメラ | 140 | 16 | (16, −66.5) | (0.16, −0.665) |
+
+`u = 140 −（右からの cm）`。手前縁規約では `x = v`。`y = 73.5 − u`。
+
+### カメラ
+
+ACT の入力は上カメラ（`/camera/top/image_raw`）と手首カメラ（`/camera/wrist/image_raw`）の両方である。解像度は各 640×480、30 fps（[`configs/contract.yaml`](../configs/contract.yaml)）。C920 は VIJIM LS08 で右端、手前から 16 cm、紙・スポンジ・Follower が写る向きに固定する。手首カメラはキット同梱のモジュールを Follower のグリッパへ取り付ける。OpenCV index は wrist `0`、top `1`。手首画像が無い状態は学習時の分布の外である。
+
+### 作業エリア準備チェックリスト
+
+- [ ] テーブルが幅 140 cm × 奥行 70 cm である
+- [ ] Leader 基部が左から 27 cm / 右から 101 cm（5V）である
+- [ ] Follower 基部が左から約 68 cm / 右から 61 cm（12V）である
+- [ ] 紙が右から 69 cm、手前から 27 cm（縦置き 20×30 cm）である
+- [ ] スポンジが右から 54 cm、手前から 44 cm（縦置き 6×11 cm）である
+- [ ] C920 が右端、手前から 16 cm で、紙・スポンジ・Follower が画角に入る
+- [ ] 手首カメラが Follower のグリッパにあり、OpenCV wrist `0`、top `1` を確認した
+- [ ] 下の廃止配置の目印を新しいセットアップに使っていない
+
+## 廃止した配置
+
+新しい sim 合わせ、bring-up、live eval には使わない。
+
+### 2026-10-25 ~23:28
+
+テーブルは 140×69 cm と記録されていた。C920 は右から 28 cm。スポンジは右から 70 cm / 手前から 45 cm。紙は右から 82 cm / 手前から 26 cm。Follower は右から 62 cm。
+
+### 2026-10-22 の収録配置
+
+本収録データセットだけに使った配置である。テーブル幅はおよそ 134 cm。Leader 左端 28 cm。紙は左から 56 cm / 手前から 13 cm。Follower 左端 78 cm。スポンジは左から 81 cm / 手前から 29 cm。上カメラポールは左から 111 cm。詳細は [real_robot_bringup.md](real_robot_bringup.ja.md#廃止した配置)。
+
+### 簡易 MuJoCo シーン（2026-10-26 より前の図）
+
+既存の sim 評価を続けるため、リポジトリのシーンは次の geom のままである。これは**実機テーブルではない**。後の sim 合わせでは、上の sim 座標へ移す。
+
+![廃止した作業エリアガイド（簡易 MuJoCo シーン）](images/so101_layout_guide_superseded_pre_20261026.png)
+
+PDF: [so101_layout_guide_superseded_pre_20261026.pdf](images/so101_layout_guide_superseded_pre_20261026.pdf)。
 
 | 項目 | 値 | 出典 |
 | --- | --- | --- |
-| テーブル天板 | z = 0.42 m（床を z = 0 とする） | `env.py` の `TABLE_Z`。XML の table geom は中心 z = 0.40 m、半厚 0.02 m |
+| テーブル天板 | z = 0.42 m（床を z = 0 とする）。上面 70×60 cm | `env.py` の `TABLE_Z`。XML table geom 中心 `(0.25, 0, 0.40)`、half-size `0.35 0.30 0.02` |
 | 箱 | 5×4×4 cm、30 g | XML `box_geom` の half-size `0.025 0.02 0.02`、`mass="0.03"` |
 | 箱の初期中心 | (28, −8) cm。xy を各 ±4 cm、yaw を ±0.3 rad（約 ±17°）で一様乱数 | `env.py` の reset。基準 `(0.28, -0.08)` に `uniform(-0.04, 0.04)`、yaw は `uniform(-0.3, 0.3)` |
 | ゴール `target_frame` | 中心 (35, +12) cm、パッド 8×6 cm、yaw 0 | XML `target_frame` pos `0.35 0.12 0.42`、`target_pad` half-size `0.04 0.03`（回転なし） |
@@ -144,29 +210,13 @@ lerobot-setup-motors \
 | 手首カメラ | グリッパリンク原点から前方 2 cm・上方 4 cm、下向き約 30°、垂直 FOV 60° | XML `camera name="wrist"` の pos `0.02 0 0.04`、`xyaxes="0 -1 0 0.5 0 0.866"`、`fovy="60"` |
 | 到達範囲 | 約 42 cm（`shoulder_pan` ±110°。簡易モデルの幾何最大） | 上腕 12 cm + 前腕 14 cm + 手首 8 cm + グリッパ 3 cm + 手先サイト 5 cm。pan range は ±1.9199 rad |
 
-上カメラの視野約 87×66 cm は、天板からの高さ 63 cm、垂直 FOV 55°、契約画像 640×480 のアスペクトから求めた推定である。x 方向（水平 FOV 約 69°）が約 87 cm、y 方向（垂直 FOV 55°）が約 66 cm である。XML が持つのはカメラ位置と `fovy` であり、視野の辺長はそこから計算する。
+上カメラの視野約 87×66 cm は、天板からの高さ 63 cm、垂直 FOV 55°、契約画像 640×480 のアスペクトから求めた推定である。x 方向（水平 FOV 約 69°）が約 87 cm、y 方向（垂直 FOV 55°）が約 66 cm である。この推定は廃止した真下向きカメラのものであり、2026-10-26 の右端設置ではない。実機 C920 の高さは 2026-10-26 に再計測していない。XML が持つのはカメラ位置と `fovy` であり、視野の辺長はそこから計算する。
 
-### テープ目印（提案）
+この廃止シーンだけの出典:
 
-以下は実機セットアップ用の提案である。同じ初期分布とゴールをテーブル上で再現するための目印である。
-
-- オレンジ枠 8×8 cm: 箱の中心が取りうる初期範囲。枠の中心は (28, −8) cm。
-- 緑の十字と枠 8×6 cm: ゴール。中心は (35, +12) cm。長辺を x 軸に平行（yaw 0）にする。
-- 紫の ×: 上カメラの真下。(25, 0) cm。
-- 物体は一辺約 5 cm のスポンジまたはブロックを推奨する。sim の箱は 5×4×4 cm、30 g である。
-
-### カメラ
-
-ACT の入力は上カメラ（`/camera/top/image_raw`）と手首カメラ（`/camera/wrist/image_raw`）の両方である。解像度は各 640×480、30 fps（[`configs/contract.yaml`](../configs/contract.yaml)）。上カメラは Logitech C920 とし、VIJIM LS08 で平面 (25, 0) cm の真上、天板から 63 cm、真下向きに固定する。手首カメラはキット同梱のモジュールをグリッパへ取り付ける。品目は「[購入済み機材](#購入済み機材)」を参照する。手首画像が無い状態は学習時の分布の外である。
-
-### 作業エリア準備チェックリスト
-
-- [ ] アーム基部中心を原点、前方を +x、左を +y としてテーブル上の座標を決めた
-- [ ] テーブル天板高さを sim の 0.42 m に合わせ、合わせられない場合は差分を記録した
-- [ ] 提案のテープ目印（オレンジ枠、緑の十字と枠、紫の ×）を貼った
-- [ ] 約 5×4×4 cm、30 g 程度のスポンジまたはブロックを用意した
-- [ ] 上カメラ（C920）を VIJIM LS08 で (25, 0) cm の真上、天板から 63 cm、真下向きに固定した
-- [ ] 上カメラ（C920）とキット同梱の手首カメラを接続した
+- [`port_pick_align/src/port_pick_align/simulation/assets/so101_tabletop.xml`](../port_pick_align/src/port_pick_align/simulation/assets/so101_tabletop.xml)
+- [`port_pick_align/src/port_pick_align/simulation/env.py`](../port_pick_align/src/port_pick_align/simulation/env.py)
+- [`port_pick_align/src/port_pick_align/evaluation/eval_alignment.py`](../port_pick_align/src/port_pick_align/evaluation/eval_alignment.py)
 
 ## 事前準備チェックリスト
 
