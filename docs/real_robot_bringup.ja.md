@@ -312,11 +312,34 @@ lerobot-record \
 2. **12V / 5V アダプタを抜く**（先に DC、その後 USB）。
 3. 運搬時は基部を持つ。ケーブルを持って吊らない。
 
+## 収録後の QC
+
+`scripts/qc_teleop_dataset.py` は、ローカルの LeRobot v3 データセットをエピソードごとに採点する。読み込みは `LeRobotDataset(..., video_backend="pyav")` で、列は `action`、`observation.state`、`episode_index` を使う。実行は読み取り専用で、アームへの指令は出さず、データセットも更新しない。
+
+各エピソードでは、長さ、腕の平均動作（グリッパを除く action のフレーム間絶対差分の平均）、先頭アイドルのフレーム数と秒、`shoulder_lift` の遅れ、mean `|action-state|` が最大の関節、action の標準偏差を表示する。先頭アイドルは、いずれかの腕関節が初期姿勢から `--motion-eps-deg`（既定 1°）以上離れるまでの時間である。その割合と、最初に離れたフレーム番号は毎回表示する。
+
+| フラグ | 深刻度 | 付く条件 |
+| --- | --- | --- |
+| `LONG_HEAD_IDLE` | warn | 先頭アイドルが `--head-idle-s`（既定 2 秒）を超える |
+| `LOW_MOTION` | high | 最も動いた腕関節の action 標準偏差が `--low-motion-std-deg`（既定 5°）未満 |
+| `HIGH_LAG` | high | いずれかの関節の mean \|action-state\| が `--high-lag-deg`（既定 6）以上 |
+
+連続収録のあと遅れが出た関節は `shoulder_lift` で、およそ 10–12° まで上がった。健全なエピソードはおよそ 1.5–2° である。`--strict` は high のフラグがあるとき非ゼロで終わる。warn は要約に残り、終了コードは変わらない。
+
+`$HOME/work/lerobot-hw/outputs/` があるときは、CSV と Markdown をそこへ書く。無いときは先頭の `--root` の隣へ書く。
+
+```bash
+source "$HOME/work/lerobot-hw/.venv/bin/activate"
+python scripts/qc_teleop_dataset.py \
+  --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027" \
+  --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027_batch2"
+```
+
 ## 次のステップ
 
 sim チェックポイントを実機へ直接載せない。sim ポリシーは関節が**ラジアン**、実機 Follower は本体関節が**度**・グリッパが **0–100** であり、入出力契約が一致しない。
 
-1. デモ収録 → クリーンセット作成（[real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md)）
+1. デモ収録 → QC（前節、`scripts/qc_teleop_dataset.py`）→ クリーンセット作成（[real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md)）
 2. 実機データで ACT 学習: `python -m port_pick_align.training.train_act`（[training.md](training.ja.md)）。MPS 上で実行する。sim データは `train_act --preset sim`
 3. Phase 2-2（sim→実機）: 単位変換ラッパーで dry-run → 低速 live。[sim_to_real_act.md](sim_to_real_act.ja.md)
 4. 実機学習ポリシー（ACT / SmolVLA）: 単位変換不要。dry-run → live は **[real_robot_deploy.md](real_robot_deploy.ja.md)**（`scripts/run_act_real.sh` / `scripts/run_smolvla_real.sh`）。代替として `lerobot-rollout` も可。初回は `--max-relative-target` / `--max-delta-deg` を小さめに、低速・短時間で行う

@@ -312,11 +312,34 @@ lerobot-record \
 2. **Unplug the 12V / 5V adapters** (DC first, then USB).
 3. Carry by the base. Do not lift by the cables.
 
+## QC a recorded dataset
+
+`scripts/qc_teleop_dataset.py` scores a local LeRobot v3 dataset episode by episode. It loads `LeRobotDataset(..., video_backend="pyav")` and reads `action`, `observation.state`, and `episode_index`. The pass is read-only: it does not command the arm and does not edit the dataset.
+
+Each episode prints length, mean arm motion (mean absolute frame-to-frame action change, gripper excluded), head-idle frames and seconds, `shoulder_lift` lag, the joint with the largest mean `|action-state|`, and action std. Head idle is the time until any arm joint leaves the opening pose by `--motion-eps-deg` (default 1°). The idle fraction and the index of that first move are always printed.
+
+| Flag | Severity | When it fires |
+| --- | --- | --- |
+| `LONG_HEAD_IDLE` | warn | Head idle is longer than `--head-idle-s` (default 2 s) |
+| `LOW_MOTION` | high | Busiest arm joint has action std below `--low-motion-std-deg` (default 5°) |
+| `HIGH_LAG` | high | Some joint's mean \|action-state\| is at least `--high-lag-deg` (default 6) |
+
+`shoulder_lift` is the joint that lagged after long continuous recording (about 10–12°; a healthy episode is about 1.5–2°). `--strict` exits non-zero when a high-severity flag is present. Warn flags stay in the summary and leave the exit code unchanged.
+
+CSV and Markdown go to `$HOME/work/lerobot-hw/outputs/` when that directory exists. Otherwise they are written next to the first `--root`.
+
+```bash
+source "$HOME/work/lerobot-hw/.venv/bin/activate"
+python scripts/qc_teleop_dataset.py \
+  --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027" \
+  --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027_batch2"
+```
+
 ## Next steps
 
 Do not load a sim checkpoint onto the real robot directly. Sim policies use **radians** for joints; the real Follower uses **degrees** for body joints and **0–100** for the gripper: the I/O contracts do not match.
 
-1. Demo recording → clean-set creation ([real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md))
+1. Demo recording → QC (section above, `scripts/qc_teleop_dataset.py`) → clean-set creation ([real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md))
 2. Train ACT on real data: `python -m port_pick_align.training.train_act` ([training.md](training.en.md)). Run on MPS. For sim data use `train_act --preset sim`
 3. Phase 2-2 (sim→real): dry-run with the unit-conversion wrapper → slow live. [sim_to_real_act.md](sim_to_real_act.en.md)
 4. Real-trained policies (ACT / SmolVLA): no unit conversion. dry-run → live via **[real_robot_deploy.md](real_robot_deploy.en.md)** (`scripts/run_act_real.sh` / `scripts/run_smolvla_real.sh`). Alternatively `lerobot-rollout`. First runs: keep `--max-relative-target` / `--max-delta-deg` small, slow, and short
