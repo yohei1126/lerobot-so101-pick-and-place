@@ -128,7 +128,7 @@ Keep ports, camera indices, and task string consistent across [scripts/record_re
 | top / wrist index | 1 / 0 |
 | Task | `Pick up the yellow sponge and place it on the white paper` |
 
-Recording steps stay in [real_robot_bringup.md](real_robot_bringup.en.md) / `scripts/record_real_so101.sh` (#75).
+Recording steps stay in [real_robot_bringup.md](real_robot_bringup.en.md) / `scripts/record_real_so101.sh` (#75). Before a demo session, use the pre-recording checklist on that page. After recording, score the root with `scripts/qc_teleop_dataset.py` (same page).
 
 ## References
 

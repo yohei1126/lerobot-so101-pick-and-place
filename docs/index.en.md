@@ -18,7 +18,7 @@ Start with setup, then dataset → training → simulation; use hardware and bri
 | [figures/README.md](figures/README.en.md) | Regenerating report figures (loss curve, histograms, initial XY, rollout) |
 | [e2e.md](e2e.en.md) | End-to-end pipeline from data collection through inference |
 | [hardware.md](hardware.en.md) | SO-ARM101 / Feetech udev, connection dry-run, sim-aligned workspace, purchased gear |
-| [real_robot_bringup.md](real_robot_bringup.en.md) | Mac / LeRobot 0.6.1 SO-101 Leader/Follower bring-up, table layout, demo recording (`scripts/record_real_so101.sh`) |
+| [real_robot_bringup.md](real_robot_bringup.en.md) | Mac / LeRobot 0.6.1 SO-101 Leader/Follower bring-up, session checklist, table layout, demo recording (`scripts/record_real_so101.sh`), post-record QC (`scripts/qc_teleop_dataset.py`) |
 | [real_robot_deploy.md](real_robot_deploy.en.md) | Real-trained ACT / SmolVLA dry-run → live (no unit conversion; safety clamps) |
 | [ci.md](ci.en.md) | GitHub Actions CI and local lint/test |
 | [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.en.md) | OmniCampus deliverables (PDF report, GitHub, YouTube) and checklist |
