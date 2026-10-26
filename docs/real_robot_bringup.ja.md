@@ -6,6 +6,7 @@
 
 - 2026-10-17/18 の bring-up（UGREEN ハブ経由の接続・両カメラ同時配信・テレオペ・`lerobot-record` 試行）
 - **2026-10-22 / 23** の本収録（テーブル寸法、画角、キーボード操作、モータ温度、クリーンセット作成）
+- **2026-10-27** の配置収録。既定 root は `so101_pick_sponge_layout20261026_20261027`。`so101_pick_sponge_main_20261020` はアーカイブ
 
 収録データセットの要約は [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md)。sim→実機の単位変換は [sim_to_real_act.md](sim_to_real_act.ja.md) / [units.md](units.ja.md)。
 
@@ -241,11 +242,15 @@ scripts/record_real_so101.sh [N]
 | 項目 | 値 |
 | --- | --- |
 | 既定 N | 50 |
-| データセット root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020` |
-| repo_id | `yohei1126/so101_pick_sponge_main` |
+| データセット root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027` |
+| repo_id | `yohei1126/so101_pick_sponge_layout20261026` |
 | タスク文 | `Pick up the yellow sponge and place it on the white paper` |
 | episode / reset | 25 s / 10 s、fps 30 |
 | ログ | `$HOME/work/lerobot-hw/outputs/record_main_*.log`（cwd は `lerobot-hw`） |
+
+2026-10-26 のテーブル配置（Issue #90）で録るデモの既定 root は上のパスである。`so101_pick_sponge_main_20261020` はアーカイブで、2026-10-22 配置の収録に、2026-10-27 05:04–05:11 SGT の 10 本（当時の episode 32–41）が追記された混合セットである。スクリプトは `ROOT` がそのディレクトリに解決されると終了する。別セットを始めるときだけ `ROOT` で別パスを渡す。
+
+2026-10-27 の 10 本は LeRobot 0.6.1 の `lerobot-edit-dataset --operation.type delete_episodes` で切り出し、新 root の episode 0–9（7,369 frames）になっている。動画は元の `chunk-000/file-003` のバイトコピーである。そのシャードにはこの 10 本だけが入っていたので、再エンコードはしていない。元の `20261020` ツリーは変更していない。
 
 スクリプトは開始前に `lerobot-teleoperate` を `pkill` する。ポートとカメラ index はスクリプト内にハードコードされている。抜き差し後は編集するか、環境に合わせて上書きする。
 
@@ -283,7 +288,7 @@ lerobot-record \
   --teleop.type=so101_leader \
   --teleop.port=$PORT_LEADER \
   --teleop.id=leader \
-  --dataset.repo_id=yohei1126/so101_pick_sponge_main \
+  --dataset.repo_id=yohei1126/so101_pick_sponge_layout20261026 \
   --dataset.single_task='Pick up the yellow sponge and place it on the white paper' \
   --dataset.num_episodes=10 \
   --dataset.episode_time_s=25 \
@@ -291,13 +296,13 @@ lerobot-record \
   --dataset.fps=30 \
   --dataset.no_stamp=true \
   --dataset.push_to_hub=false \
-  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020 \
+  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027 \
   --display_data=true \
   --play_sounds=true \
   --resume=true
 ```
 
-- 既存 root への追記は `--resume=true`（スクリプトは root が存在すれば自動で true）。
+- 既存 root への追記は `--resume=true`（スクリプトは root が存在すれば自動で true）。上の例の root には切り出した 10 本が既にあるので、追記は resume である。
 - dataset v3.0 ではカメラごとに動画が連結され、`videos/observation.images.<cam>/chunk-000/file-000.mp4` に格納される。
 - データセット本体は git 外（Mac 上）に置く。
 

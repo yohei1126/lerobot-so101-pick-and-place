@@ -6,6 +6,7 @@ Measured results reflected here:
 
 - Bring-up on 2026-10-17/18 (connection via UGREEN hub, simultaneous dual-camera streaming, teleop, `lerobot-record` trials)
 - **Main recording on 2026-10-22 / 23** (table dimensions, camera framing, keyboard controls, motor temperature, clean-set creation)
+- **Layout recording on 2026-10-27.** Default root is `so101_pick_sponge_layout20261026_20261027`. `so101_pick_sponge_main_20261020` is an archive
 
 Dataset summary: [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md). Sim→real unit conversion: [sim_to_real_act.md](sim_to_real_act.en.md) / [units.md](units.en.md).
 
@@ -241,11 +242,15 @@ scripts/record_real_so101.sh [N]
 | Item | Value |
 | --- | --- |
 | Default N | 50 |
-| Dataset root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020` |
-| repo_id | `yohei1126/so101_pick_sponge_main` |
+| Dataset root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027` |
+| repo_id | `yohei1126/so101_pick_sponge_layout20261026` |
 | Task string | `Pick up the yellow sponge and place it on the white paper` |
 | episode / reset | 25 s / 10 s, fps 30 |
 | Logs | `$HOME/work/lerobot-hw/outputs/record_main_*.log` (cwd is `lerobot-hw`) |
+
+The default root is for demos on the 2026-10-26 table layout (Issue #90). `so101_pick_sponge_main_20261020` is an archive: the 2026-10-22 layout recordings plus 10 demos from 2026-10-27 05:04–05:11 SGT that were appended by mistake (indices 32–41 at the time). The script exits when `ROOT` resolves to that directory. Pass `ROOT` only when starting a different new set.
+
+Those 10 demos were extracted with LeRobot 0.6.1 `lerobot-edit-dataset --operation.type delete_episodes` into episodes 0–9 (7,369 frames) at the new root. The videos are a byte copy of source `chunk-000/file-003`. That shard contained only these 10 episodes, so nothing was re-encoded. The `20261020` tree was left unchanged.
 
 The script `pkill`s `lerobot-teleoperate` before start. Ports and camera indices are hardcoded in the script. Edit them after unplug/replug, or override for your environment.
 
@@ -283,7 +288,7 @@ lerobot-record \
   --teleop.type=so101_leader \
   --teleop.port=$PORT_LEADER \
   --teleop.id=leader \
-  --dataset.repo_id=yohei1126/so101_pick_sponge_main \
+  --dataset.repo_id=yohei1126/so101_pick_sponge_layout20261026 \
   --dataset.single_task='Pick up the yellow sponge and place it on the white paper' \
   --dataset.num_episodes=10 \
   --dataset.episode_time_s=25 \
@@ -291,13 +296,13 @@ lerobot-record \
   --dataset.fps=30 \
   --dataset.no_stamp=true \
   --dataset.push_to_hub=false \
-  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020 \
+  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027 \
   --display_data=true \
   --play_sounds=true \
   --resume=true
 ```
 
-- Append to an existing root with `--resume=true` (the script sets true automatically if the root exists).
+- Append to an existing root with `--resume=true` (the script sets true automatically if the root exists). The root in the example already holds the 10 extracted episodes, so further recording resumes.
 - In dataset v3.0, videos are concatenated per camera into `videos/observation.images.<cam>/chunk-000/file-000.mp4`.
 - Keep the dataset itself outside git (on the Mac).
 
