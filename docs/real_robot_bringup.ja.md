@@ -335,6 +335,8 @@ python scripts/qc_teleop_dataset.py \
   --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027_batch2"
 ```
 
+2026-10-27 の配置 QC（10 + 10 エピソード、7,369 + 7,373 フレーム）は Mac 上の `$HOME/work/lerobot-hw/outputs/qc_layout20261026_20261027.md` にある。ACT 学習の前に、2 つの root を 1 つのクリーンセットへまとめ、set 1 の episode 3（`shoulder_lift` の遅れ 8.92°）を再確認するか外し、開始時の待機ではエピソードごと捨てずに先頭アイドルを切り、この配置を `so101_pick_sponge_main_20261020` と混ぜない。
+
 ## 次のステップ
 
 sim チェックポイントを実機へ直接載せない。sim ポリシーは関節が**ラジアン**、実機 Follower は本体関節が**度**・グリッパが **0–100** であり、入出力契約が一致しない。

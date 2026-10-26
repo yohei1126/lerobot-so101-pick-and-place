@@ -335,6 +335,8 @@ python scripts/qc_teleop_dataset.py \
   --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027_batch2"
 ```
 
+The 2026-10-27 layout QC (10 + 10 episodes, 7,369 + 7,373 frames) is on the Mac at `$HOME/work/lerobot-hw/outputs/qc_layout20261026_20261027.md`. Before ACT training: merge the two roots, recheck or drop set 1 episode 3 (`shoulder_lift` lag 8.92°), trim the leading idle instead of dropping episodes for the start pause, and keep this layout separate from `so101_pick_sponge_main_20261020`.
+
 ## Next steps
 
 Do not load a sim checkpoint onto the real robot directly. Sim policies use **radians** for joints; the real Follower uses **degrees** for body joints and **0–100** for the gripper: the I/O contracts do not match.
