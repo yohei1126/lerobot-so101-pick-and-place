@@ -208,25 +208,28 @@ lerobot-teleoperate \
 
 ## 収録前チェック（必須）
 
-**毎回 `lerobot-record` の直前に実施する。**
-
-1. **稼働中の `lerobot-teleoperate` を止める。** カメラとシリアルの競合が起きる。
-2. 同じ robot / teleop / cameras フラグで短時間テレオペし、Rerun で確認する。
-3. 確認後にテレオペを止め、収録へ進む。
+**毎回 `lerobot-record` の直前に実施する。** ポート、カメラ index、テープ位置は上の節で定義する。この表がセッション開始の確認項目である。
 
 | # | 確認項目 |
 | --- | --- |
-| (a) | **top:** 紙・スポンジ・Follower 基部／グリッパ経路が画角に入る |
-| (b) | **wrist:** 接近時にグリッパ先端とスポンジが見える |
-| (c) | pick-and-place 全経路でスタンド／クランプに当たらない |
-| (d) | カメラ警告なし。ループが安定して回る |
-| (e) | スポンジと紙がテープ印の開始位置にある |
+| 1 | テーブル配置は 2026-10-26 の配置（Issue #90）である。スポンジと紙は「テーブル配置」節のテープ印にある。この配置はアーカイブ `so101_pick_sponge_main_20261020` と混ぜない。 |
+| 2 | Leader の電源は **5V**、Follower の電源は **12V** で、基板の LED が点灯している。アダプタはそれぞれのアームに付いたままである。 |
+| 3 | `ls /dev/tty.usbmodem*` でポートを読み直した。スクリプトの既定は Leader `/dev/tty.usbmodem5B790143611`、Follower `/dev/tty.usbmodem5B8E1163071`。抜き差しで変わったらスクリプトを直す。 |
+| 4 | OpenCV index は wrist **0**、top **1** である。iPhone の Continuity Camera は切断し、オフにしてある。`lerobot-find-cameras opencv` で確認する。 |
+| 5 | Leader と Follower は**同じ休止姿勢**から始める。テレオペ開始時に Follower が急に寄らない。 |
+| 6 | 同じ robot / teleop / camera フラグで短時間テレオペし、Rerun（`observation.top` / `observation.wrist`）を見る。**top:** 紙・スポンジ・Follower 基部／グリッパ経路が画角に入る。**wrist:** 接近時にグリッパ先端とスポンジが見える。経路はスタンドとクランプに当たらない。カメラ警告はない。スポンジと紙はテープ印の開始位置にある。 |
+| 7 | 収録前に `lerobot-teleoperate` を止める。収録スクリプトも `pkill` する。残っているとカメラとシリアルを取り合う。 |
+| 8 | `ROOT` は新しいデータセットディレクトリか、現在の配置 root（`so101_pick_sponge_layout20261026_20261027`、または `..._batch2` のような名前付きバッチ）への意図した resume である。`ROOT` が `so101_pick_sponge_main_20261020` に解決されるとスクリプトは終了する。 |
+| 9 | `lerobot-record` の前に root を **mkdir しない**。`scripts/record_real_so101.sh` はディレクトリが存在するだけで `--resume=true` にする。空ディレクトリも同じである。初回のツリーは `lerobot-record` が作る。新しいバッチは、まだ存在しない `ROOT` を使う。 |
+| 10 | シェルは対話 Terminal である。**Right** でエピソード終了、**Left** で撮り直し、**Esc** で停止。エピソード開始と同時に動かし始める。置き終わったら **Right** を押し、静止した末尾をデータセットに残さない。 |
+| 11 | **およそ 10 エピソードごと**に休む。Follower の電源を切り、モータを冷やす。 |
 
 ## デモ収録ルール（2026-10-22/23 で確定）
 
 - **1 エピソード = 1 回の pick-and-place。** 以前、1 エピソードに 2 回置いた試行は破棄した。
 - 開始と終了を**同じ休止姿勢**にする。
-- スポンジを紙に置いたら **Right 矢印**でエピソードを早めに終了する（`episode_time_s=25` の末尾 およそ 10–17 秒は腕が静止していた）。
+- **エピソード開始と同時に動かし始める。** 初期姿勢を数秒保つ区間は後で先頭だけ切る。その待機だけではエピソードを捨てない。
+- スポンジを紙に置いたら **Right 矢印**でエピソードを早めに終了する（`episode_time_s=25` の末尾 およそ 10–17 秒は腕が静止していた）。QC スクリプトはその末尾を採点しない。Right で終えると、その静止区間はデータセットに入らない。
 - ゆっくり・一貫した動きで行う。
 - **およそ 10 エピソードごとに休憩**し、Follower の電源を切ってモータを冷やす。およそ 20 エピソード連続後、Follower の `shoulder_lift` が指令に遅れ、mean `|action-state|` がおよそ **10–12°** まで上がった（通常はおよそ **1.5°**）。
 
@@ -253,6 +256,8 @@ scripts/record_real_so101.sh [N]
 2026-10-27 の 10 本は LeRobot 0.6.1 の `lerobot-edit-dataset --operation.type delete_episodes` で切り出し、新 root の episode 0–9（7,369 frames）になっている。動画は元の `chunk-000/file-003` のバイトコピーである。そのシャードにはこの 10 本だけが入っていたので、再エンコードはしていない。元の `20261020` ツリーは変更していない。
 
 スクリプトは開始前に `lerobot-teleoperate` を `pkill` する。ポートとカメラ index はスクリプト内にハードコードされている。抜き差し後は編集するか、環境に合わせて上書きする。
+
+スクリプトの前に root を `mkdir` しない。空ディレクトリを含め、ディレクトリが既にあると `--resume=true` になり、そのパスへ追記する。初回のツリーは `lerobot-record` が作る。
 
 ### 対話ターミナルで実行する（必須）
 
@@ -314,28 +319,56 @@ lerobot-record \
 
 ## 収録後の QC
 
-`scripts/qc_teleop_dataset.py` は、ローカルの LeRobot v3 データセットをエピソードごとに採点する。読み込みは `LeRobotDataset(..., video_backend="pyav")` で、列は `action`、`observation.state`、`episode_index` を使う。実行は読み取り専用で、アームへの指令は出さず、データセットも更新しない。
+`scripts/qc_teleop_dataset.py` は、ローカルの LeRobot v3 root を 1 つ以上、エピソードごとに採点する。`LeRobotDataset` を作る前に `meta/info.json` があることを確認するので、無いパスは作られない。読み込みは `video_backend="pyav"` と `download_videos=False` で、列は `action`、`observation.state`、`episode_index` を使う。動画はデコードしない。アームへの指令は出さず、エピソードの結合・除外・切り詰めもしない。
 
-各エピソードでは、長さ、腕の平均動作（グリッパを除く action のフレーム間絶対差分の平均）、先頭アイドルのフレーム数と秒、`shoulder_lift` の遅れ、mean `|action-state|` が最大の関節、action の標準偏差を表示する。先頭アイドルは、いずれかの腕関節が初期姿勢から `--motion-eps-deg`（既定 1°）以上離れるまでの時間である。その割合と、最初に離れたフレーム番号は毎回表示する。
-
-| フラグ | 深刻度 | 付く条件 |
-| --- | --- | --- |
-| `LONG_HEAD_IDLE` | warn | 先頭アイドルが `--head-idle-s`（既定 2 秒）を超える |
-| `LOW_MOTION` | high | 最も動いた腕関節の action 標準偏差が `--low-motion-std-deg`（既定 5°）未満 |
-| `HIGH_LAG` | high | いずれかの関節の mean \|action-state\| が `--high-lag-deg`（既定 6）以上 |
-
-連続収録のあと遅れが出た関節は `shoulder_lift` で、およそ 10–12° まで上がった。健全なエピソードはおよそ 1.5–2° である。`--strict` は high のフラグがあるとき非ゼロで終わる。warn は要約に残り、終了コードは変わらない。
-
-`$HOME/work/lerobot-hw/outputs/` があるときは、CSV と Markdown をそこへ書く。無いときは先頭の `--root` の隣へ書く。
+実機用 venv（`$HOME/work/lerobot-hw/.venv`）を有効にする。`HF_HUB_OFFLINE=1` にすると読み込みはディスク上で完結する。
 
 ```bash
 source "$HOME/work/lerobot-hw/.venv/bin/activate"
-python scripts/qc_teleop_dataset.py \
+HF_HUB_OFFLINE=1 python scripts/qc_teleop_dataset.py \
   --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027" \
   --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027_batch2"
 ```
 
-2026-10-27 の配置 QC（10 + 10 エピソード、7,369 + 7,373 フレーム）は Mac 上の `$HOME/work/lerobot-hw/outputs/qc_layout20261026_20261027.md` にある。ACT 学習の前に、2 つの root を 1 つのクリーンセットへまとめ、set 1 の episode 3（`shoulder_lift` の遅れ 8.92°）を再確認するか外し、開始時の待機ではエピソードごと捨てずに先頭アイドルを切り、この配置を `so101_pick_sponge_main_20261020` と混ぜない。
+`--repo-id` は `--root` が 1 つのときだけ使える。既定は `info.json` の `repo_id` で、無ければ `local/<dirname>` である。`--fps` はデータセットの fps を上書きする。`--out` は stem、`.csv` / `.md` のパス、またはディレクトリである。`--format` は `csv`、`md`、`both`（既定 `both`）である。
+
+### 測る量
+
+腕関節は、名前に `gripper` を含まない action である。名前が `dim*` で 2 個以上あるときは `dim1` を `shoulder_lift` とする。標準偏差は母標準偏差（`np.std`、`ddof=0`）である。
+
+| 量 | 定義 |
+| --- | --- |
+| 平均動作 | 腕関節の `action` について、フレーム間絶対差分の平均。単位は度/フレーム |
+| 先頭アイドル | 腕関節の `\|action - action[0]\|` の最大が `--motion-eps-deg`（既定 **1.0**）に初めて達するフレーム番号。一度も離れなければ `idle_fr` はエピソード長 `T` で、`to_mot` は空。`idle_s = idle_fr / fps` |
+| 遅れ | 関節ごとの mean `\|action - state\|`。グリッパを含む。`lag_sl` は常に `shoulder_lift`。`max_lag` は平均が最大の関節 |
+| action 標準偏差 | 腕関節ごとの `action` の標準偏差。`LOW_MOTION` はその最大を使う |
+
+### フラグ
+
+比較の向きはスクリプトの実装と一致する。
+
+| フラグ | 深刻度 | 条件 | ACT 学習の前 |
+| --- | --- | --- | --- |
+| `LOW_MOTION` | high | 腕関節の action 標準偏差の最大が `--low-motion-std-deg`（既定 **5**）**未満** | そのエピソードを外す。収録全体がほぼ静止している |
+| `HIGH_LAG` | high | 全関節（グリッパを含む）の mean `\|action-state\|` の最大が `--high-lag-deg`（既定 **6**）**以上** | 外すか、再確認する。この機体で熱を持つ関節は通常 `shoulder_lift` である（健全時およそ 1.5–2°、長い連続収録でおよそ 10–12°）。フラグ自体は閾値に達した任意の関節に付く |
+| `LONG_HEAD_IDLE` | warn | `idle_s` が `--head-idle-s`（既定 **2**）**より大きい**。ちょうど 2.0 秒では付かない | そのエピソードの `idle_fr` / `to_mot` を使い、先頭アイドルだけを軽く切る。待機だけでは捨てない。30 フレーム固定で切ると、3–4 秒の待機の大半が残る |
+
+深刻度は、`LOW_MOTION` または `HIGH_LAG` があるとき `high`、フラグが `LONG_HEAD_IDLE` だけのとき `warn`、それ以外は `ok` である。`--strict` が終了コード 1 にするのは `high` だけである。warn だけの実行は 0 で終わる。`info.json` が無い、読み込みに失敗した、エピソードが 0 件、のいずれも 1 で終わる。
+
+静止した末尾は収録時の規則である。置き終わったら Right を押す。スクリプトはその末尾を採点しない。
+
+標準出力はエピソード 1 行と、最後の `episodes / high / warn / ok` である。`$HOME/work/lerobot-hw/outputs/` があるときは `qc_teleop_<UTC>.csv` と `.md` をそこへ書く。無いときは先頭の `--root` の隣へ書く。
+
+### ACT 学習の前
+
+スクリプトは報告だけをする。学習前の作業は手で行う。
+
+1. 同じ配置のバッチを 1 つのクリーンな root にまとめる。
+2. `HIGH_LAG` のエピソードを外すか再確認する。2026-10-27 では set 1 の episode 3（`shoulder_lift` の遅れ 8.92°）である。
+3. 先頭アイドルを軽く切る。`LONG_HEAD_IDLE` のエピソードは残す。
+4. この配置を `so101_pick_sponge_main_20261020` と混ぜない。
+
+2026-10-27 の配置 QC（10 + 10 エピソード、7,369 + 7,373 フレーム）は Mac 上の `$HOME/work/lerobot-hw/outputs/qc_layout20261026_20261027.md` にある。
 
 ## 次のステップ
 

@@ -176,4 +176,5 @@ ACT inputs are both the top camera (`/camera/top/image_raw`) and the wrist camer
 - [ ] On Linux, configured udev rules from hardware-specific serial numbers
 - [ ] On macOS, know how to identify `/dev/tty.usbmodem*` devices
 - [ ] Understand motor setup and calibration commands to run after hardware arrives
+- [ ] For a live SO-101 demo, also complete the pre-recording checklist and the post-record QC in [real_robot_bringup.md](real_robot_bringup.en.md)
 

@@ -18,7 +18,7 @@
 | [figures/README.md](figures/README.ja.md) | レポート図表の再生成（学習曲線・ヒストグラム・初期XY・ロールアウト） |
 | [e2e.md](e2e.ja.md) | データ収集から推論までを結合して実行するエンドツーエンドパイプライン試験 |
 | [hardware.md](hardware.ja.md) | SO-ARM101 および Feetech サーボモータの Linux udev 設定、接続準備ドライラン、シミュレーション準拠の作業エリア配置、購入済み機材 |
-| [real_robot_bringup.md](real_robot_bringup.ja.md) | Mac / LeRobot 0.6.1 による SO-101 Leader/Follower の実機 bring-up・テーブル配置・デモ収録（`scripts/record_real_so101.sh`）と収録後 QC（`scripts/qc_teleop_dataset.py`） |
+| [real_robot_bringup.md](real_robot_bringup.ja.md) | Mac / LeRobot 0.6.1 による SO-101 Leader/Follower の実機 bring-up・収録前チェック・テーブル配置・デモ収録（`scripts/record_real_so101.sh`）と収録後 QC（`scripts/qc_teleop_dataset.py`） |
 | [real_robot_deploy.md](real_robot_deploy.ja.md) | 実機学習 ACT / SmolVLA の dry-run → live（単位変換なし・安全クランプ） |
 | [ci.md](ci.ja.md) | GitHub Actions CI ワークフローの構成とローカルでの静的解析・テスト実行手順 |
 | [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.ja.md) | OmniCampus 提出物仕様（PDF レポート、GitHub、YouTube 動画）および点検リスト |
