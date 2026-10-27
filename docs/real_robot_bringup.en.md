@@ -135,7 +135,7 @@ Run this before `scripts/run_act_real.sh --live`, `scripts/run_smolvla_real.sh -
 | 3 | Paper at 69 cm from right, 27 cm from front (portrait 20×30 cm) |
 | 4 | Sponge at 54 cm from right, 44 cm from front (portrait 6×11 cm) |
 | 5 | C920 on the **right edge**, **16 cm from the front**, aimed so paper, sponge, and follower are in frame |
-| 6 | Wrist camera on the follower gripper. OpenCV **wrist = 0**, **top = 1**. Re-check with `lerobot-find-cameras opencv` after any unplug |
+| 6 | Wrist camera on the follower gripper. OpenCV **wrist = 0**, **top = 1**. Re-check with `scripts/preflight_real_so101.sh` and `lerobot-find-cameras opencv` after any unplug |
 | 7 | Rerun: `observation.top` shows paper, sponge, and follower; `observation.wrist` shows the gripper tip and the sponge on approach |
 | 8 | Dry-run first. Support the follower by hand before torque-off. Keep the 12V plug in reach |
 
@@ -287,12 +287,35 @@ lerobot-teleoperate \
 
 **Run this immediately before every `lerobot-record`.** Ports, camera indices, and the taped layout are defined above. This table is the session gate.
 
+Device presence is `scripts/preflight_real_so101.sh`. Run it before teleop or record. It is read-only: it does not open the motor bus, move the arm, or write a dataset. Leader port, Follower port, wrist cam, and top cam each print `PASS` or `FAIL`, then `RESULT PASS` or `RESULT FAIL`. A hard failure exits non-zero. Do not start teleop or `lerobot-record` after `RESULT FAIL`.
+
+The preflight checks that the serial nodes exist and that each camera index can be opened. It does not judge framing. Row 6 is still a look at Rerun.
+
+```bash
+scripts/preflight_real_so101.sh
+```
+
+Defaults match `scripts/record_real_so101.sh`:
+
+| Check | Default |
+| --- | --- |
+| Leader port (5V) | `/dev/tty.usbmodem5B790143611` |
+| Follower port (12V) | `/dev/tty.usbmodem5B8E1163071` |
+| wrist cam | OpenCV index **0** |
+| top cam | OpenCV index **1** |
+
+macOS also creates `/dev/cu.usbmodem*` for the same adapter. LeRobot commands in this repo use the `tty` node. Override a moved node with `PORT_LEADER`, `PORT_FOLLOWER`, `WRIST_INDEX`, or `TOP_INDEX`. The venv is `$LEROBOT_HW_ROOT/.venv` (`LEROBOT_HW` is also accepted; default `$HOME/work/lerobot-hw`), as in `scripts/run_act_real.sh`.
+
+One OpenCV frame from that venv is the camera check, at the indices `lerobot-record` uses. Without OpenCV the script lists cameras with `system_profiler` and ffmpeg `avfoundation`, and grabs a frame with ffmpeg when it is installed. avfoundation numbers are not OpenCV indices. A listed Continuity Camera, iPhone camera, or iPad camera fails the run: disconnect it and turn Continuity Camera off. The first camera open still needs the macOS Camera permission (System Settings → Privacy & Security → Camera).
+
+`PORT_*` and `*_INDEX` apply to the preflight only. `scripts/record_real_so101.sh` keeps ports and camera indices hardcoded. After a replug, edit that script to the `tty` node from `ls /dev/tty.usbmodem*`. The preflight lists other `tty.usbmodem*` / `cu.usbmodem*` nodes and does not pick one: auto-selecting a port can swap Leader and Follower.
+
 | # | Check |
 | --- | --- |
 | 1 | Table layout is the [current 2026-10-26 layout](#current-table-layout-2026-10-26) (Issue #90), not the 2026-10-22 tape marks. Sponge and paper sit on the taped marks in that section. Keep this layout separate from the `so101_pick_sponge_main_20261020` archive. |
 | 2 | Leader power is **5V**. Follower power is **12V** and the board LED is lit. Adapters stay on the arm they belong to. |
-| 3 | Ports were re-read with `ls /dev/tty.usbmodem*`. Script defaults: Leader `/dev/tty.usbmodem5B790143611`, Follower `/dev/tty.usbmodem5B8E1163071`. Edit the script when unplug/replug moves them. |
-| 4 | OpenCV indices are wrist **0** and top **1**. iPhone Continuity Camera is disconnected and off. Confirm with `lerobot-find-cameras opencv`. |
+| 3 | Ports were re-read with `ls /dev/tty.usbmodem*` and `scripts/preflight_real_so101.sh` (`Leader port` and `Follower port` are `PASS`). Script defaults: Leader `/dev/tty.usbmodem5B790143611`, Follower `/dev/tty.usbmodem5B8E1163071`. Edit `scripts/record_real_so101.sh` when unplug/replug moves them. |
+| 4 | OpenCV indices are wrist **0** and top **1**. iPhone Continuity Camera is disconnected and off. `scripts/preflight_real_so101.sh` reports `wrist cam` and `top cam` as `PASS`. Confirm the picture with `lerobot-find-cameras opencv`. |
 | 5 | Leader and Follower start in the **same rest pose**, so teleop start does not snap the Follower. |
 | 6 | A short teleop with the same robot / teleop / camera flags looks right in Rerun (`observation.top` / `observation.wrist`). **top:** paper, sponge, and the Follower base / gripper path are in frame. **wrist:** gripper tip and sponge are visible on approach. The path clears the stand and clamps. There are no camera warnings. Sponge and paper are on the taped starts for the 2026-10-26 layout. |
 | 7 | `lerobot-teleoperate` is stopped before record. The recording script also `pkill`s it. A leftover teleop process contends for the cameras and the serial ports. |
@@ -316,8 +339,11 @@ Use the repository’s `scripts/record_real_so101.sh` (executable).
 
 ```bash
 # Append N episodes. Auto-resumes if the dataset already exists
+scripts/preflight_real_so101.sh
 scripts/record_real_so101.sh [N]
 ```
+
+`scripts/preflight_real_so101.sh` must print `RESULT PASS` before recording.
 
 | Item | Value |
 | --- | --- |
@@ -512,6 +538,7 @@ lerobot-rollout \
 | Symptom | Action |
 | --- | --- |
 | Port missing / changes | Confirm data-capable USB-C. Bypass hub and connect direct. `ls /dev/tty.usbmodem*`. Re-identify after unplug/replug |
+| Preflight `RESULT FAIL` | Read the `FAIL` line. Fix that port or camera, turn Continuity Camera off, then rerun `scripts/preflight_real_so101.sh`. Teleop and record wait for `RESULT PASS` |
 | Ports swapped (gripper arm acts as Leader) | Re-run `lerobot-find-port` one arm at a time; recalibrate |
 | `Permission denied` / `Resource busy` | Kill the process holding the port with `lsof`. Stop `lerobot-teleoperate` before recording |
 | `Missing motor IDs` | Check `scan_port`, 12V/5V, 3-pin wiring, port swap |

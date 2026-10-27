@@ -134,7 +134,7 @@ MuJoCo の `so101_tabletop.xml` は廃止した簡易シーンのままである
 | 3 | 紙は右から 69 cm、手前から 27 cm（縦置き 20×30 cm） |
 | 4 | スポンジは右から 54 cm、手前から 44 cm（縦置き 6×11 cm） |
 | 5 | C920 は**右端**、**手前から 16 cm**。紙・スポンジ・Follower が写る向き |
-| 6 | 手首カメラは Follower のグリッパ。OpenCV **wrist = 0**、**top = 1**。抜き差し後は `lerobot-find-cameras opencv` で再確認 |
+| 6 | 手首カメラは Follower のグリッパ。OpenCV **wrist = 0**、**top = 1**。抜き差し後は `scripts/preflight_real_so101.sh` と `lerobot-find-cameras opencv` で再確認 |
 | 7 | Rerun: `observation.top` に紙・スポンジ・Follower、`observation.wrist` に接近時のグリッパ先端とスポンジ |
 | 8 | 先に dry-run。トルクオフの前に Follower を手で支える。12V プラグに手が届くこと |
 
@@ -286,12 +286,35 @@ lerobot-teleoperate \
 
 **毎回 `lerobot-record` の直前に実施する。** ポート、カメラ index、テープ位置は上の節で定義する。この表がセッション開始の確認項目である。
 
+デバイスの有無は `scripts/preflight_real_so101.sh` で確認する。テレオペまたは収録の前に実行する。読み取り専用であり、モーターバスは開かず、アームは動かさず、データセットも書かない。Leader port、Follower port、wrist cam、top cam のそれぞれが `PASS` または `FAIL` を出し、最後に `RESULT PASS` または `RESULT FAIL` を出す。ハードな失敗は非ゼロで終了する。`RESULT FAIL` のあとにはテレオペも `lerobot-record` も始めない。
+
+この事前チェックはシリアルノードの存在と、各カメラインデックスが開けることだけを見る。画角は判定しない。下の 6 は引き続き Rerun を見る。
+
+```bash
+scripts/preflight_real_so101.sh
+```
+
+既定値は `scripts/record_real_so101.sh` と同じである。
+
+| 確認 | 既定 |
+| --- | --- |
+| Leader port（5V） | `/dev/tty.usbmodem5B790143611` |
+| Follower port（12V） | `/dev/tty.usbmodem5B8E1163071` |
+| wrist cam | OpenCV index **0** |
+| top cam | OpenCV index **1** |
+
+macOS は同じアダプタに `/dev/cu.usbmodem*` も作る。このリポジトリの LeRobot コマンドは `tty` ノードを使う。抜き差しでノードが動いたときは `PORT_LEADER`、`PORT_FOLLOWER`、`WRIST_INDEX`、`TOP_INDEX` で上書きする。venv は `$LEROBOT_HW_ROOT/.venv`（`LEROBOT_HW` も可。既定は `$HOME/work/lerobot-hw`）で、`scripts/run_act_real.sh` と同じである。
+
+カメラ確認は、その venv の OpenCV で 1 フレーム取る。index は `lerobot-record` が使う値である。OpenCV が無いときは `system_profiler` と ffmpeg の `avfoundation` でカメラを列挙し、ffmpeg があれば 1 フレーム取る。avfoundation の番号は OpenCV の index ではない。Continuity Camera、iPhone カメラ、iPad カメラが列挙されたら失敗である。外して Continuity Camera をオフにする。カメラを初めて開くときは macOS のカメラ権限が要る（システム設定 → プライバシーとセキュリティ → カメラ）。
+
+`PORT_*` と `*_INDEX` は事前チェックだけに効く。`scripts/record_real_so101.sh` のポートとカメラ index はハードコードのままである。抜き差しのあとは `ls /dev/tty.usbmodem*` の `tty` ノードに合わせてそのスクリプトを直す。事前チェックは他の `tty.usbmodem*` / `cu.usbmodem*` を表示するだけで、どれかを自動では選ばない。自動選択は Leader と Follower の取り違えになる。
+
 | # | 確認項目 |
 | --- | --- |
 | 1 | テーブル配置は [現行の 2026-10-26 配置](#現行テーブル配置2026-10-26)（Issue #90）である。スポンジと紙はその節のテープ印にあり、2026-10-22 のテープ印ではない。この配置はアーカイブ `so101_pick_sponge_main_20261020` と混ぜない。 |
 | 2 | Leader の電源は **5V**、Follower の電源は **12V** で、基板の LED が点灯している。アダプタはそれぞれのアームに付いたままである。 |
-| 3 | `ls /dev/tty.usbmodem*` でポートを読み直した。スクリプトの既定は Leader `/dev/tty.usbmodem5B790143611`、Follower `/dev/tty.usbmodem5B8E1163071`。抜き差しで変わったらスクリプトを直す。 |
-| 4 | OpenCV index は wrist **0**、top **1** である。iPhone の Continuity Camera は切断し、オフにしてある。`lerobot-find-cameras opencv` で確認する。 |
+| 3 | `ls /dev/tty.usbmodem*` と `scripts/preflight_real_so101.sh` でポートを読み直した（`Leader port` と `Follower port` が `PASS`）。スクリプトの既定は Leader `/dev/tty.usbmodem5B790143611`、Follower `/dev/tty.usbmodem5B8E1163071`。抜き差しで変わったら `scripts/record_real_so101.sh` を直す。 |
+| 4 | OpenCV index は wrist **0**、top **1** である。iPhone の Continuity Camera は切断し、オフにしてある。`scripts/preflight_real_so101.sh` の `wrist cam` と `top cam` が `PASS` である。画像は `lerobot-find-cameras opencv` で確認する。 |
 | 5 | Leader と Follower は**同じ休止姿勢**から始める。テレオペ開始時に Follower が急に寄らない。 |
 | 6 | 同じ robot / teleop / camera フラグで短時間テレオペし、Rerun（`observation.top` / `observation.wrist`）を見る。**top:** 紙・スポンジ・Follower 基部／グリッパ経路が画角に入る。**wrist:** 接近時にグリッパ先端とスポンジが見える。経路はスタンドとクランプに当たらない。カメラ警告はない。スポンジと紙は 2026-10-26 配置のテープ印の開始位置にある。 |
 | 7 | 収録前に `lerobot-teleoperate` を止める。収録スクリプトも `pkill` する。残っているとカメラとシリアルを取り合う。 |
@@ -315,8 +338,11 @@ lerobot-teleoperate \
 
 ```bash
 # N エピソードを追加。データセットが既にあれば自動で resume
+scripts/preflight_real_so101.sh
 scripts/record_real_so101.sh [N]
 ```
+
+収録の前に `scripts/preflight_real_so101.sh` が `RESULT PASS` を出す。
 
 | 項目 | 値 |
 | --- | --- |
@@ -511,6 +537,7 @@ lerobot-rollout \
 | 症状 | 対処 |
 | --- | --- |
 | ポートが出ない / 変わる | データ通信対応 USB-C か確認。ハブを外して直結。`ls /dev/tty.usbmodem*`。抜き差し後は再識別 |
+| 事前チェックが `RESULT FAIL` | `FAIL` の行を読む。そのポートかカメラを直し、Continuity Camera をオフにして `scripts/preflight_real_so101.sh` をやり直す。テレオペと収録は `RESULT PASS` を待ってから始める |
 | ポート取り違え（グリッパ腕が Leader 動作） | `lerobot-find-port` を 1 台ずつやり直し、再キャリブレーション |
 | `Permission denied` / `Resource busy` | `lsof` でポート占有プロセスを終了。収録前に `lerobot-teleoperate` を止める |
 | `Missing motor IDs` | `scan_port`、12V/5V、3 ピン配線、ポート取り違えを確認 |
