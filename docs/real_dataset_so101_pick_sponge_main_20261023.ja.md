@@ -20,6 +20,7 @@
 - カメラ: `observation.images.top`、`observation.images.wrist`。いずれも 640×480、AV1、yuv420p、30 fps、g=2、crf=30、preset 12、音声なし
 - レイアウト: parquet 3 ファイル、カメラあたり mp4 3 ファイル（`chunk-000/file-000..002`）
 - ディレクトリ名は `20261020` だが、収録は 2026-10-22 23:30 〜 2026-10-23 00:38 SGT（ログ参照）
+- これらのエピソードの物理配置は廃止した 2026-10-22 のテーブルであり、2026-10-26 の正ではない。[廃止した配置](real_robot_bringup.ja.md#廃止した配置) を参照
 
 上の表は 2026-10-23 時点のスナップショットである。2026-10-27 05:04–05:11 SGT に、同じ `20261020` root へ episode 32–41（10 本、7,369 frames）が追記された。その 10 本は Issue #90（2026-10-26 配置）のデモであり、`$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027` の episode 0–9 として切り出してある。以降の新規デモの既定 root はその切り出し先であり、`scripts/record_real_so101.sh` は `20261020` への記録を拒否する。
 

@@ -13,7 +13,8 @@ sim 学習 ACT の rad↔deg 変換ラッパーは **使わない**（こちら�
 | --- | --- |
 | ホスト | Apple Silicon Mac / LeRobot **0.6.1** / MPS |
 | 実機 venv | `$LEROBOT_HW_ROOT`（既定 `$HOME/work/lerobot-hw`） |
-| カメラ | top=OpenCV index **1**、wrist=index **0**、640×480@30（収録と同じ） |
+| カメラ | top=OpenCV index **1**、wrist=index **0**、640×480@30（2026-10-25 のケーブル交換後も同じ） |
+| テーブル | [現行配置 2026-10-26](real_robot_bringup.ja.md#現行テーブル配置2026-10-26)（Issue #90）。2026-10-22 と 2026-10-25 ~23:28 は使わない |
 | タスク文 | `Pick up the yellow sponge and place it on the white paper` |
 
 パスは環境変数で上書きする（絶対 `/Users/...` は使わない）。

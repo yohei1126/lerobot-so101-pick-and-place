@@ -26,6 +26,7 @@ Implementation: `port_pick_align.deploy.conversion` / `sim_policy_wrapper` / `ru
 - Sim checkpoint (e.g. `best_model.pt` from `train_act --preset sim`)
 - Port env: `PORT_FOLLOWER` (`lerobot-find-port`)
 - Cameras: top=OpenCV index 1, wrist=index 0, 640×480@30 (same as bring-up)
+- Table: [current layout 2026-10-26](real_robot_bringup.en.md#current-table-layout-2026-10-26). The sim checkpoint was trained on the superseded MuJoCo scene; do not expect its box and pad to match this table until a later sim align
 
 ```bash
 source "$HOME/work/lerobot-hw/.venv/bin/activate"

@@ -5,7 +5,8 @@ This procedure drives a WowRobo pre-assembled SO-101 (Leader / Follower) with Le
 Measured results reflected here:
 
 - Bring-up on 2026-10-17/18 (connection via UGREEN hub, simultaneous dual-camera streaming, teleop, `lerobot-record` trials)
-- **Main recording on 2026-10-22 / 23** (table dimensions, camera framing, keyboard controls, motor temperature, clean-set creation)
+- **Main recording on 2026-10-22 / 23** (table dimensions then in use, camera framing, keyboard controls, motor temperature, clean-set creation). That table is superseded; see [Superseded layouts](#superseded-layouts)
+- **Current table for new bring-up and live eval: 2026-10-26** (Issue #90). See [Current table layout](#current-table-layout-2026-10-26)
 - **Layout recording on 2026-10-27.** Default root is `so101_pick_sponge_layout20261026_20261027`. `so101_pick_sponge_main_20261020` is an archive
 
 Dataset summary: [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md). Sim→real unit conversion: [sim_to_real_act.md](sim_to_real_act.en.md) / [units.md](units.en.md).
@@ -43,7 +44,7 @@ Prefer `$HOME` over `~` in docs (`~` right after `--dataset.root=` is not expand
 | Leader | Has a handle. **No gripper**. Power **5V**. Port example `/dev/tty.usbmodem5B790143611` |
 | Follower | **Has a gripper**. Power **12V**. Port example `/dev/tty.usbmodem5B8E1163071` |
 | Fixturing | Clamp both arm bases to the table edge with C-clamps |
-| Top camera | Logitech C920. Mounted on a VIJIM LS08 camera arm, clamped to the table edge |
+| Top camera | Logitech C920 on a VIJIM LS08. Current mount: table right edge, 16 cm from the front. See [Current table layout](#current-table-layout-2026-10-26) |
 | Wrist camera | Kit-included USB2.0_CAM1 (Follower gripper side) |
 
 **Never swap adapters.** Before plugging in, point-check the label voltage against the board side. The board red LED may stay on after unplugging DC (USB power). Drive torque requires the DC adapter. Follower 12V must be ON (LED lit). Measured 2026-10-18: Follower ≈ 12.6 V / Leader ≈ 5.5 V.
@@ -52,10 +53,12 @@ Prefer `$HOME` over `~` in docs (`~` right after `--dataset.root=` is not expand
 
 ### Camera indices (OpenCV / LeRobot)
 
-| Camera | OpenCV index (typical 2026-10-18 / 22) | Resolution / fps |
+| Camera | OpenCV index | Resolution / fps |
 | --- | ---: | --- |
-| wrist (USB2.0_CAM1) | 0 | 640×480 / 30 |
+| wrist (USB2.0_CAM1, follower gripper) | 0 | 640×480 / 30 |
 | top (C920) | 1 | 640×480 / 30 |
+
+These indices are the 2026-10-25 cable swap and were still current on 2026-10-26 (same numbers as the 2026-10-18 / 22 sessions).
 
 **Indices can also shift after unplug/replug.** Confirm with `lerobot-find-cameras opencv` and `outputs/captured_images/opencv_*.png` (ffmpeg / avfoundation numbers differ from OpenCV).
 
@@ -66,11 +69,97 @@ Rerun entity names when displaying: `observation.top` and `observation.wrist`.
 - At teleop start, the Follower snaps toward the Leader pose. Align both arms before starting.
 - Stopping (Ctrl+C) disables torque (`disable_torque_on_disconnect`). Gravity drop is possible. Support the Follower by hand before stopping.
 - In an emergency, unplug the Follower **12V plug** first. Keep the power plug within immediate reach.
-- **Keep the camera stand outside the Follower workspace** (roughly ≥ 35 cm from the base). Contact with the stand has occurred during teleop.
+- **Keep the camera stand outside the Follower workspace.** The C920 is on the table right edge, 16 cm from the front (2026-10-26). The 2026-10-22 pole (about 23 cm in from the right on a ~134 cm table) is superseded. Contact with a stand has occurred during teleop.
 
-## Table layout (measured 2026-10-22)
+## Current table layout (2026-10-26)
 
-All distances are from the **left edge** of the table. Table width is approximately **134 cm**. The sponge was shifted forward to keep clearance from the Follower base. Mark paper and sponge positions with masking tape.
+Source of truth for new bring-up, new recording, and real live eval. Measured 2026-10-26 ~00:36 SGT after the top camera was moved so phone filming and the C920 could show the sponge, the paper, and the follower. This supersedes 2026-10-25 ~23:28 and 2026-10-22. Same numbers as [hardware.md](hardware.en.md#current-table-layout-2026-10-26). Constants: `port_pick_align.simulation.table_layout`.
+
+Table: **140 cm** wide × **70 cm** deep. Mark the paper and sponge with tape. Do not move hardware from this section to match an older figure.
+
+| Item | Placement | Notes |
+| --- | --- | --- |
+| Leader base | 27 cm from left / 101 cm from right | 5V. Opposite sides of the base |
+| Follower base | ~68 cm from left / 61 cm from right | 12V. Left distance is approximate |
+| Top camera (C920) | Table **right edge**, **16 cm from front** | Aimed so paper, sponge, and follower are in frame |
+| Paper (goal) | 69 cm from right, 27 cm from front | Portrait 20 cm wide × 30 cm deep |
+| Sponge | 54 cm from right, 44 cm from front | Portrait 6 cm wide × 11 cm deep |
+| Wrist camera | Follower gripper | OpenCV **0** |
+| Top camera index | OpenCV **1** | 2026-10-25 cable swap, still current |
+
+Top view (front edge at the bottom):
+
+```text
+back (70 cm from front)
++------------------------------------------------------------------------------+
+|                          sponge 6×11 portrait                                |
+|                          54 cm from right, 44 cm from front                  |
+|                                                                              |
+|  Leader base              paper 20×30 portrait              Follower base    |
+|  27 cm from left          69 cm from right                  ~68 cm from left |
+|  101 cm from right        27 cm from front                  61 cm from right |
+|  5V                                                                  C920    |
+|                                                                      right   |
+|                                                                      edge,   |
+|                                                                      16 cm   |
+|                                                                      front   |
++------------------------------------------------------------------------------+
+front edge (0)                                                          140 cm
+left 0
+```
+
+### Sim-frame map
+
+Origin: follower-base **midpoint** on the front edge. +x is forward (into the table), +y is left. The midpoint is the center of the span implied by ~68 cm from the left and 61 cm from the right (68 cm to 79 cm, midpoint 73.5 cm). Bases were not given a new front offset, so that origin is on the front edge. Paper, sponge, and camera coordinates are the measured points (the note does not say those points are corners).
+
+| Item | Sim `(x, y)` cm | Sim `(x, y)` m |
+| --- | --- | --- |
+| Leader midpoint | (0, 40.5) | (0, 0.405) |
+| Follower origin | (0, 0) | (0, 0) |
+| Paper | (27, 2.5) | (0.27, 0.025) |
+| Sponge | (44, −12.5) | (0.44, −0.125) |
+| Top camera | (16, −66.5) | (0.16, −0.665) |
+
+The MuJoCo file `so101_tabletop.xml` still has the superseded simplified scene (box at `(0.28, -0.08)` m, goal at `(0.35, 0.12)` m, nadir camera at `(0.25, 0, 1.05)` m). Those geoms are not this table. Keep the reachable volume around the follower clear of obstacles and liquids.
+
+![Current table layout](images/so101_layout_guide.png)
+
+## Real live-eval checklist
+
+Run this before `scripts/run_act_real.sh --live`, `scripts/run_smolvla_real.sh --live`, or `lerobot-rollout`. Deploy flags stay in [real_robot_deploy.md](real_robot_deploy.en.md). Scoring and trim notes (Japanese): [real_eval_protocol.ja.md](real_eval_protocol.ja.md).
+
+| # | Check |
+| --- | --- |
+| 1 | Table is **140 × 70 cm**. Ignore 2026-10-22 (~134 cm) and 2026-10-25 ~23:28 (140×69, C920 28 cm from the right) |
+| 2 | Leader base 27 cm from left / 101 cm from right (5V). Follower base ~68 cm from left / 61 cm from right (12V) |
+| 3 | Paper at 69 cm from right, 27 cm from front (portrait 20×30 cm) |
+| 4 | Sponge at 54 cm from right, 44 cm from front (portrait 6×11 cm) |
+| 5 | C920 on the **right edge**, **16 cm from the front**, aimed so paper, sponge, and follower are in frame |
+| 6 | Wrist camera on the follower gripper. OpenCV **wrist = 0**, **top = 1**. Re-check with `lerobot-find-cameras opencv` after any unplug |
+| 7 | Rerun: `observation.top` shows paper, sponge, and follower; `observation.wrist` shows the gripper tip and the sponge on approach |
+| 8 | Dry-run first. Support the follower by hand before torque-off. Keep the 12V plug in reach |
+
+## Top camera framing
+
+The top view must show all of:
+
+1. White paper
+2. Yellow sponge
+3. Follower base and gripper work path
+
+The 2026-10-26 mount puts the C920 on the right edge, 16 cm from the front, for that coverage. Before recording or live eval, confirm in Rerun (`observation.top` / `observation.wrist`). Do not move the camera back to the 2026-10-22 pole or the 2026-10-25 position (28 cm from the right).
+
+## Superseded layouts
+
+Do not set up a new session from these.
+
+### 2026-10-25 ~23:28
+
+Table 140×69 cm. C920 28 cm from the right. Sponge 70 cm from the right / 45 cm from the front. Paper 82 cm from the right / 26 cm from the front. Follower 62 cm from the right.
+
+### 2026-10-22 (main teleop recording only)
+
+Distances below are from the **left edge**. Table width was approximately **134 cm**. The sponge had been shifted forward for clearance from the follower base. The clean28 dataset was recorded on this layout; do not rewrite those episodes as the 2026-10-26 table.
 
 | Target | From left edge | From near edge (when applicable) |
 | --- | ---: | ---: |
@@ -79,8 +168,6 @@ All distances are from the **left edge** of the table. Table width is approximat
 | Follower arm left edge | 78 cm | — |
 | Yellow sponge | 81 cm | 29 cm |
 | Top camera pole | 111 cm (23 cm from right edge) | — |
-
-Top view (left edge = 0 cm, near edge at bottom):
 
 ```text
 左端 0 cm                                              右端 ~134 cm
@@ -94,17 +181,7 @@ Top view (left edge = 0 cm, near edge at bottom):
 +------------------------------------------------------------------+
 ```
 
-Coordinate frame (same as sim / [hardware.md](hardware.en.md)): origin at Follower base center, +x forward, +y left, +z up. Keep the reachable volume (≈ 45 cm radius from the base) free of obstacles and liquids.
-
-## Top camera framing
-
-The top view must show all of:
-
-1. White paper
-2. Yellow sponge
-3. Follower base and gripper work path
-
-Earlier framing was too tight and cut off the gripper path. Before recording, confirm in Rerun (`observation.top` / `observation.wrist`). If the C920 FOV is tight, lower it slightly and move it back / tilt it downward.
+Superseded figure (simplified MuJoCo scene, not the 2026-10-22 tape marks): [so101_layout_guide_superseded_pre_20261026.png](images/so101_layout_guide_superseded_pre_20261026.png).
 
 ## USB and port identification
 
@@ -212,12 +289,12 @@ lerobot-teleoperate \
 
 | # | Check |
 | --- | --- |
-| 1 | Table layout is the 2026-10-26 layout (Issue #90). Sponge and paper sit on the taped marks in the Table layout section. Keep this layout separate from the `so101_pick_sponge_main_20261020` archive. |
+| 1 | Table layout is the [current 2026-10-26 layout](#current-table-layout-2026-10-26) (Issue #90), not the 2026-10-22 tape marks. Sponge and paper sit on the taped marks in that section. Keep this layout separate from the `so101_pick_sponge_main_20261020` archive. |
 | 2 | Leader power is **5V**. Follower power is **12V** and the board LED is lit. Adapters stay on the arm they belong to. |
 | 3 | Ports were re-read with `ls /dev/tty.usbmodem*`. Script defaults: Leader `/dev/tty.usbmodem5B790143611`, Follower `/dev/tty.usbmodem5B8E1163071`. Edit the script when unplug/replug moves them. |
 | 4 | OpenCV indices are wrist **0** and top **1**. iPhone Continuity Camera is disconnected and off. Confirm with `lerobot-find-cameras opencv`. |
 | 5 | Leader and Follower start in the **same rest pose**, so teleop start does not snap the Follower. |
-| 6 | A short teleop with the same robot / teleop / camera flags looks right in Rerun (`observation.top` / `observation.wrist`). **top:** paper, sponge, and the Follower base / gripper path are in frame. **wrist:** gripper tip and sponge are visible on approach. The path clears the stand and clamps. There are no camera warnings. Sponge and paper are on the taped starts. |
+| 6 | A short teleop with the same robot / teleop / camera flags looks right in Rerun (`observation.top` / `observation.wrist`). **top:** paper, sponge, and the Follower base / gripper path are in frame. **wrist:** gripper tip and sponge are visible on approach. The path clears the stand and clamps. There are no camera warnings. Sponge and paper are on the taped starts for the 2026-10-26 layout. |
 | 7 | `lerobot-teleoperate` is stopped before record. The recording script also `pkill`s it. A leftover teleop process contends for the cameras and the serial ports. |
 | 8 | `ROOT` is a new dataset directory, or an intentional resume of the current layout root (`so101_pick_sponge_layout20261026_20261027`, or a named batch such as `..._batch2`). The script exits when `ROOT` resolves to `so101_pick_sponge_main_20261020`. |
 | 9 | The root was **not** created with `mkdir` before `lerobot-record`. `scripts/record_real_so101.sh` sets `--resume=true` whenever the directory exists, including an empty one. `lerobot-record` creates the tree on a first recording. A new batch uses a `ROOT` that does not exist yet. |
@@ -450,7 +527,7 @@ lerobot-rollout \
 | rerun error with `--display_data` | `pip install 'lerobot[viz]==0.6.1'` |
 | `lerobot-record` import error | `pip install 'lerobot[dataset]==0.6.1'` |
 | `--dataset.root=~/...` fails | `~` is not expanded. Use `$HOME` or an absolute path |
-| Follower hits the camera stand | Keep the pole ≥ ~35 cm from the base. Paper on the opposite side of the pole. Mark with tape |
+| Follower hits the camera stand | C920 stays on the right edge, 16 cm from the front. Do not return it to the superseded pole. Mark paper and sponge with tape |
 
 ## References
 

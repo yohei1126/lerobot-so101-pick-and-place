@@ -13,7 +13,8 @@ Related: Issue #76.
 | --- | --- |
 | Host | Apple Silicon Mac / LeRobot **0.6.1** / MPS |
 | Real-robot venv | `$LEROBOT_HW_ROOT` (default `$HOME/work/lerobot-hw`) |
-| Cameras | top=OpenCV index **1**, wrist=index **0**, 640×480@30 (same as recording) |
+| Cameras | top=OpenCV index **1**, wrist=index **0**, 640×480@30 (2026-10-25 cable swap, still current) |
+| Table | [Current layout 2026-10-26](real_robot_bringup.en.md#current-table-layout-2026-10-26) (Issue #90). Do not use 2026-10-22 or 2026-10-25 ~23:28 |
 | Task string | `Pick up the yellow sponge and place it on the white paper` |
 
 Override paths with environment variables (do not hardcode absolute `/Users/...` paths).

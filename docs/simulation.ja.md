@@ -25,6 +25,24 @@ export MUJOCO_GL=glfw   # macOS の既定値
 - オブジェクト: 小型直方体箱および机上面の目標整列枠
 - 実装パッケージ: `port_pick_align.simulation`（モデル定義: `simulation/assets/so101_tabletop.xml`）
 
+## テーブル配置（2026-10-26 の正）
+
+実機の bring-up と live eval は 2026-10-26 実測（Issue #90）を使う。テーブルは **140 × 70 cm**。Leader は左から 27 cm / 右から 101 cm。Follower は左から約 68 cm / 右から 61 cm。C920 は右端、手前から 16 cm。紙は右から 69 cm、手前から 27 cm（縦置き 20×30 cm）。スポンジは右から 54 cm、手前から 44 cm（縦置き 6×11 cm）。手首カメラは Follower のグリッパ。OpenCV は wrist `0`、top `1`。
+
+この縁からの距離を sim 座標（Follower 中点を手前縁、+x 前方、+y 左）へ写すと次になる。
+
+| 対象 | sim `(x, y)` m |
+| --- | --- |
+| Leader 中点 | (0, 0.405) |
+| Follower 原点 | (0, 0) |
+| 紙の実測点 | (0.27, 0.025) |
+| スポンジの実測点 | (0.44, −0.125) |
+| 上カメラ | (0.16, −0.665) |
+
+写像と規約（基部の中点、手前縁を原点、実測点であり角とは書いていないこと）は [`table_layout.py`](../port_pick_align/src/port_pick_align/simulation/table_layout.py) と [hardware.md](hardware.ja.md#現行テーブル配置2026-10-26) にある。
+
+`so101_tabletop.xml` が読むのは**廃止した**簡易シーンである。テーブルはおよそ 70×60 cm、箱の初期位置 `(0.28, -0.08)` m、ゴール `(0.35, 0.12)` m、真下の上カメラ `(0.25, 0, 1.05)` m。現行の sim 評価はこのシーンのままなので、既存チェックポイントと比較できる。これらの geom を bring-up に写さない。古い図は [so101_layout_guide_superseded_pre_20261026.png](images/so101_layout_guide_superseded_pre_20261026.png)。現行の図は [so101_layout_guide.png](images/so101_layout_guide.png)。XML には無く、同じく廃止: 2026-10-25 ~23:28（テーブル 140×69、C920 は右から 28 cm、スポンジ 70/45、紙 82/26、Follower は右から 62 cm）と 2026-10-22 の収録配置。
+
 ## 動作の可視化と確認
 
 ### 1. MuJoCo 対話型 3D ビューア
@@ -112,6 +130,7 @@ ACT は各制御周期で未来のアクションチャンクをまとめて予�
 
 ## 関連文書
 
+- 現行の実機テーブルと sim 座標: [hardware.md](hardware.ja.md#現行テーブル配置2026-10-26)、[real_robot_bringup.md](real_robot_bringup.ja.md#現行テーブル配置2026-10-26)
 - 評価 API 仕様: [evaluation.md](evaluation.ja.md)
 - ACT モデルの訓練: [training.md](training.ja.md)
 - 教示データ収集: [dataset.md](dataset.ja.md)

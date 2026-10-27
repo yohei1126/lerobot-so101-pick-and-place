@@ -25,6 +25,24 @@ export MUJOCO_GL=glfw   # default on macOS
 - Objects: small rectangular box and a tabletop alignment target frame
 - Package: `port_pick_align.simulation` (model: `simulation/assets/so101_tabletop.xml`)
 
+## Table layout (2026-10-26 source of truth)
+
+Real bring-up and live eval use the table measured on 2026-10-26 (Issue #90): **140 × 70 cm**, leader 27 cm from the left / 101 cm from the right, follower ~68 cm from the left / 61 cm from the right, C920 on the right edge 16 cm from the front, paper 69 cm from the right and 27 cm from the front (portrait 20×30 cm), sponge 54 cm from the right and 44 cm from the front (portrait 6×11 cm). Wrist camera on the follower gripper. OpenCV wrist `0`, top `1`.
+
+Those edge measurements map into the sim frame (follower midpoint on the front edge, +x forward, +y left) as:
+
+| Item | Sim `(x, y)` m |
+| --- | --- |
+| Leader midpoint | (0, 0.405) |
+| Follower origin | (0, 0) |
+| Paper point | (0.27, 0.025) |
+| Sponge point | (0.44, −0.125) |
+| Top camera | (0.16, −0.665) |
+
+The map and the conventions behind it (base midpoint, front-edge origin, measured point rather than a stated corner) are in [`table_layout.py`](../port_pick_align/src/port_pick_align/simulation/table_layout.py) and [hardware.md](hardware.en.md#current-table-layout-2026-10-26).
+
+`so101_tabletop.xml` still loads the **superseded** simplified scene: table about 70×60 cm, box spawn `(0.28, -0.08)` m, goal `(0.35, 0.12)` m, nadir top camera `(0.25, 0, 1.05)` m. Current sim eval uses that scene so existing checkpoints stay comparable. Do not copy those geoms into bring-up. The old figure is [so101_layout_guide_superseded_pre_20261026.png](images/so101_layout_guide_superseded_pre_20261026.png). The current figure is [so101_layout_guide.png](images/so101_layout_guide.png). Also superseded, and not in the XML: the 2026-10-25 ~23:28 measurements (table 140×69, C920 28 cm from the right, sponge 70/45, paper 82/26, follower 62 cm from the right) and the 2026-10-22 recording layout.
+
 ## Visualization and checks
 
 ### 1. MuJoCo interactive 3D viewer
@@ -112,6 +130,7 @@ Automatic LeRobotDataset collection from the same environment and `ScriptedPickA
 
 ## Related docs
 
+- Current real table and sim-frame map: [hardware.md](hardware.en.md#current-table-layout-2026-10-26), [real_robot_bringup.md](real_robot_bringup.en.md#current-table-layout-2026-10-26)
 - Evaluation API: [evaluation.md](evaluation.en.md)
 - ACT training: [training.md](training.en.md)
 - Demonstration collection: [dataset.md](dataset.en.md)
