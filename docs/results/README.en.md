@@ -82,4 +82,8 @@ python scripts/run_sim_eval.py --policy checkpoint \
 
 For units (rad / deg / gripper 0–100), see [`docs/units.md`](../units.en.md).
 
-Only use files that have been run and whose `status` is `measured` as numeric evidence.
+For the sim logs above, only use files that have been run and whose `status` is `measured` as numeric evidence.
+
+## Real live ACT (post-train)
+
+Not a sim `metrics.json` and not teleop-recording QC. The 2026-10-25 night trials (0/3 on all five configs) are in [live_act_20261025_night.en.md](live_act_20261025_night.en.md). Procedure and the 2026-10-24 offline diagnosis are in [real_eval_protocol.ja.md](../real_eval_protocol.ja.md) (Japanese). New evals use the [current table layout (2026-10-26)](../real_robot_bringup.en.md#current-table-layout-2026-10-26).
