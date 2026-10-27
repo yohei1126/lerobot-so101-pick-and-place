@@ -82,4 +82,8 @@ python scripts/run_sim_eval.py --policy checkpoint \
 
 単位（rad / deg / グリッパ 0–100）は [`docs/units.md`](../units.ja.md) を参照する。
 
-いずれのログも、実行して `status` が `measured` になったファイルだけを数値の根拠にする。
+上の sim ログは、実行して `status` が `measured` になったファイルだけを数値の根拠にする。
+
+## 実機 live ACT（学習後）
+
+sim の `metrics.json` でも、テレオペ収録の QC でもない。2026-10-25 夜の試行（5 設定とも 0/3）は [live_act_20261025_night.ja.md](live_act_20261025_night.ja.md)。手順と 2026-10-24 のオフライン診断は [real_eval_protocol.ja.md](../real_eval_protocol.ja.md)。新しい評価の配置は [現行テーブル配置（2026-10-26）](../real_robot_bringup.ja.md#現行テーブル配置2026-10-26)。

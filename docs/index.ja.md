@@ -12,6 +12,7 @@
 | [ros2_inference.md](ros2_inference.ja.md) | ROS 2 Humble ノード構成、モック推論パイプライン、Rerun 可視化連携 |
 | [simulation.md](simulation.ja.md) | MuJoCo シミュレータによる閉ループ制御評価、対話型ビューアおよび動画出力 |
 | [evaluation.md](evaluation.ja.md) | 平面位置誤差・ヨー角誤差・成功率の集計モジュール（`eval_alignment`）API 仕様 |
+| [real_eval_protocol.ja.md](real_eval_protocol.ja.md) | 実機 ACT のオープンループ採点と live 評価。val_l1 だけで選ばない。2026-10-24 オフライン診断と 2026-10-25 夜の 0/3 |
 | [units.md](units.ja.md) | sim/契約のラジアンと実機 LeRobot の度・グリッパ 0–100 の換算 |
 | [sim_to_real_act.md](sim_to_real_act.ja.md) | Phase 2-2: sim 学習 ACT を実機 SO-101 で dry-run / 低速 live |
 | [results/README.md](results/README.ja.md) | 閉ループ評価の実測ログと未計測プレースホルダ（post50 公式含む） |
