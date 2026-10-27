@@ -3,6 +3,10 @@
 # Interactive: Right=next, Left=re-record, Esc=stop
 # Usage: scripts/record_real_so101.sh [num_episodes]   (default 50; re-run resumes into ROOT)
 #
+# Before this script, run scripts/preflight_real_so101.sh and require RESULT PASS.
+# That check is read-only. PORT_LEADER / PORT_FOLLOWER / WRIST_INDEX / TOP_INDEX
+# override the preflight only. Ports and camera indices below stay hardcoded.
+#
 # Default ROOT is the 2026-10-27 layout dataset. Episodes 0–9 there are the
 # 2026-10-27 05:04–05:11 SGT demos (source indices 32–41 of the mixed archive).
 # so101_pick_sponge_main_20261020 is an archive. This script exits if ROOT
