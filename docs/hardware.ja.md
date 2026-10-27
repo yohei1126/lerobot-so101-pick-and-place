@@ -226,4 +226,5 @@ PDF: [so101_layout_guide_superseded_pre_20261026.pdf](images/so101_layout_guide_
 - [ ] Linux で、機材固有のシリアル番号に基づく udev ルールを設定した
 - [ ] macOS で、`/dev/tty.usbmodem*` デバイスの確認手順を把握した
 - [ ] 実機到着後に実行するモータ設定およびキャリブレーションのコマンド仕様を把握した
+- [ ] 実機 SO-101 のデモでは、[real_robot_bringup.md](real_robot_bringup.ja.md) の収録前チェックと収録後 QC も実施する
 

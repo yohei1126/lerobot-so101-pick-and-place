@@ -7,6 +7,7 @@ Measured results reflected here:
 - Bring-up on 2026-10-17/18 (connection via UGREEN hub, simultaneous dual-camera streaming, teleop, `lerobot-record` trials)
 - **Main recording on 2026-10-22 / 23** (table dimensions then in use, camera framing, keyboard controls, motor temperature, clean-set creation). That table is superseded; see [Superseded layouts](#superseded-layouts)
 - **Current table for new bring-up and live eval: 2026-10-26** (Issue #90). See [Current table layout](#current-table-layout-2026-10-26)
+- **Layout recording on 2026-10-27.** Default root is `so101_pick_sponge_layout20261026_20261027`. `so101_pick_sponge_main_20261020` is an archive
 
 Dataset summary: [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md). Sim→real unit conversion: [sim_to_real_act.md](sim_to_real_act.en.md) / [units.md](units.en.md).
 
@@ -284,25 +285,28 @@ lerobot-teleoperate \
 
 ## Pre-recording checklist (required)
 
-**Run this immediately before every `lerobot-record`.**
-
-1. **Stop any running `lerobot-teleoperate`.** Camera and serial contention will occur.
-2. Teleop briefly with the same robot / teleop / cameras flags and confirm in Rerun.
-3. Stop teleop after the check, then proceed to recording.
+**Run this immediately before every `lerobot-record`.** Ports, camera indices, and the taped layout are defined above. This table is the session gate.
 
 | # | Check |
 | --- | --- |
-| (a) | **top:** paper, sponge, and Follower base / gripper path are in frame |
-| (b) | **wrist:** gripper tip and sponge are visible on approach |
-| (c) | No contact with stand / clamps along the full pick-and-place path |
-| (d) | No camera warnings. Loop runs stably |
-| (e) | Sponge and paper are at the [current 2026-10-26 positions](#current-table-layout-2026-10-26), not the 2026-10-22 tape marks |
+| 1 | Table layout is the [current 2026-10-26 layout](#current-table-layout-2026-10-26) (Issue #90), not the 2026-10-22 tape marks. Sponge and paper sit on the taped marks in that section. Keep this layout separate from the `so101_pick_sponge_main_20261020` archive. |
+| 2 | Leader power is **5V**. Follower power is **12V** and the board LED is lit. Adapters stay on the arm they belong to. |
+| 3 | Ports were re-read with `ls /dev/tty.usbmodem*`. Script defaults: Leader `/dev/tty.usbmodem5B790143611`, Follower `/dev/tty.usbmodem5B8E1163071`. Edit the script when unplug/replug moves them. |
+| 4 | OpenCV indices are wrist **0** and top **1**. iPhone Continuity Camera is disconnected and off. Confirm with `lerobot-find-cameras opencv`. |
+| 5 | Leader and Follower start in the **same rest pose**, so teleop start does not snap the Follower. |
+| 6 | A short teleop with the same robot / teleop / camera flags looks right in Rerun (`observation.top` / `observation.wrist`). **top:** paper, sponge, and the Follower base / gripper path are in frame. **wrist:** gripper tip and sponge are visible on approach. The path clears the stand and clamps. There are no camera warnings. Sponge and paper are on the taped starts for the 2026-10-26 layout. |
+| 7 | `lerobot-teleoperate` is stopped before record. The recording script also `pkill`s it. A leftover teleop process contends for the cameras and the serial ports. |
+| 8 | `ROOT` is a new dataset directory, or an intentional resume of the current layout root (`so101_pick_sponge_layout20261026_20261027`, or a named batch such as `..._batch2`). The script exits when `ROOT` resolves to `so101_pick_sponge_main_20261020`. |
+| 9 | The root was **not** created with `mkdir` before `lerobot-record`. `scripts/record_real_so101.sh` sets `--resume=true` whenever the directory exists, including an empty one. `lerobot-record` creates the tree on a first recording. A new batch uses a `ROOT` that does not exist yet. |
+| 10 | The shell is an interactive Terminal. **Right** ends the episode, **Left** re-records, **Esc** stops. Start moving as soon as the episode begins. After the place, press **Right** so the stationary tail stays out of the dataset. |
+| 11 | Plan a cool-down about every **10** episodes: power off the Follower and let the motors cool. |
 
 ## Demo recording rules (finalized 2026-10-22/23)
 
 - **1 episode = 1 pick-and-place.** Earlier trials that placed twice in one episode were discarded.
 - Start and end in the **same rest pose**.
-- After placing the sponge on the paper, end the episode early with the **Right arrow** (the last ~10–17 s of `episode_time_s=25` often had a stationary arm).
+- **Start moving as soon as the episode begins.** A multi-second hold on the opening pose is trimmed later; it is not a reason to drop the episode.
+- After placing the sponge on the paper, end the episode early with the **Right arrow** (the last ~10–17 s of `episode_time_s=25` often had a stationary arm). The QC script does not score that tail. Ending with Right is what keeps it out of the dataset.
 - Move slowly and consistently.
 - **Rest about every 10 episodes**, power off the Follower, and cool the motors. After ~20 continuous episodes, Follower `shoulder_lift` lagged commands and mean `|action-state|` rose to about **10–12°** (normally about **1.5°**).
 
@@ -318,13 +322,19 @@ scripts/record_real_so101.sh [N]
 | Item | Value |
 | --- | --- |
 | Default N | 50 |
-| Dataset root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020` |
-| repo_id | `yohei1126/so101_pick_sponge_main` |
+| Dataset root | `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027` |
+| repo_id | `yohei1126/so101_pick_sponge_layout20261026` |
 | Task string | `Pick up the yellow sponge and place it on the white paper` |
 | episode / reset | 25 s / 10 s, fps 30 |
 | Logs | `$HOME/work/lerobot-hw/outputs/record_main_*.log` (cwd is `lerobot-hw`) |
 
+The default root is for demos on the 2026-10-26 table layout (Issue #90). `so101_pick_sponge_main_20261020` is an archive: the 2026-10-22 layout recordings plus 10 demos from 2026-10-27 05:04–05:11 SGT that were appended by mistake (indices 32–41 at the time). The script exits when `ROOT` resolves to that directory. Pass `ROOT` only when starting a different new set.
+
+Those 10 demos were extracted with LeRobot 0.6.1 `lerobot-edit-dataset --operation.type delete_episodes` into episodes 0–9 (7,369 frames) at the new root. The videos are a byte copy of source `chunk-000/file-003`. That shard contained only these 10 episodes, so nothing was re-encoded. The `20261020` tree was left unchanged.
+
 The script `pkill`s `lerobot-teleoperate` before start. Ports and camera indices are hardcoded in the script. Edit them after unplug/replug, or override for your environment.
+
+Do not `mkdir` the root before the script. Any existing directory, including an empty one, sets `--resume=true` and appends into that path. `lerobot-record` creates the tree on a first recording.
 
 ### Run in an interactive terminal (required)
 
@@ -360,7 +370,7 @@ lerobot-record \
   --teleop.type=so101_leader \
   --teleop.port=$PORT_LEADER \
   --teleop.id=leader \
-  --dataset.repo_id=yohei1126/so101_pick_sponge_main \
+  --dataset.repo_id=yohei1126/so101_pick_sponge_layout20261026 \
   --dataset.single_task='Pick up the yellow sponge and place it on the white paper' \
   --dataset.num_episodes=10 \
   --dataset.episode_time_s=25 \
@@ -368,13 +378,13 @@ lerobot-record \
   --dataset.fps=30 \
   --dataset.no_stamp=true \
   --dataset.push_to_hub=false \
-  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_main_20261020 \
+  --dataset.root=$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027 \
   --display_data=true \
   --play_sounds=true \
   --resume=true
 ```
 
-- Append to an existing root with `--resume=true` (the script sets true automatically if the root exists).
+- Append to an existing root with `--resume=true` (the script sets true automatically if the root exists). The root in the example already holds the 10 extracted episodes, so further recording resumes.
 - In dataset v3.0, videos are concatenated per camera into `videos/observation.images.<cam>/chunk-000/file-000.mp4`.
 - Keep the dataset itself outside git (on the Mac).
 
@@ -384,11 +394,64 @@ lerobot-record \
 2. **Unplug the 12V / 5V adapters** (DC first, then USB).
 3. Carry by the base. Do not lift by the cables.
 
+## QC a recorded dataset
+
+`scripts/qc_teleop_dataset.py` scores one or more local LeRobot v3 roots, episode by episode. It checks that `meta/info.json` exists before constructing `LeRobotDataset`, so a missing path is not created. The load uses `video_backend="pyav"` and `download_videos=False`, then reads `action`, `observation.state`, and `episode_index`. Videos are not decoded. The pass does not command the arm, and it does not merge, drop, or trim episodes.
+
+Activate the real-robot venv (`$HOME/work/lerobot-hw/.venv`). `HF_HUB_OFFLINE=1` keeps the load on disk.
+
+```bash
+source "$HOME/work/lerobot-hw/.venv/bin/activate"
+HF_HUB_OFFLINE=1 python scripts/qc_teleop_dataset.py \
+  --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027" \
+  --root "$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027_batch2"
+```
+
+`--repo-id` applies to a single `--root`. The default is `repo_id` in `info.json`, otherwise `local/<dirname>`. `--fps` overrides the dataset fps. `--out` is a stem, a `.csv`/`.md` path, or a directory. `--format` is `csv`, `md`, or `both` (default `both`).
+
+### What is measured
+
+Arm joints are every action name that does not contain `gripper`. When the names are `dim*` and there are at least two, `dim1` is `shoulder_lift`. Standard deviation is the population value (`np.std`, `ddof=0`).
+
+| Quantity | Definition |
+| --- | --- |
+| mean motion | Mean absolute frame-to-frame change of `action` over the arm joints, in degrees per frame |
+| head idle | Frame index where the max over arm joints of `\|action - action[0]\|` first reaches `--motion-eps-deg` (default **1.0**). If the arm never leaves, `idle_fr` is the episode length `T` and `to_mot` is empty. `idle_s = idle_fr / fps` |
+| lag | Mean `\|action - state\|` per joint, gripper included. `lag_sl` is always `shoulder_lift`. `max_lag` is the joint with the largest mean |
+| action std | Per-arm-joint std of `action`. `LOW_MOTION` uses the maximum of those values |
+
+### Flags
+
+Comparisons below are the ones in the script.
+
+| Flag | Severity | Condition | Before ACT train |
+| --- | --- | --- | --- |
+| `LOW_MOTION` | high | max arm-joint action std **<** `--low-motion-std-deg` (default **5**) | Drop the episode. The whole take is near-static |
+| `HIGH_LAG` | high | max mean `\|action-state\|` over all joints, gripper included, **>=** `--high-lag-deg` (default **6**) | Drop or recheck. On this rig the hot joint is usually `shoulder_lift` (healthy about 1.5–2°; a long session about 10–12°). The flag is any joint at the threshold |
+| `LONG_HEAD_IDLE` | warn | `idle_s` **>** `--head-idle-s` (default **2**). Exactly 2.0 s does not flag | Light-trim that episode's leading idle using `idle_fr` / `to_mot`. The wait alone is not a drop. A fixed cut of 30 frames leaves most of a 3–4 s wait in the take |
+
+Severity is `high` when `LOW_MOTION` or `HIGH_LAG` is present, `warn` when the only flag is `LONG_HEAD_IDLE`, and `ok` otherwise. `--strict` exits 1 only for `high`. A warn-only run exits 0. Missing `info.json`, a load error, or zero episodes exits 1.
+
+The stationary tail is a recording rule: press Right after the place. The script does not score that tail.
+
+Stdout is one row per episode, then `episodes / high / warn / ok`. Files are `qc_teleop_<UTC>.csv` and `.md` under `$HOME/work/lerobot-hw/outputs/` when that directory exists, otherwise next to the first `--root`.
+
+### Before ACT train
+
+The script only reports. The train-prep steps are manual:
+
+1. Merge the layout batches into one clean root.
+2. Drop or recheck every `HIGH_LAG` episode. On 2026-10-27 that is set 1 episode 3 (`shoulder_lift` lag 8.92°).
+3. Light-trim the leading idle. Keep `LONG_HEAD_IDLE` episodes.
+4. Keep this layout separate from `so101_pick_sponge_main_20261020`.
+
+The 2026-10-27 layout QC (10 + 10 episodes, 7,369 + 7,373 frames) is on the Mac at `$HOME/work/lerobot-hw/outputs/qc_layout20261026_20261027.md`.
+
 ## Next steps
 
 Do not load a sim checkpoint onto the real robot directly. Sim policies use **radians** for joints; the real Follower uses **degrees** for body joints and **0–100** for the gripper: the I/O contracts do not match.
 
-1. Demo recording → clean-set creation ([real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md))
+1. Demo recording → QC (section above, `scripts/qc_teleop_dataset.py`) → clean-set creation ([real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md))
 2. Train ACT on real data: `python -m port_pick_align.training.train_act` ([training.md](training.en.md)). Run on MPS. For sim data use `train_act --preset sim`
 3. Phase 2-2 (sim→real): dry-run with the unit-conversion wrapper → slow live. [sim_to_real_act.md](sim_to_real_act.en.md)
 4. Real-trained policies (ACT / SmolVLA): no unit conversion. dry-run → live via **[real_robot_deploy.md](real_robot_deploy.en.md)** (`scripts/run_act_real.sh` / `scripts/run_smolvla_real.sh`). Alternatively `lerobot-rollout`. First runs: keep `--max-relative-target` / `--max-delta-deg` small, slow, and short
