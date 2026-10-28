@@ -73,7 +73,6 @@ plugins:
             CI: CI
             Results: 結果
             Figures: 図表
-            Trial Smoke Log: トライアル・スモーク記録
             Real Dataset clean28: 実機データセット clean28
 
 markdown_extensions:
@@ -100,7 +99,7 @@ validation:
     unrecognized_links: ignore
 
 not_in_nav: |
-  act_so101_trial_smoke_20261019.md
+  real_eval_protocol.ja.md
 
 nav:
   - Home: index.md
@@ -119,7 +118,6 @@ nav:
   - CI: ci.md
   - Results: results/README.md
   - Figures: figures/README.md
-  - Trial Smoke Log: act_so101_trial_smoke_20261019.md
   - Real Dataset clean28: real_dataset_so101_pick_sponge_main_20261023.md
 
 extra:

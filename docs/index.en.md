@@ -7,12 +7,11 @@ Start with setup, then dataset → training → simulation; use hardware and bri
 | [setup.md](setup.en.md) | Docker and host Python setup; contract config overview |
 | [dataset.md](dataset.en.md) | Test rosbag2 generation, synthetic data, MuJoCo expert collection, LeRobotDataset conversion and QA |
 | [training.md](training.en.md) | ACT training, checkpoints, and inference smoke checks |
-| [act_so101_trial_smoke_20261019.md](act_so101_trial_smoke_20261019.en.md) | ACT smoke training on real trial3 datasets (2026-10-19, facts) |
 | [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md) | Real pick-sponge main (clean28) dataset summary and overnight ACT notes (2026-10-23, facts) |
 | [ros2_inference.md](ros2_inference.en.md) | ROS 2 Humble nodes, mock inference, Rerun visualization |
 | [simulation.md](simulation.en.md) | MuJoCo closed-loop eval, interactive viewer, video export |
 | [evaluation.md](evaluation.en.md) | Planar position / yaw / success aggregation (`eval_alignment`) API |
-| [real_eval_protocol.ja.md](real_eval_protocol.ja.md) | Real ACT open-loop scoring and live eval (Japanese). Do not pick a checkpoint by val_l1 alone. 2026-10-24 offline diagnosis and 2026-10-25 night 0/3 |
+| [real_eval_protocol.ja.md](real_eval_protocol.ja.md) | Real ACT open-loop scoring and live rollout evaluation protocol (Japanese) |
 | [units.md](units.en.md) | Sim/contract radians vs real LeRobot degrees and gripper 0–100 |
 | [sim_to_real_act.md](sim_to_real_act.en.md) | Phase 2-2: sim-trained ACT on real SO-101 (dry-run / slow live) |
 | [results/README.md](results/README.en.md) | Closed-loop eval logs and pending placeholders (including post50) |
