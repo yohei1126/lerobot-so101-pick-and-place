@@ -6,7 +6,7 @@ Measured results reflected here:
 
 - Bring-up on 2026-10-17/18 (connection via UGREEN hub, simultaneous dual-camera streaming, teleop, `lerobot-record` trials)
 - **Main recording on 2026-10-22 / 23** (table dimensions then in use, camera framing, keyboard controls, motor temperature, clean-set creation). That table is superseded; see [Superseded layouts](#superseded-layouts)
-- **Current table for new bring-up and live eval: 2026-10-26** (Issue #90). See [Current table layout](#current-table-layout-2026-10-26)
+- **Current table setup for bring-up and live eval:** 140 × 70 cm layout specification. See [Current table layout](#current-table-layout-2026-10-26)
 - **Layout recording on 2026-10-27.** Default root is `so101_pick_sponge_layout20261026_20261027`. `so101_pick_sponge_main_20261020` is an archive
 
 Dataset summary: [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md). Sim→real unit conversion: [sim_to_real_act.md](sim_to_real_act.en.md) / [units.md](units.en.md).
@@ -312,7 +312,7 @@ One OpenCV frame from that venv is the camera check, at the indices `lerobot-rec
 
 | # | Check |
 | --- | --- |
-| 1 | Table layout is the [current 2026-10-26 layout](#current-table-layout-2026-10-26) (Issue #90), not the 2026-10-22 tape marks. Sponge and paper sit on the taped marks in that section. Keep this layout separate from the `so101_pick_sponge_main_20261020` archive. |
+| 1 | Table layout follows the [current 140 × 70 cm layout](#current-table-layout-2026-10-26). Sponge and paper sit on the taped marks in that section, not legacy tape marks. Keep this dataset separate from the legacy `so101_pick_sponge_main_20261020` archive. |
 | 2 | Leader power is **5V**. Follower power is **12V** and the board LED is lit. Adapters stay on the arm they belong to. |
 | 3 | Ports were re-read with `ls /dev/tty.usbmodem*` and `scripts/preflight_real_so101.sh` (`Leader port` and `Follower port` are `PASS`). Script defaults: Leader `/dev/tty.usbmodem5B790143611`, Follower `/dev/tty.usbmodem5B8E1163071`. Edit `scripts/record_real_so101.sh` when unplug/replug moves them. |
 | 4 | OpenCV indices are wrist **0** and top **1**. iPhone Continuity Camera is disconnected and off. `scripts/preflight_real_so101.sh` reports `wrist cam` and `top cam` as `PASS`. Confirm the picture with `lerobot-find-cameras opencv`. |
@@ -354,9 +354,7 @@ scripts/record_real_so101.sh [N]
 | episode / reset | 25 s / 10 s, fps 30 |
 | Logs | `$HOME/work/lerobot-hw/outputs/record_main_*.log` (cwd is `lerobot-hw`) |
 
-The default root is for demos on the 2026-10-26 table layout (Issue #90). `so101_pick_sponge_main_20261020` is an archive: the 2026-10-22 layout recordings plus 10 demos from 2026-10-27 05:04–05:11 SGT that were appended by mistake (indices 32–41 at the time). The script exits when `ROOT` resolves to that directory. Pass `ROOT` only when starting a different new set.
-
-Those 10 demos were extracted with LeRobot 0.6.1 `lerobot-edit-dataset --operation.type delete_episodes` into episodes 0–9 (7,369 frames) at the new root. The videos are a byte copy of source `chunk-000/file-003`. That shard contained only these 10 episodes, so nothing was re-encoded. The `20261020` tree was left unchanged.
+The default root stores demonstrations collected on the standardized 140 × 70 cm table layout. To prevent accidental mixing with legacy recordings (such as the legacy archive at `so101_pick_sponge_main_20261020`), `scripts/record_real_so101.sh` exits if `ROOT` resolves to that legacy directory. Pass a custom `ROOT` only when starting a separate new dataset.
 
 The script `pkill`s `lerobot-teleoperate` before start. Ports and camera indices are hardcoded in the script. Edit them after unplug/replug, or override for your environment.
 

@@ -5,8 +5,6 @@
 dry-run → live する手順。Bring-up 共通は [real_robot_bringup.md](real_robot_bringup.ja.md)。
 sim 学習 ACT の rad↔deg 変換ラッパーは **使わない**（こちらは [sim_to_real_act.md](sim_to_real_act.ja.md)）。
 
-関連: Issue #76。
-
 ## 前提
 
 | 項目 | 値 |
@@ -14,7 +12,7 @@ sim 学習 ACT の rad↔deg 変換ラッパーは **使わない**（こちら�
 | ホスト | Apple Silicon Mac / LeRobot **0.6.1** / MPS |
 | 実機 venv | `$LEROBOT_HW_ROOT`（既定 `$HOME/work/lerobot-hw`） |
 | カメラ | top=OpenCV index **1**、wrist=index **0**、640×480@30（2026-10-25 のケーブル交換後も同じ） |
-| テーブル | [現行配置 2026-10-26](real_robot_bringup.ja.md#現行テーブル配置2026-10-26)（Issue #90）。2026-10-22 と 2026-10-25 ~23:28 は使わない |
+| テーブル | [現行配置（140×70 cm）](real_robot_bringup.ja.md#現行テーブル配置2026-10-26)。旧寸法配置は使用しない |
 | タスク文 | `Pick up the yellow sponge and place it on the white paper` |
 
 パスは環境変数で上書きする（絶対 `/Users/...` は使わない）。

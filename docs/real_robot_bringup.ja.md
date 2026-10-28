@@ -6,7 +6,7 @@
 
 - 2026-10-17/18 の bring-up（UGREEN ハブ経由の接続・両カメラ同時配信・テレオペ・`lerobot-record` 試行）
 - **2026-10-22 / 23** の本収録（当時のテーブル寸法、画角、キーボード操作、モータ温度、クリーンセット作成）。そのテーブルは廃止。[廃止した配置](#廃止した配置) を参照
-- **新しい bring-up と live eval の現行テーブルは 2026-10-26**（Issue #90）。[現行テーブル配置](#現行テーブル配置2026-10-26) を参照
+- **実機 bring-up と live eval の現行配置:** 140 × 70 cm テーブル規格に準拠。[現行テーブル配置](#現行テーブル配置2026-10-26) を参照
 - **2026-10-27** の配置収録。既定 root は `so101_pick_sponge_layout20261026_20261027`。`so101_pick_sponge_main_20261020` はアーカイブ
 
 収録データセットの要約は [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md)。sim→実機の単位変換は [sim_to_real_act.md](sim_to_real_act.ja.md) / [units.md](units.ja.md)。
@@ -311,7 +311,7 @@ macOS は同じアダプタに `/dev/cu.usbmodem*` も作る。このリポジ�
 
 | # | 確認項目 |
 | --- | --- |
-| 1 | テーブル配置は [現行の 2026-10-26 配置](#現行テーブル配置2026-10-26)（Issue #90）である。スポンジと紙はその節のテープ印にあり、2026-10-22 のテープ印ではない。この配置はアーカイブ `so101_pick_sponge_main_20261020` と混ぜない。 |
+| 1 | テーブル配置は [現行の 140 × 70 cm 配置](#現行テーブル配置2026-10-26) である。スポンジと紙はその節のテープ印に合わせ、旧配置のテープ印とは混同しない。この配置データは旧アーカイブ `so101_pick_sponge_main_20261020` と混ぜない。 |
 | 2 | Leader の電源は **5V**、Follower の電源は **12V** で、基板の LED が点灯している。アダプタはそれぞれのアームに付いたままである。 |
 | 3 | `ls /dev/tty.usbmodem*` と `scripts/preflight_real_so101.sh` でポートを読み直した（`Leader port` と `Follower port` が `PASS`）。スクリプトの既定は Leader `/dev/tty.usbmodem5B790143611`、Follower `/dev/tty.usbmodem5B8E1163071`。抜き差しで変わったら `scripts/record_real_so101.sh` を直す。 |
 | 4 | OpenCV index は wrist **0**、top **1** である。iPhone の Continuity Camera は切断し、オフにしてある。`scripts/preflight_real_so101.sh` の `wrist cam` と `top cam` が `PASS` である。画像は `lerobot-find-cameras opencv` で確認する。 |
@@ -353,9 +353,7 @@ scripts/record_real_so101.sh [N]
 | episode / reset | 25 s / 10 s、fps 30 |
 | ログ | `$HOME/work/lerobot-hw/outputs/record_main_*.log`（cwd は `lerobot-hw`） |
 
-2026-10-26 のテーブル配置（Issue #90）で録るデモの既定 root は上のパスである。`so101_pick_sponge_main_20261020` はアーカイブで、2026-10-22 配置の収録に、2026-10-27 05:04–05:11 SGT の 10 本（当時の episode 32–41）が追記された混合セットである。スクリプトは `ROOT` がそのディレクトリに解決されると終了する。別セットを始めるときだけ `ROOT` で別パスを渡す。
-
-2026-10-27 の 10 本は LeRobot 0.6.1 の `lerobot-edit-dataset --operation.type delete_episodes` で切り出し、新 root の episode 0–9（7,369 frames）になっている。動画は元の `chunk-000/file-003` のバイトコピーである。そのシャードにはこの 10 本だけが入っていたので、再エンコードはしていない。元の `20261020` ツリーは変更していない。
+規格化テーブル配置（140×70 cm）で収録するデモの既定 root は上のパスである。旧配置のアーカイブデータセット（`so101_pick_sponge_main_20261020`）と混在させないため、スクリプト側で旧アーカイブへの上書き収録を防止するガードが入っている。別セットを始めるときだけ `ROOT` で別パスを渡す。
 
 スクリプトは開始前に `lerobot-teleoperate` を `pkill` する。ポートとカメラ index はスクリプト内にハードコードされている。抜き差し後は編集するか、環境に合わせて上書きする。
 

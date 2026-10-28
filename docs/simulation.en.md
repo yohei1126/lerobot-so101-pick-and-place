@@ -27,7 +27,7 @@ export MUJOCO_GL=glfw   # default on macOS
 
 ## Table layout (2026-10-26 source of truth)
 
-Real bring-up and live eval use the table measured on 2026-10-26 (Issue #90): **140 × 70 cm**, leader 27 cm from the left / 101 cm from the right, follower ~68 cm from the left / 61 cm from the right, C920 on the right edge 16 cm from the front, paper 69 cm from the right and 27 cm from the front (portrait 20×30 cm), sponge 54 cm from the right and 44 cm from the front (portrait 6×11 cm). Wrist camera on the follower gripper. OpenCV wrist `0`, top `1`.
+Real bring-up and live eval use the standardized table layout (**140 × 70 cm**): leader 27 cm from the left / 101 cm from the right, follower ~68 cm from the left / 61 cm from the right, C920 on the right edge 16 cm from the front, paper 69 cm from the right and 27 cm from the front (portrait 20×30 cm), sponge 54 cm from the right and 44 cm from the front (portrait 6×11 cm). Wrist camera on the follower gripper. OpenCV wrist `0`, top `1`.
 
 Those edge measurements map into the sim frame (follower midpoint on the front edge, +x forward, +y left) as:
 

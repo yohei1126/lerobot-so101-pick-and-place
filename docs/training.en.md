@@ -60,19 +60,15 @@ python -m port_pick_align.training.train_act \
   --skip-infer
 ```
 
-## Recollect and retrain after Issue #39
+## Demonstration trajectory design and collection precautions
 
-Demonstration trajectories changed. During carry (lift / carry / place), box yaw is aligned to the pad; at pad height a short closed place is followed by a long open static release. Existing `data/sim_expert/lerobot` and `data/sim_expert/lerobot_post37` do not include this trajectory.
+To ensure robust imitation learning (ACT) on this task, the simulation expert demonstrations incorporate the following key design requirements:
 
-## Recollect and retrain after Issue #41
+- **Yaw alignment during carry:** Box yaw is progressively aligned toward the target pad during the lift and carry phase to avoid sudden rotations near the surface.
+- **Approach descent and static release:** The descent approach segment from above the pad and the subsequent static release segment are extended to be longer than the action chunk length (`n_action_steps=30`). Datasets lacking these segments tend to suffer from early release or stalled transports before reaching the pad.
+- **Near-pad release gating:** Forced teleportation/snapping to the pad center is disabled; the simulator strictly evaluates the final box position against the pad coordinate thresholds.
 
-Demonstrations gained a closed `approach` (descent from above the pad) longer than the chunk length. `data/sim_expert/lerobot_post39` lacks this segment. Recollect before training. Retraining without recollect tends to keep early release before the pad and stalled carries. The near-pad release gate is a simulator-side change, so it also affects evaluation of older weights. Learning approach requires new demos.
-
-## Recollect and retrain after Issue #45
-
-Pad-center snap on release (forced XY / yaw 0) was removed; evaluation reports final box XY / pad XY per episode. Early stop resets if either chunk30 or TE improves. Closed approach+place demos were lengthened to match `n_action_steps=30`, so `lerobot_post41` is insufficient. Recollect after the merge, then retrain.
-
-Collect and train on Mac (MPS). Do not run training in this repository’s cloud environment.
+When recollecting demonstrations or retraining, ensure that the active collection script with the extended approach segments is used. Collect and train on Mac (MPS); do not run training jobs in cloud CI environments.
 
 ```bash
 source .venv/bin/activate

@@ -36,7 +36,7 @@ python scripts/score_act_checkpoints.py \
 
 ## 2. 実機ロールアウト
 
-live の前に [現行テーブル配置（2026-10-26）](real_robot_bringup.ja.md#現行テーブル配置2026-10-26) と [live-eval チェックリスト](real_robot_bringup.ja.md#実機-live-eval-チェックリスト) を確認する（Issue #90）。
+live の前に [現行テーブル配置（140×70 cm）](real_robot_bringup.ja.md#現行テーブル配置2026-10-26) と [live-eval チェックリスト](real_robot_bringup.ja.md#実機-live-eval-チェックリスト) を確認する。
 
 - テーブル 140 × 70 cm。Leader は左から 27 cm / 右から 101 cm。Follower は左から約 68 cm / 右から 61 cm
 - 紙は右から 69 cm、手前から 27 cm（縦置き 20×30 cm）。スポンジは右から 54 cm、手前から 44 cm（縦置き 6×11 cm）
