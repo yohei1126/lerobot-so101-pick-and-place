@@ -102,9 +102,9 @@ idle / release 後の値が中間付近にあるため、固定中点閾値は�
 
 個別 PNG（Mac 上）: `$HOME/work/lerobot-hw/outputs/dataset_summary_20261023/ep{00,14,27}_{start,midgrasp,end}_{top,wrist}.png`。
 
-## 夜間 ACT 学習（開始 2026-10-23 00:52 SGT）
+## 夜間 ACT 学習（2026-10-23 00:52 SGT 開始・完了）
 
-結果は未確定（pending）。
+25,000 steps の学習を完了。最良チェックポイントは step 21,000（`val_l1=4.454`）。
 
 | 項目 | 値 |
 | --- | --- |
@@ -113,9 +113,9 @@ idle / release 後の値が中間付近にあるため、固定中点閾値は�
 | device | MPS |
 | batch | 8 |
 | lr | 1e-4 |
-| steps | 25,000 |
+| steps | 25,000（完了） |
 | val_ratio | 0.1 |
-| selection | `val_l1` |
+| selection | `val_l1`（best: step 21,000, `val_l1=4.454`） |
 | 速度 | およそ 0.75 s / step |
-| 見込み終了 | およそ 06:10 SGT |
+| 終了時刻 | 2026-10-23 06:12 SGT |
 | 出力 | `$HOME/work/lerobot-hw/outputs/act_so101_main_clean28_20261023` |

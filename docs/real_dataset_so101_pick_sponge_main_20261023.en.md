@@ -102,9 +102,9 @@ Rows = clean ep 0, 14, 27. Columns = start top/wrist, midgrasp top/wrist (midpoi
 
 Individual PNGs (on Mac): `$HOME/work/lerobot-hw/outputs/dataset_summary_20261023/ep{00,14,27}_{start,midgrasp,end}_{top,wrist}.png`.
 
-## Overnight ACT training (started 2026-10-23 00:52 SGT)
+## Overnight ACT training (started 2026-10-23 00:52 SGT, completed)
 
-Results pending.
+Completed 25,000 steps. Best checkpoint at step 21,000 (`val_l1=4.454`).
 
 | Item | Value |
 | --- | --- |
@@ -113,9 +113,9 @@ Results pending.
 | device | MPS |
 | batch | 8 |
 | lr | 1e-4 |
-| steps | 25,000 |
+| steps | 25,000 (completed) |
 | val_ratio | 0.1 |
-| selection | `val_l1` |
+| selection | `val_l1` (best: step 21,000, `val_l1=4.454`) |
 | Speed | ≈ 0.75 s / step |
-| ETA | ≈ 06:10 SGT |
+| End time | 2026-10-23 06:12 SGT |
 | Output | `$HOME/work/lerobot-hw/outputs/act_so101_main_clean28_20261023` |

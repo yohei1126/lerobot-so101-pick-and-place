@@ -33,6 +33,16 @@ pip install -e "port_pick_align/[training,feetech]"
 export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071   # lerobot-find-port の結果
 ```
 
+## 事前点検（Preflight）
+
+デプロイや収録の実行前に `scripts/preflight_real_so101.sh` を実行し、ポート接続およびカメラ 2 系統の疎通を確認する:
+
+```bash
+./scripts/preflight_real_so101.sh
+```
+
+収録データの品質検証（欠損・外れ値・持続時間の点検）には `scripts/qc_teleop_dataset.py` を利用する。詳細は [real_robot_bringup.md](real_robot_bringup.ja.md#収録後の-qc) を参照。
+
 ## 安全モデル
 
 | モード | 接続 | `send_action` | 終了時 |
@@ -110,7 +120,7 @@ macOS 向け。`caffeinate` + `start_new_session` で離脱する。
 
 ## Mac 上での検証メモ（2026-10-23 時点）
 
-以下は **Mac / MPS 上の offline / dry-run 計測**である。**実機 live は未実施**。
+以下は **Mac / MPS 上の offline / dry-run 計測**（2026-10-23）である。実機 live の評価手順・チェックポイント選定は [real_eval_protocol.ja.md](real_eval_protocol.ja.md) を参照。
 
 | 項目 | ACT | SmolVLA |
 | --- | --- | --- |
