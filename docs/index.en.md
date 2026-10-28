@@ -23,4 +23,3 @@ Start with setup, then dataset → training → simulation; use hardware and bri
 | [real_robot_deploy.md](real_robot_deploy.en.md) | Real-trained ACT / SmolVLA dry-run → live (no unit conversion; safety clamps) |
 | [ci.md](ci.en.md) | GitHub Actions CI and local lint/test |
 | [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.ja.md) | OmniCampus deliverables (PDF report, GitHub, YouTube) and checklist |
-| [plan_b.md](plan_b.en.md) | Degraded operation with simulation and public data when hardware fails |

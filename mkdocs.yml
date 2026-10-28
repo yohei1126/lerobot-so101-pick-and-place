@@ -71,7 +71,6 @@ plugins:
             Real Robot Deploy: 実機デプロイ
             Sim to Real ACT: sim→実機 ACT
             CI: CI
-            Plan B: Plan B
             Results: 結果
             Figures: 図表
             Trial Smoke Log: トライアル・スモーク記録
@@ -118,7 +117,6 @@ nav:
   - Real Robot Deploy: real_robot_deploy.md
   - Sim to Real ACT: sim_to_real_act.md
   - CI: ci.md
-  - Plan B: plan_b.md
   - Results: results/README.md
   - Figures: figures/README.md
   - Trial Smoke Log: act_so101_trial_smoke_20261019.md

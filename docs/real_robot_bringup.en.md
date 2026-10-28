@@ -567,7 +567,6 @@ lerobot-rollout \
 - [real_eval_protocol.ja.md](real_eval_protocol.ja.md): post-train real ACT eval (open-loop scoring and live failure records, Japanese). Teleop QC thresholds stay on this page
 - [units.md](units.en.md): radians / degrees / gripper 0–100
 - [training.md](training.en.md): ACT training
-- [plan_b.md](plan_b.en.md): fallback when real hardware is blocked
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)
 - [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots)

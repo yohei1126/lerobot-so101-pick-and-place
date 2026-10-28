@@ -566,7 +566,6 @@ lerobot-rollout \
 - [real_eval_protocol.ja.md](real_eval_protocol.ja.md): 学習後の実機 ACT 評価（オープンループ採点、live の失敗記録）。収録 QC の閾値は本ページ
 - [units.md](units.ja.md): ラジアン / 度 / グリッパ 0–100
 - [training.md](training.ja.md): ACT 学習
-- [plan_b.md](plan_b.ja.md): 実機障害時の縮退
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)
 - [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots)

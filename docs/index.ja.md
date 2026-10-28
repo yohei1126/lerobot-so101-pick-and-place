@@ -23,4 +23,3 @@
 | [real_robot_deploy.md](real_robot_deploy.ja.md) | 実機学習 ACT / SmolVLA の dry-run → live（単位変換なし・安全クランプ） |
 | [ci.md](ci.ja.md) | GitHub Actions CI ワークフローの構成とローカルでの静的解析・テスト実行手順 |
 | [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.ja.md) | OmniCampus 提出物仕様（PDF レポート、GitHub、YouTube 動画）および点検リスト |
-| [plan_b.md](plan_b.ja.md) | 実機障害時におけるシミュレーションおよび公開データを活用した縮退運用手順 |
