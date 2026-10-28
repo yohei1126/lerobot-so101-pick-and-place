@@ -48,9 +48,9 @@ Per course policy, hardware trouble or failed runs can still be evaluated if you
 - Chapter 6: organize hardware delay/failure status, why the alternate method was chosen, and what was learned technically.
 - Chapter 8: combine simulation footage with RobOps (Rerun trajectory views, CI logs) in the presentation video.
 
-Report draft: [PhysicalAI-Applied1-202609 in utokyo-ai-courses](https://github.com/yohei1126/utokyo-ai-courses/tree/main/PhysicalAI-Applied1-202609) ([`説明資料_PAI最終課題_yohei1126.en.md`](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/説明資料_PAI最終課題_yohei1126.en.md))
+Report draft: [PhysicalAI-Applied1-202609 in utokyo-ai-courses](https://github.com/yohei1126/utokyo-ai-courses/tree/main/PhysicalAI-Applied1-202609) ([`説明資料_PAI最終課題_yohei1126.ja.md`](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/説明資料_PAI最終課題_yohei1126.ja.md))
 
 ## Related docs
 
-- Overall submission requirements: [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.en.md)
+- Overall submission requirements: [submission.md](https://github.com/yohei1126/utokyo-ai-courses/blob/main/PhysicalAI-Applied1-202609/report/submission.ja.md)
 - Alignment evaluation API: [evaluation.md](evaluation.en.md)

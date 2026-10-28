@@ -77,7 +77,7 @@ KEEP_BEFORE=40 UNTRIM_MIX=0.5 STEPS=25000 \
 - `UNTRIM_MIX=0.5`: train 側エピソードの半分は trim しない  
 - `--checkpoint-interval 2500`: 中間 ckpt を残して上記スコアリングに回す  
 
-**エージェントは長時間学習を自動起動しない。** Yohei がライブ試験後に起動する。
+**エージェントは長時間学習を自動起動しない。** オペレータがライブ試験後に手動で起動する。
 
 <a id="act-failures-20261024"></a>
 
