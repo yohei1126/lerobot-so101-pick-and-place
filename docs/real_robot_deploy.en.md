@@ -33,6 +33,16 @@ pip install -e "port_pick_align/[training,feetech]"
 export PORT_FOLLOWER=/dev/tty.usbmodem5B8E1163071   # from lerobot-find-port
 ```
 
+## Preflight checks
+
+Run `scripts/preflight_real_so101.sh` before deployment or recording to verify port connections and dual-camera feeds:
+
+```bash
+./scripts/preflight_real_so101.sh
+```
+
+For recorded dataset quality checks (missing frames, outlier velocities, duration), use `scripts/qc_teleop_dataset.py`. See [real_robot_bringup.md](real_robot_bringup.en.md#qc-a-recorded-dataset) for details.
+
 ## Safety model
 
 | Mode | Connection | `send_action` | On exit |
@@ -110,7 +120,7 @@ For macOS. Detach with `caffeinate` + `start_new_session`.
 
 ## Verification notes on Mac (as of 2026-10-23)
 
-The following are **offline / dry-run measurements on Mac / MPS**. **Real-robot live was not run**.
+The following are **offline / dry-run measurements on Mac / MPS** (2026-10-23). For real live rollout procedures and checkpoint selection, see [real_eval_protocol.ja.md](real_eval_protocol.ja.md) (Japanese).
 
 | Item | ACT | SmolVLA |
 | --- | --- | --- |
