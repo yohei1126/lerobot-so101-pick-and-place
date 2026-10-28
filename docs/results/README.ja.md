@@ -86,4 +86,4 @@ python scripts/run_sim_eval.py --policy checkpoint \
 
 ## 実機 live ACT（学習後）
 
-sim の `metrics.json` でも、テレオペ収録の QC でもない。2026-10-25 夜の試行（5 設定とも 0/3）は [live_act_20261025_night.ja.md](live_act_20261025_night.ja.md)。手順と 2026-10-24 のオフライン診断は [real_eval_protocol.ja.md](../real_eval_protocol.ja.md)。新しい評価の配置は [現行テーブル配置（2026-10-26）](../real_robot_bringup.ja.md#現行テーブル配置2026-10-26)。
+学習後の実機 ACT 評価（オープンループ採点と live ロールアウト）の手順は [real_eval_protocol.ja.md](../real_eval_protocol.ja.md) を参照。評価時の配置は [現行テーブル配置](../real_robot_bringup.ja.md#現行テーブル配置2026-10-26) に準拠する。

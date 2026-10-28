@@ -125,7 +125,7 @@ MuJoCo の `so101_tabletop.xml` は廃止した簡易シーンのままである
 
 ## 実機 live-eval チェックリスト
 
-`scripts/run_act_real.sh --live`、`scripts/run_smolvla_real.sh --live`、または `lerobot-rollout` の前に実施する。デプロイのフラグは [real_robot_deploy.md](real_robot_deploy.ja.md)。採点、trim、学習後の live 失敗記録は [real_eval_protocol.ja.md](real_eval_protocol.ja.md)。
+`scripts/run_act_real.sh --live`、`scripts/run_smolvla_real.sh --live`、または `lerobot-rollout` の前に実施する。デプロイのフラグは [real_robot_deploy.md](real_robot_deploy.ja.md)。採点、trim、学習後の live 評価プロトコルは [real_eval_protocol.ja.md](real_eval_protocol.ja.md)。
 
 | # | 確認 |
 | --- | --- |
@@ -421,7 +421,7 @@ lerobot-record \
 
 ## 収録後の QC
 
-この節はテレオペ収録データの QC だけを扱う。閾値は `scripts/qc_teleop_dataset.py` のままである。学習後の live ACT（チェックポイントの成否、閉ループの震え、把持失敗）は [実機評価プロトコル](real_eval_protocol.ja.md) に記録する。
+この節はテレオペ収録データの QC だけを扱う。閾値は `scripts/qc_teleop_dataset.py` のままである。学習後の実機 ACT 評価（オープンループ採点と live ロールアウト）は [実機評価プロトコル](real_eval_protocol.ja.md) を参照。
 
 `scripts/qc_teleop_dataset.py` は、ローカルの LeRobot v3 root を 1 つ以上、エピソードごとに採点する。`LeRobotDataset` を作る前に `meta/info.json` があることを確認するので、無いパスは作られない。読み込みは `video_backend="pyav"` と `download_videos=False` で、列は `action`、`observation.state`、`episode_index` を使う。動画はデコードしない。アームへの指令は出さず、エピソードの結合・除外・切り詰めもしない。
 
@@ -563,10 +563,9 @@ lerobot-rollout \
 - [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.ja.md): clean28 データセット要約
 - [sim_to_real_act.md](sim_to_real_act.ja.md): Phase 2-2: sim ACT → 実機 Follower（変換ラッパー）
 - [real_robot_deploy.md](real_robot_deploy.ja.md): 実機学習 ACT / SmolVLA の dry-run → live
-- [real_eval_protocol.ja.md](real_eval_protocol.ja.md): 学習後の実機 ACT 評価（オープンループ採点、live の失敗記録）。収録 QC の閾値は本ページ
+- [real_eval_protocol.ja.md](real_eval_protocol.ja.md): 学習後の実機 ACT 評価（オープンループ採点と live 評価手順）。収録 QC の閾値は本ページ
 - [units.md](units.ja.md): ラジアン / 度 / グリッパ 0–100
 - [training.md](training.ja.md): ACT 学習
-- [plan_b.md](plan_b.ja.md): 実機障害時の縮退
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)
 - [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots)

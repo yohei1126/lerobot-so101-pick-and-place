@@ -126,7 +126,7 @@ The MuJoCo file `so101_tabletop.xml` still has the superseded simplified scene (
 
 ## Real live-eval checklist
 
-Run this before `scripts/run_act_real.sh --live`, `scripts/run_smolvla_real.sh --live`, or `lerobot-rollout`. Deploy flags stay in [real_robot_deploy.md](real_robot_deploy.en.md). Scoring, trim, and post-train live failure records (Japanese): [real_eval_protocol.ja.md](real_eval_protocol.ja.md).
+Run this before `scripts/run_act_real.sh --live`, `scripts/run_smolvla_real.sh --live`, or `lerobot-rollout`. Deploy flags stay in [real_robot_deploy.md](real_robot_deploy.en.md). Scoring, trim, and post-train live evaluation protocol (Japanese): [real_eval_protocol.ja.md](real_eval_protocol.ja.md).
 
 | # | Check |
 | --- | --- |
@@ -422,7 +422,7 @@ lerobot-record \
 
 ## QC a recorded dataset
 
-This section is teleop-recording QC only. Thresholds stay those of `scripts/qc_teleop_dataset.py`. Post-train live ACT (checkpoint outcomes, closed-loop tremble, missed grasps) is recorded in the [real-eval protocol](real_eval_protocol.ja.md) (Japanese).
+This section is teleop-recording QC only. Thresholds stay those of `scripts/qc_teleop_dataset.py`. Post-train real ACT evaluation (open-loop scoring and live rollouts) is covered in the [real-eval protocol](real_eval_protocol.ja.md) (Japanese).
 
 `scripts/qc_teleop_dataset.py` scores one or more local LeRobot v3 roots, episode by episode. It checks that `meta/info.json` exists before constructing `LeRobotDataset`, so a missing path is not created. The load uses `video_backend="pyav"` and `download_videos=False`, then reads `action`, `observation.state`, and `episode_index`. Videos are not decoded. The pass does not command the arm, and it does not merge, drop, or trim episodes.
 
@@ -564,10 +564,9 @@ lerobot-rollout \
 - [real_dataset_so101_pick_sponge_main_20261023.md](real_dataset_so101_pick_sponge_main_20261023.en.md): clean28 dataset summary
 - [sim_to_real_act.md](sim_to_real_act.en.md): Phase 2-2: sim ACT → real Follower (conversion wrapper)
 - [real_robot_deploy.md](real_robot_deploy.en.md): real-trained ACT / SmolVLA dry-run → live
-- [real_eval_protocol.ja.md](real_eval_protocol.ja.md): post-train real ACT eval (open-loop scoring and live failure records, Japanese). Teleop QC thresholds stay on this page
+- [real_eval_protocol.ja.md](real_eval_protocol.ja.md): post-train real ACT evaluation protocol (open-loop scoring and live rollout procedures, Japanese). Teleop QC thresholds stay on this page
 - [units.md](units.en.md): radians / degrees / gripper 0–100
 - [training.md](training.en.md): ACT training
-- [plan_b.md](plan_b.en.md): fallback when real hardware is blocked
 - [LeRobot SO-101](https://huggingface.co/docs/lerobot/so101)
 - [LeRobot Cameras](https://huggingface.co/docs/lerobot/cameras)
 - [Imitation Learning on Real-World Robots](https://huggingface.co/docs/lerobot/il_robots)
