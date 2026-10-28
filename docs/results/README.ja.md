@@ -4,7 +4,7 @@
 
 ## 公式: post50 ACT（DoD 主結果）
 
-出典: [PR #34 の post50 パイプライン結果コメント](https://github.com/yohei1126/lerobot-so101-pick-and-place/pull/34#issuecomment-6233795103)。セル JSON はローカル `metrics.json` を `scripts/verify_eval_metrics.py --pin` で固定した実測コピーである。
+出典: 公式 post50 パイプライン結果。セル JSON はローカル `metrics.json` を `scripts/verify_eval_metrics.py --pin` で固定した実測コピーである。
 
 | ファイル | 内容 |
 | --- | --- |

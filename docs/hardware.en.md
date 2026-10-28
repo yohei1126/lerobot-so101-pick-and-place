@@ -121,7 +121,7 @@ Place the real hardware on the kitchen table. Layout numbers follow “[Current 
 
 ## Current table layout (2026-10-26)
 
-Equipment is listed under “[Purchased equipment](#purchased-equipment)”. This section is the real-robot source of truth for bring-up and live eval (Issue #90, measured 2026-10-26 ~00:36 SGT). It supersedes the 2026-10-25 ~23:28 measurements, the 2026-10-22 figures, and the simplified MuJoCo scene below.
+Equipment is listed under “[Purchased equipment](#purchased-equipment)”. This section is the real-robot source of truth for bring-up and live eval. Table dimensions are **140 × 70 cm**; do not use legacy tape marks or coordinates from the simplified MuJoCo scene.
 
 Procedure and the live-eval checklist: [real_robot_bringup.md](real_robot_bringup.en.md#current-table-layout-2026-10-26).
 

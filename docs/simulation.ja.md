@@ -27,7 +27,7 @@ export MUJOCO_GL=glfw   # macOS の既定値
 
 ## テーブル配置（2026-10-26 の正）
 
-実機の bring-up と live eval は 2026-10-26 実測（Issue #90）を使う。テーブルは **140 × 70 cm**。Leader は左から 27 cm / 右から 101 cm。Follower は左から約 68 cm / 右から 61 cm。C920 は右端、手前から 16 cm。紙は右から 69 cm、手前から 27 cm（縦置き 20×30 cm）。スポンジは右から 54 cm、手前から 44 cm（縦置き 6×11 cm）。手首カメラは Follower のグリッパ。OpenCV は wrist `0`、top `1`。
+実機の bring-up と live eval はテーブル配置（**140 × 70 cm**）を正とする。Leader は左から 27 cm / 右から 101 cm。Follower は左から約 68 cm / 右から 61 cm。C920 は右端、手前から 16 cm。紙は右から 69 cm、手前から 27 cm（縦置き 20×30 cm）。スポンジは右から 54 cm、手前から 44 cm（縦置き 6×11 cm）。手首カメラは Follower のグリッパ。OpenCV は wrist `0`、top `1`。
 
 この縁からの距離を sim 座標（Follower 中点を手前縁、+x 前方、+y 左）へ写すと次になる。
 

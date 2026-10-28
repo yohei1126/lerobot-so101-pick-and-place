@@ -22,7 +22,7 @@ Related procedure: [real_robot_bringup.md](real_robot_bringup.en.md). Training: 
 - Directory name is `20261020`, but recording ran 2026-10-22 23:30 – 2026-10-23 00:38 SGT (see logs)
 - Physical layout for these episodes is the superseded 2026-10-22 table, not the 2026-10-26 source of truth. See [Superseded layouts](real_robot_bringup.en.md#superseded-layouts)
 
-The table above is the 2026-10-23 snapshot. On 2026-10-27 05:04–05:11 SGT, episodes 32–41 (10 episodes, 7,369 frames) were appended to the same `20261020` root. Those 10 demos are the Issue #90 (2026-10-26 layout) set, extracted as episodes 0–9 at `$HOME/work/lerobot-hw/datasets/so101_pick_sponge_layout20261026_20261027`. Later demos default to that extracted root. `scripts/record_real_so101.sh` refuses to record into `20261020`.
+This dataset (clean28) reflects the initial table setup. It is kept distinct from recordings collected under the current standardized 140 × 70 cm layout (`so101_pick_sponge_layout20261026_20261027`) to prevent mixing different physical coordinate frames.
 
 ## clean ↔ raw mapping (action / state arrays confirmed identical)
 

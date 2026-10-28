@@ -4,7 +4,7 @@ This directory holds measured evaluation logs separately from protocols that hav
 
 ## Official: post50 ACT (DoD primary result)
 
-Source: [PR #34 post50 pipeline results comment](https://github.com/yohei1126/lerobot-so101-pick-and-place/pull/34#issuecomment-6233795103). Cell JSON files are measured copies of local `metrics.json` pinned with `scripts/verify_eval_metrics.py --pin`.
+Source: official post50 pipeline results. Cell JSON files are measured copies of local `metrics.json` pinned with `scripts/verify_eval_metrics.py --pin`.
 
 | File | Content |
 | --- | --- |

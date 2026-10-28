@@ -5,8 +5,6 @@ Procedure to dry-run → live on the SO-101 Follower with ACT trained from real 
 `lerobot/smolvla_base`. Shared bring-up: [real_robot_bringup.md](real_robot_bringup.en.md).
 Do **not** use the sim-trained ACT rad↔deg conversion wrapper (that path is [sim_to_real_act.md](sim_to_real_act.en.md)).
 
-Related: Issue #76.
-
 ## Prerequisites
 
 | Item | Value |
@@ -14,7 +12,7 @@ Related: Issue #76.
 | Host | Apple Silicon Mac / LeRobot **0.6.1** / MPS |
 | Real-robot venv | `$LEROBOT_HW_ROOT` (default `$HOME/work/lerobot-hw`) |
 | Cameras | top=OpenCV index **1**, wrist=index **0**, 640×480@30 (2026-10-25 cable swap, still current) |
-| Table | [Current layout 2026-10-26](real_robot_bringup.en.md#current-table-layout-2026-10-26) (Issue #90). Do not use 2026-10-22 or 2026-10-25 ~23:28 |
+| Table | [Current layout (140 × 70 cm)](real_robot_bringup.en.md#current-table-layout-2026-10-26). Do not use legacy dimensions |
 | Task string | `Pick up the yellow sponge and place it on the white paper` |
 
 Override paths with environment variables (do not hardcode absolute `/Users/...` paths).
