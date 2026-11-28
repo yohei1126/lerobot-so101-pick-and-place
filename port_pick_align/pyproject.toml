@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 training = [
-  "lerobot[dataset]==0.6.1",
+  "lerobot[dataset]==0.7.0",
   "torch==2.11.0",
   "torchvision==0.26.0",
   "Pillow>=10.0",
@@ -24,7 +24,7 @@ training = [
   "opencv-python-headless>=4.9.0,<5.1.0",
 ]
 feetech = [
-  "lerobot[feetech]==0.6.1",
+  "lerobot[feetech]==0.7.0",
 ]
 simulation = [
   "mujoco>=3.1",
